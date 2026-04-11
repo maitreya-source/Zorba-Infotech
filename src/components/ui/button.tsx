@@ -15,6 +15,10 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        hero: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow font-semibold text-base",
+        cta: "bg-zorba-green text-zorba-green-foreground hover:bg-zorba-green/90 font-semibold",
+        dealer: "bg-zorba-orange text-zorba-orange-foreground hover:bg-zorba-orange/90 font-semibold",
+        whatsapp: "bg-[hsl(142,70%,45%)] text-primary-foreground hover:bg-[hsl(142,70%,40%)] font-semibold",
       },
       size: {
         default: "h-10 px-4 py-2",
