@@ -24,13 +24,17 @@ const Contact = () => (
                   <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
                   <span>Shop No. 5 & 6, U – Shape Market, Tagore Marg, Neemuch 458 441 (M.P.)</span>
                 </div>
-                <a href="tel:+919407466866" className="flex items-center gap-3 hover:text-primary transition-colors">
+                <a href="tel:+919993599730" className="flex items-center gap-3 hover:text-primary transition-colors">
                   <Phone className="h-4 w-4 shrink-0 text-primary" />
-                  +91 94074 66866
+                  +91 99935 99730
                 </a>
-                <a href="mailto:info@zorbainfotech.com" className="flex items-center gap-3 hover:text-primary transition-colors">
+                <a href="mailto:zorbainfotech@gmail.com" className="flex items-center gap-3 hover:text-primary transition-colors">
                   <Mail className="h-4 w-4 shrink-0 text-primary" />
-                  info@zorbainfotech.com
+                  zorbainfotech@gmail.com
+                </a>
+                <a href="mailto:zorba99730@gmail.com" className="flex items-center gap-3 hover:text-primary transition-colors">
+                  <Mail className="h-4 w-4 shrink-0 text-primary" />
+                  zorba99730@gmail.com
                 </a>
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 shrink-0 text-primary" />
@@ -39,14 +43,14 @@ const Contact = () => (
               </div>
 
               <div className="mt-5 flex gap-3">
-                <a href="tel:+919407466866" className="flex-1">
+                <a href="tel:+919993599730" className="flex-1">
                   <Button variant="default" className="w-full gap-2">
                     <Phone className="h-4 w-4" />
                     Call Now
                   </Button>
                 </a>
                 <a
-                  href="https://wa.me/919407466866?text=Hi%20Zorba%20Infotech!"
+                  href="https://wa.me/919993599730?text=Hi%20Zorba%20Infotech!"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1"

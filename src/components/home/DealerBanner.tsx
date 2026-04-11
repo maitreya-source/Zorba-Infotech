@@ -22,7 +22,7 @@ const DealerBanner = () => (
             </Button>
           </Link>
           <Link to="/dealers">
-            <Button variant="outline" size="lg" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
+            <Button size="lg" className="border border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 backdrop-blur-sm font-semibold">
               Apply for Dealer Pricing
             </Button>
           </Link>
