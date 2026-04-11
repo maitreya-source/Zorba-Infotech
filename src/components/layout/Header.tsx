@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Search, Phone } from "lucide-react";
+import { Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import zorbaLogo from "@/assets/zorba-logo.png";
 
 const navLinks = [
   { label: "Home", to: "/" },
-  { label: "Products", to: "/products" },
   { label: "PC Builder", to: "/pc-builder" },
   { label: "Dealers", to: "/dealers" },
   { label: "Contact", to: "/contact" },
@@ -18,10 +18,8 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary font-display text-lg font-bold text-primary-foreground">
-            Z
-          </div>
+        <Link to="/" className="flex items-center gap-2.5">
+          <img src={zorbaLogo} alt="Zorba Infotech" className="h-9 w-9" width={36} height={36} />
           <span className="font-display text-lg font-bold text-foreground">
             Zorba Infotech
           </span>
@@ -45,7 +43,7 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a href="tel:+919407466866" className="hidden sm:inline-flex">
+          <a href="tel:+919993599730" className="hidden sm:inline-flex">
             <Button variant="outline" size="sm" className="gap-1.5">
               <Phone className="h-3.5 w-3.5" />
               Call Now
@@ -53,7 +51,7 @@ const Header = () => {
           </a>
           <Link to="/dealers">
             <Button variant="dealer" size="sm" className="hidden sm:inline-flex">
-              Dealer Login
+              Dealer Portal
             </Button>
           </Link>
           <button
@@ -83,7 +81,7 @@ const Header = () => {
                 {link.label}
               </Link>
             ))}
-            <a href="tel:+919407466866" className="mt-2">
+            <a href="tel:+919993599730" className="mt-2">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 <Phone className="h-3.5 w-3.5" />
                 Call Now

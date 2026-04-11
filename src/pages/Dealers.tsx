@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Package, TrendingUp, Truck, Shield, MessageCircle, Send } from "lucide-react";
+import { TrendingUp, Truck, Package, Shield, MessageCircle, Send } from "lucide-react";
 
 const benefits = [
   { icon: TrendingUp, title: "Best Wholesale Pricing", desc: "Competitive margins on 500+ products from all major brands." },
@@ -20,7 +20,13 @@ const Dealers = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = `Dealer Inquiry:\nName: ${form.name}\nBusiness: ${form.business}\nPhone: ${form.phone}\nCity: ${form.city}\nMessage: ${form.message}`;
-    window.open(`https://wa.me/919407466866?text=${encodeURIComponent(text)}`, "_blank");
+    window.open(`https://wa.me/919993599730?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  const handleEmail = () => {
+    const subject = `Dealer Inquiry from ${form.name}`;
+    const body = `Name: ${form.name}\nBusiness: ${form.business}\nPhone: ${form.phone}\nCity: ${form.city}\nMessage: ${form.message}`;
+    window.open(`mailto:zorbainfotech@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
 
   return (
@@ -96,7 +102,7 @@ const Dealers = () => {
                 <MessageCircle className="h-4 w-4" />
                 Submit via WhatsApp
               </Button>
-              <Button type="button" variant="cta" size="lg" className="flex-1 gap-2">
+              <Button type="button" variant="cta" size="lg" className="flex-1 gap-2" onClick={handleEmail}>
                 <Send className="h-4 w-4" />
                 Send via Email
               </Button>
