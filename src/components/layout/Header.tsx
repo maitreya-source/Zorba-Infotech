@@ -6,6 +6,7 @@ import zorbaLogo from "@/assets/zorba-logo.png";
 
 const navLinks = [
   { label: "Home", to: "/" },
+  { label: "Products", to: "/products" },
   { label: "PC Builder", to: "/pc-builder" },
   { label: "Dealers", to: "/dealers" },
   { label: "Contact", to: "/contact" },
@@ -18,8 +19,8 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src={zorbaLogo} alt="Zorba Infotech" className="h-9 w-9" width={36} height={36} />
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <img src={zorbaLogo} alt="Zorba Infotech" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" width={36} height={36} />
           <span className="font-display text-lg font-bold text-foreground">
             Zorba Infotech
           </span>
@@ -31,7 +32,7 @@ const Header = () => {
             <Link
               key={link.to}
               to={link.to}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-secondary ${
+              className={`relative rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-secondary ${
                 location.pathname === link.to
                   ? "bg-secondary text-foreground"
                   : "text-muted-foreground"
@@ -65,7 +66,7 @@ const Header = () => {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="border-t bg-card p-4 md:hidden">
+        <div className="border-t bg-card p-4 md:hidden animate-fade-in">
           <nav className="flex flex-col gap-1">
             {navLinks.map((link) => (
               <Link

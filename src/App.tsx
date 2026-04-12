@@ -7,6 +7,9 @@ import Index from "./pages/Index";
 import PCBuilder from "./pages/PCBuilder";
 import Dealers from "./pages/Dealers";
 import Contact from "./pages/Contact";
+import Products from "./pages/Products";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,9 +22,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/products" element={<Products />} />
           <Route path="/pc-builder" element={<PCBuilder />} />
           <Route path="/dealers" element={<Dealers />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

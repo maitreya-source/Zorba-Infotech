@@ -1,4 +1,5 @@
 import { Wrench, ShieldCheck, Clock, Users } from "lucide-react";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const features = [
   { icon: ShieldCheck, title: "Authorized Service Center", desc: "Factory-trained technicians for all major brands." },
@@ -6,6 +7,26 @@ const features = [
   { icon: Clock, title: "Quick Turnaround", desc: "Most repairs completed within 24-48 hours." },
   { icon: Users, title: "B2B Solutions", desc: "Complete IT infrastructure setup for businesses." },
 ];
+
+const FeatureCard = ({ f, index }: { f: typeof features[0]; index: number }) => {
+  const { ref, isVisible } = useScrollAnimation();
+
+  return (
+    <div
+      ref={ref}
+      className={`rounded-2xl border bg-card p-6 card-hover transition-all duration-500 ${
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+      }`}
+      style={{ transitionDelay: `${index * 100}ms` }}
+    >
+      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-300 hover:scale-110">
+        <f.icon className="h-5 w-5" />
+      </div>
+      <h3 className="mt-4 font-semibold">{f.title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
+    </div>
+  );
+};
 
 const ServicesSection = () => (
   <section className="bg-zorba-surface py-16">
@@ -15,14 +36,8 @@ const ServicesSection = () => (
         <p className="mt-2 text-muted-foreground">Trusted by hundreds of businesses across the region</p>
       </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {features.map((f) => (
-          <div key={f.title} className="rounded-xl border bg-card p-6 card-hover">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <f.icon className="h-5 w-5" />
-            </div>
-            <h3 className="mt-4 font-semibold">{f.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
-          </div>
+        {features.map((f, i) => (
+          <FeatureCard key={f.title} f={f} index={i} />
         ))}
       </div>
     </div>

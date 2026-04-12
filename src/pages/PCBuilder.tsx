@@ -2,6 +2,7 @@ import { useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Check, MessageCircle, RotateCcw } from "lucide-react";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 interface Part {
   category: string;
@@ -21,6 +22,7 @@ const partsList: Part[] = [
 
 const PCBuilder = () => {
   const [selections, setSelections] = useState<Record<string, string>>({});
+  const { ref: heroRef, isVisible: heroVisible } = useScrollAnimation(0.1);
 
   const handleSelect = (category: string, option: string) => {
     setSelections((prev) => ({ ...prev, [category]: option }));
@@ -29,14 +31,19 @@ const PCBuilder = () => {
   const selectedParts = Object.entries(selections).filter(([, v]) => v);
   const buildSummary = selectedParts.map(([cat, opt]) => `${cat}: ${opt}`).join("\n");
 
-  const whatsappLink = `https://wa.me/919407466866?text=${encodeURIComponent(
+  const whatsappLink = `https://wa.me/919993599730?text=${encodeURIComponent(
     `Hi Zorba Infotech! I'd like a quote for this custom PC build:\n\n${buildSummary}\n\nPlease share pricing and availability.`
   )}`;
 
   return (
     <Layout>
       <div className="container py-8">
-        <div className="mx-auto max-w-4xl">
+        <div
+          ref={heroRef}
+          className={`mx-auto max-w-4xl transition-all duration-700 ${
+            heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          }`}
+        >
           <h1 className="text-3xl font-bold font-display">Custom PC Builder</h1>
           <p className="mt-1 text-muted-foreground">
             Select your components below and submit for a personalized quote from our team.
@@ -44,7 +51,7 @@ const PCBuilder = () => {
 
           <div className="mt-8 space-y-6">
             {partsList.map((part) => (
-              <div key={part.category} className="rounded-xl border bg-card p-5">
+              <div key={part.category} className="rounded-2xl border bg-card p-5 transition-all duration-300 hover:shadow-md">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">{part.category}</h3>
                   {selections[part.category] && (
@@ -59,10 +66,10 @@ const PCBuilder = () => {
                     <button
                       key={opt}
                       onClick={() => handleSelect(part.category, opt)}
-                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      className={`rounded-lg border px-3 py-2 text-sm transition-all duration-200 ${
                         selections[part.category] === opt
-                          ? "border-primary bg-primary/10 text-primary font-medium"
-                          : "border-border hover:bg-secondary"
+                          ? "border-primary bg-primary/10 text-primary font-medium shadow-sm"
+                          : "border-border hover:bg-secondary hover:border-primary/30"
                       }`}
                     >
                       {opt}
@@ -75,7 +82,7 @@ const PCBuilder = () => {
 
           {/* Summary */}
           {selectedParts.length > 0 && (
-            <div className="mt-8 rounded-xl border bg-card p-6">
+            <div className="mt-8 rounded-2xl border bg-card p-6 animate-fade-in">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-lg font-bold">Your Build Summary</h3>
                 <Button variant="ghost" size="sm" onClick={() => setSelections({})} className="gap-1">
