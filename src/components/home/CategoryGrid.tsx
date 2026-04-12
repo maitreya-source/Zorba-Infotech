@@ -18,7 +18,7 @@ const categories = [
 ];
 
 const CategoryCard = ({ cat, index }: { cat: typeof categories[0]; index: number }) => {
-  const { ref, isVisible } = useScrollAnimation();
+  const { ref, isVisible } = useScrollAnimation<HTMLAnchorElement>();
 
   return (
     <Link
