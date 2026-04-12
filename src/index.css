@@ -117,3 +117,8 @@
     box-shadow: 0 12px 40px -12px hsl(var(--zorba-navy) / 0.15);
   }
 }
+
+/* Prose styling for legal pages */
+.prose h2 {
+  @apply font-display;
+}
