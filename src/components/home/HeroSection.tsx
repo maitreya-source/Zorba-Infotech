@@ -49,11 +49,6 @@ const HeroSection = () => {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link to="/pc-builder">
-              <Button size="lg" className="border border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 backdrop-blur-sm font-semibold">
-                Build Your PC
-              </Button>
-            </Link>
             <Link to="/dealers">
               <Button size="lg" className="border border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 backdrop-blur-sm font-semibold">
                 Dealer Portal
@@ -65,7 +60,7 @@ const HeroSection = () => {
           <div className="mt-14 grid grid-cols-3 gap-6 max-w-md mx-auto">
             {[
               { icon: Monitor, value: "4000+", label: "Products" },
-              { icon: Cpu, value: "10+", label: "Years Exp." },
+              { icon: Cpu, value: "20+", label: "Years Exp." },
               { icon: Wrench, value: "24hr", label: "Repairs" },
             ].map((stat) => (
               <div key={stat.label} className="flex flex-col items-center gap-1.5">

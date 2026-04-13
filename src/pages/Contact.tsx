@@ -22,7 +22,7 @@ const Contact = () => {
           <p className="mt-1 text-muted-foreground">Visit our showroom or reach out anytime — we're here to help.</p>
 
           <div className="mt-8 grid gap-8 lg:grid-cols-5">
-            {/* Info - takes 3 cols */}
+            {/* Info - takes 2 cols */}
             <div
               ref={infoRef}
               className={`lg:col-span-2 space-y-6 transition-all duration-700 ${
@@ -43,11 +43,15 @@ const Contact = () => {
                   </div>
                   <div className="flex items-start gap-3">
                     <Clock className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-                    <span>Monday to Friday, 10:30 AM – 10:00 PM</span>
+                    <span>Monday to Saturday, 10:30 AM – 10:00 PM</span>
                   </div>
                   <a href="mailto:zorbainfotech@gmail.com" className="flex items-center gap-3 hover:text-primary transition-colors">
                     <Mail className="h-4 w-4 shrink-0 text-primary" />
                     zorbainfotech@gmail.com
+                  </a>
+                  <a href="mailto:zorba99730@gmail.com" className="flex items-center gap-3 hover:text-primary transition-colors">
+                    <Mail className="h-4 w-4 shrink-0 text-primary" />
+                    zorba99730@gmail.com
                   </a>
                   <p className="text-xs text-muted-foreground pl-7">GST: <span className="font-mono">23AATPM9267A1ZH</span></p>
                 </div>
