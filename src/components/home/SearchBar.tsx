@@ -21,7 +21,7 @@ const SearchBar = () => {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search laptops, printers, RAM, CCTV..."
-        className="h-12 w-full rounded-xl border bg-card pl-12 pr-4 text-sm shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/30 focus:shadow-glow"
+        className="h-12 w-full rounded-xl border bg-card pl-12 pr-4 text-sm text-foreground shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/30 focus:shadow-glow placeholder:text-muted-foreground"
       />
     </form>
   );
