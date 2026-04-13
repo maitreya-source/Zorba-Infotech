@@ -21,8 +21,6 @@ const Footer = () => (
           <p className="text-xs text-muted-foreground">
             GST: <span className="font-mono text-foreground">23AATPM9267A1ZH</span>
           </p>
-
-          {/* GeM Badge */}
           <div className="rounded-lg bg-zorba-green/10 border border-zorba-green/20 p-3">
             <p className="text-xs font-medium text-foreground leading-relaxed">
               🏛️ Available on the Government of India's authorized <strong>GeM Portal</strong>
@@ -36,7 +34,7 @@ const Footer = () => (
           <nav className="flex flex-col gap-2.5 text-sm text-muted-foreground">
             <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
             <Link to="/products" className="hover:text-foreground transition-colors">Products & Services</Link>
-            <Link to="/pc-builder" className="hover:text-foreground transition-colors">Custom PC Builder</Link>
+            <Link to="/payments" className="hover:text-foreground transition-colors">Payments</Link>
             <Link to="/dealers" className="hover:text-foreground transition-colors">Dealer Portal</Link>
             <Link to="/contact" className="hover:text-foreground transition-colors">Contact Us</Link>
           </nav>
@@ -81,6 +79,10 @@ const Footer = () => (
               <Mail className="h-3.5 w-3.5 shrink-0 text-primary" />
               zorbainfotech@gmail.com
             </a>
+            <a href="mailto:zorba99730@gmail.com" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+              <Mail className="h-3.5 w-3.5 shrink-0 text-primary" />
+              zorba99730@gmail.com
+            </a>
           </div>
         </div>
 
@@ -94,7 +96,7 @@ const Footer = () => (
             </div>
             <div className="flex items-start gap-2">
               <Clock className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-              <span>Monday to Friday<br />10:30 AM – 10:00 PM</span>
+              <span>Monday to Saturday<br />10:30 AM – 10:00 PM</span>
             </div>
           </div>
 

@@ -7,7 +7,7 @@ import zorbaLogo from "@/assets/zorba-logo.png";
 const navLinks = [
   { label: "Home", to: "/" },
   { label: "Products", to: "/products" },
-  { label: "PC Builder", to: "/pc-builder" },
+  { label: "Payments", to: "/payments" },
   { label: "Dealers", to: "/dealers" },
   { label: "Contact", to: "/contact" },
 ];
