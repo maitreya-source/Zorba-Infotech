@@ -2,7 +2,11 @@ import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Phone, MessageCircle, CreditCard, QrCode } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import upiQr from "@/assets/upi-qr.png";
+import { QRCodeSVG } from "qrcode.react";
+
+const UPI_ID = "9993599730-1@okbizaxis";
+const UPI_NAME = "ZORBA INFOTECH";
+const upiUri = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&cu=INR`;
 
 const Payments = () => {
   const { ref, isVisible } = useScrollAnimation();
@@ -40,13 +44,12 @@ const Payments = () => {
             </p>
 
             {/* QR Code */}
-            <div className="mx-auto mb-6 w-64 rounded-xl border-2 border-dashed border-primary/20 bg-background p-4">
-              <img
-                src={upiQr}
-                alt="Zorba Infotech UPI QR Code"
-                className="w-full rounded-lg"
-                width={256}
-                height={256}
+            <div className="mx-auto mb-6 w-64 rounded-xl border-2 border-dashed border-primary/20 bg-white p-4">
+              <QRCodeSVG
+                value={upiUri}
+                size={224}
+                level="H"
+                className="mx-auto"
               />
             </div>
 
@@ -54,22 +57,20 @@ const Payments = () => {
             <div className="rounded-xl bg-secondary/50 p-4 mb-6">
               <p className="text-xs text-muted-foreground mb-1">UPI ID</p>
               <p className="font-mono text-lg font-bold text-foreground select-all">
-                9993599730-1@okbizaxis
+                {UPI_ID}
               </p>
             </div>
 
             <div className="rounded-xl bg-secondary/50 p-4 mb-6">
               <p className="text-xs text-muted-foreground mb-1">Business Name</p>
-              <p className="font-semibold text-foreground">ZORBA INFOTECH</p>
+              <p className="font-semibold text-foreground">{UPI_NAME}</p>
               <p className="text-sm text-muted-foreground">+91 99935 99730</p>
             </div>
 
-            {/* Info note */}
             <p className="text-xs text-muted-foreground leading-relaxed mb-6">
               After payment, please share the transaction screenshot via WhatsApp for confirmation.
             </p>
 
-            {/* CTAs */}
             <div className="flex gap-3">
               <a href="tel:+919993599730" className="flex-1">
                 <Button variant="outline" className="w-full gap-2">
