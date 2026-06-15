@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Layout from "@/components/layout/Layout";
+import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Truck, Package, Shield, MessageCircle, Send } from "lucide-react";
 
@@ -31,6 +32,12 @@ const Dealers = () => {
 
   return (
     <Layout>
+      <SEO
+        title="Dealer & Bulk Buyer Portal – Zorba Infotech | Wholesale IT Hardware Neemuch"
+        description="Become a Zorba Infotech dealer and get wholesale pricing on 4,000+ IT products. Serving retailers across Neemuch, Mandsaur, Chittorgarh, MP & Rajasthan. Apply for dealer pricing today."
+        path="/dealers"
+      />
+      <BreadcrumbSchema items={[{ name: "Home", url: "/" }, { name: "Dealer Portal", url: "/dealers" }]} />
       {/* Hero */}
       <section className="bg-gradient-dealer py-16 text-primary-foreground">
         <div className="container mx-auto max-w-3xl text-center">

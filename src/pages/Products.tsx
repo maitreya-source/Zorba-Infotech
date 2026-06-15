@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Layout from "@/components/layout/Layout";
+import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import {
@@ -202,6 +203,12 @@ const Products = () => {
 
   return (
     <Layout>
+      <SEO
+        title="Products & Services – Zorba Infotech | 4,000+ IT Products in Neemuch"
+        description="Browse 4,000+ IT products at Zorba Infotech Neemuch: laptops, desktops, PC components, CCTV cameras, networking, biometrics, printers, software & more. Wholesale & retail available."
+        path="/products"
+      />
+      <BreadcrumbSchema items={[{ name: "Home", url: "/" }, { name: "Products & Services", url: "/products" }]} />
       {/* Hero */}
       <section className="bg-gradient-hero py-16 text-primary-foreground">
         <div

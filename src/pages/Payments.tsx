@@ -1,4 +1,5 @@
 import Layout from "@/components/layout/Layout";
+import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Phone, MessageCircle, CreditCard, QrCode, Building2, Landmark } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
@@ -172,6 +173,12 @@ const PaymentCard = ({ entity }: { entity: Entity }) => {
 const Payments = () => {
   return (
     <Layout>
+      <SEO
+        title="Payment Methods – Zorba Infotech | UPI, Bank Transfer & More"
+        description="Pay Zorba Infotech via UPI, NEFT/RTGS bank transfer or cash. UPI ID: 9993599730-1@okbizaxis. ICICI Bank current account. Secure & hassle-free payments for IT purchases in Neemuch."
+        path="/payments"
+      />
+      <BreadcrumbSchema items={[{ name: "Home", url: "/" }, { name: "Payments", url: "/payments" }]} />
       <section className="bg-gradient-hero py-16 text-primary-foreground">
         <div className="container mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-1.5 text-sm font-medium backdrop-blur-sm mb-4">

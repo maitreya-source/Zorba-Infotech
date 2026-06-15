@@ -1,4 +1,5 @@
 import Layout from "@/components/layout/Layout";
+import { SEO } from "@/components/SEO";
 import { ShieldCheck } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
@@ -7,6 +8,11 @@ const PrivacyPolicy = () => {
 
   return (
     <Layout>
+      <SEO
+        title="Privacy Policy – Zorba Infotech"
+        description="Read the privacy policy of Zorba Infotech, Neemuch. Learn how we handle your personal data, contact information, and customer details."
+        path="/privacy-policy"
+      />
       {/* Hero */}
       <section className="bg-gradient-hero py-14 text-primary-foreground">
         <div className="container mx-auto max-w-3xl text-center">

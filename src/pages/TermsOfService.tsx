@@ -1,5 +1,6 @@
 import Layout from "@/components/layout/Layout";
-import { Scale } from "lucide-react";
+import { SEO } from "@/components/SEO";
+import { Scale, ShoppingCart, Wrench, FileText } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const TermsOfService = () => {
@@ -7,6 +8,12 @@ const TermsOfService = () => {
 
   return (
     <Layout>
+      <SEO
+        title="Terms & Conditions – Zorba Infotech"
+        description="Terms and conditions for sales, warranty, service & technical support at Zorba Infotech, Neemuch. Read our official declaration before making a purchase."
+        path="/terms-of-service"
+      />
+
       {/* Hero */}
       <section className="bg-gradient-hero py-14 text-primary-foreground">
         <div className="container mx-auto max-w-3xl text-center">
@@ -14,138 +21,153 @@ const TermsOfService = () => {
             <Scale className="h-3.5 w-3.5" />
             Legal
           </span>
-          <h1 className="text-3xl font-bold font-display md:text-4xl">Terms of Service</h1>
-          <p className="mt-2 text-primary-foreground/70">Last updated: April 13, 2026</p>
+          <h1 className="text-3xl font-bold font-display md:text-4xl">Terms & Conditions</h1>
+          <p className="mt-1 text-primary-foreground/60 text-sm font-medium tracking-wide uppercase">
+            Declaration of Zorba Infotech
+          </p>
+          <p className="mt-3 text-primary-foreground/70">Last updated: April 24, 2026</p>
         </div>
       </section>
 
       <section className="container py-14">
         <div
           ref={ref}
-          className={`mx-auto max-w-3xl transition-all duration-700 ${
+          className={`mx-auto max-w-3xl transition-all duration-700 space-y-6 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <div className="rounded-2xl border bg-card p-8 md:p-10 space-y-8">
-            <div>
-              <p className="text-muted-foreground leading-relaxed">
-                These Terms of Service ("Terms") govern your use of the Zorba Infotech website and
-                services. By accessing or using our website, you agree to be bound by these Terms.
+          {/* Sales Terms */}
+          <div className="rounded-2xl border bg-card overflow-hidden">
+            <div className="flex items-center gap-3 bg-primary/5 border-b px-6 py-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <ShoppingCart className="h-4 w-4" />
+              </div>
+              <h2 className="font-display text-lg font-bold">Terms for Sales</h2>
+            </div>
+            <ul className="divide-y">
+              {[
+                "Goods once sold will not be taken back or exchanged.",
+                "Payment should be made within 7 days; otherwise interest @ 24% per annum will be charged.",
+                "Cheque bouncing charges: minimum ₹1,000 or 1% of the cheque amount — non-negotiable.",
+                "We are not responsible for any type of online scheme. Customers must directly claim their online scheme from the respective company.",
+                "Toll-free complaint registration and online product registration is the customer's responsibility.",
+                "We are not responsible for any breakage, theft, or damage of goods after leaving our premises.",
+                "Subject to Neemuch jurisdiction only.",
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-3 px-6 py-3.5 text-sm text-muted-foreground">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+                  <span className="leading-relaxed">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Service Terms */}
+          <div className="rounded-2xl border bg-card overflow-hidden">
+            <div className="flex items-center gap-3 bg-zorba-orange/5 border-b px-6 py-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zorba-orange/10 text-zorba-orange">
+                <Wrench className="h-4 w-4" />
+              </div>
+              <h2 className="font-display text-lg font-bold">Terms for Service & Technical Support</h2>
+            </div>
+            <ul className="divide-y">
+              {[
+                "During the warranty period, all courier/transport charges will be paid by the Customer/Dealer.",
+                "No warranty support will be provided if your payment is outstanding.",
+                "We are not responsible for any software support.",
+                "All warranty terms will be as per the manufacturing company's warranty policy.",
+                "Always bring a copy of our invoice/challan for any type of warranty repair, if applicable.",
+                "Virus cleaning, data backup, hard disk reconfiguring, and repair work will be charged extra and carried out at owner's risk.",
+                "Goods under warranty will be repaired or replaced by their respective vendors or Authorized Service Partners (A.S.P.).",
+                "Warranty will be void if the warranty seal is broken, or the product has physical damage or burning marks.",
+                "Warranty is not applicable due to water exposure, getting wet, or submersion in water. / पानी लगने या गीला होने की वजह, पानी में डूबने की वजह से वारंटी नहीं मिलती है।",
+                "No warranty for products priced below ₹500.",
+                "Proper earthing must be compulsorily maintained at your premises.",
+                "Minimum replacement charges: ₹100 | Minimum service call charges: ₹200 (by cash, compulsory).",
+                "One-year On-Site Care Pack: ₹2,500 + GST extra.",
+                "Visit charge for any technician on-site: ₹450 for the first two hours.",
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-3 px-6 py-3.5 text-sm text-muted-foreground">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zorba-orange/50" />
+                  <span className="leading-relaxed">{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* Software note */}
+            <div className="mx-6 mb-6 mt-2 rounded-xl bg-muted/50 border p-4 text-sm text-muted-foreground leading-relaxed">
+              <strong className="text-foreground">Note:</strong> Any storage device supplied/sold by us and
+              mentioned in the invoice is sold to you as hardware only. It is your sole responsibility to
+              ensure you use genuine, licensed software. We are not responsible for any pirated software —
+              whether loaded by you or any third party.
+            </div>
+          </div>
+
+          {/* Declaration */}
+          <div className="rounded-2xl border bg-card overflow-hidden">
+            <div className="flex items-center gap-3 bg-zorba-green/5 border-b px-6 py-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zorba-green/10 text-zorba-green">
+                <FileText className="h-4 w-4" />
+              </div>
+              <h2 className="font-display text-lg font-bold">Declaration</h2>
+            </div>
+            <div className="px-6 py-5 space-y-4 text-sm text-muted-foreground leading-relaxed">
+              <p>
+                Goods once sold will not be taken back or exchanged. We are not responsible for any
+                breakage, theft, or damage of goods after leaving our premises. During the warranty period,
+                all courier/transport charges will be paid by the Customer/Dealer. All warranty terms will be
+                as per the manufacturing company's warranty policy. Always bring a copy of our
+                invoice/challan for any type of warranty repair, if applicable.
+              </p>
+              <p>
+                All credit amounts will be charged with <strong className="text-foreground">compound
+                interest @ 2% per month</strong> after 15 days of bill date.
+              </p>
+              <p>
+                Warranty is not applicable due to water exposure, getting wet, or submersion in water.
+              </p>
+              <p className="font-medium text-foreground">
+                पानी लगने या गीला होने की वजह, पानी में डूबने की वजह से वारंटी नहीं मिलती है।
+              </p>
+              <p className="border-t pt-4">
+                All terms & conditions are disclosed in both English and Hindi and are deemed accepted by the
+                customer/dealer upon purchase.
               </p>
             </div>
 
-            <Section title="1. Nature of Service">
-              <p>
-                Zorba Infotech operates as a computer hardware dealer, distributor, and authorized service
-                center. Our website serves as a digital catalog and inquiry platform — it is not an
-                e-commerce store. All transactions, pricing, and orders are finalized offline through direct
-                communication with our team.
-              </p>
-            </Section>
-
-            <Section title="2. Product Information">
-              <p>
-                While we strive to keep product information accurate and up-to-date, prices, availability,
-                and specifications are subject to change without notice. Product listings on our website are
-                for informational purposes only and do not constitute a binding offer.
-              </p>
-            </Section>
-
-            <Section title="3. Quotations & Pricing">
-              <ul className="list-disc pl-5 space-y-2">
-                <li>All prices are quoted in Indian Rupees (INR) and are exclusive of applicable taxes unless stated otherwise.</li>
-                <li>Quotations provided via WhatsApp, email, or phone are valid for 24 hours unless otherwise specified.</li>
-                <li>Dealer/bulk pricing is available upon application and approval through our Dealer Portal.</li>
-                <li>GST No: 23AATPM9267A1ZH</li>
-              </ul>
-            </Section>
-
-            <Section title="4. Sales, Warranty & Returns">
-              <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 mb-4">
-                <p className="text-sm font-semibold text-destructive mb-2">Important Policy Notice</p>
-                <ul className="list-disc pl-5 space-y-2 text-sm">
-                  <li><strong>Goods once sold will not be taken back or exchanged.</strong></li>
-                  <li>We are not responsible for any breakage, theft, or damage of goods after leaving our premises.</li>
-                  <li>In case of warranty period, all courier/transport charges will be paid by the Customer/Dealer.</li>
-                  <li>All warranty terms will be as per the manufacturing company's warranty policy.</li>
-                  <li>Always bring along a copy of our invoice/challan for any type of warranty repairs, if applicable.</li>
-                </ul>
+            {/* Signature lines */}
+            <div className="grid grid-cols-2 gap-8 px-6 pb-8 pt-2">
+              <div>
+                <div className="border-b border-dashed border-muted-foreground/40 pb-1 mb-2" />
+                <p className="text-xs text-muted-foreground">Customer / Dealer Signature</p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Warranty claims are processed through our authorized service center. Return and replacement
-                policies vary by product category and manufacturer — please confirm at the time of purchase.
-              </p>
-            </Section>
-
-            <Section title="5. Credit Terms">
-              <div className="rounded-xl bg-zorba-orange/5 border border-zorba-orange/20 p-4">
-                <ul className="list-disc pl-5 space-y-2 text-sm">
-                  <li>All credits will be charged with <strong>compound interest @ 2% per month</strong> after 15 days of bill date.</li>
-                  <li>All terms & conditions disclosed in Hindi language and accepted by the customer/dealer.</li>
-                </ul>
+              <div>
+                <div className="border-b border-dashed border-muted-foreground/40 pb-1 mb-2" />
+                <p className="text-xs text-muted-foreground">Zorba Infotech (Authorised Signatory)</p>
               </div>
-            </Section>
+            </div>
+          </div>
 
-            <Section title="6. Repair Services">
-              <ul className="list-disc pl-5 space-y-2">
-                <li>Repair estimates are provided after physical inspection of the device.</li>
-                <li>Repair timelines are estimates and may vary based on parts availability.</li>
-                <li>Devices not collected within 30 days of repair completion will be subject to storage charges.</li>
+          {/* Governing law & contact */}
+          <div className="rounded-2xl border bg-card p-6 space-y-4 text-sm text-muted-foreground">
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">Governing Law</h3>
+              <p>These terms shall be governed by the laws of India. All disputes are subject to the exclusive jurisdiction of courts in <strong className="text-foreground">Neemuch, Madhya Pradesh</strong>.</p>
+            </div>
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-foreground mb-2">Contact</h3>
+              <ul className="space-y-1">
+                <li>Email: zorbainfotech@gmail.com</li>
+                <li>Phone: +91 99935 99730</li>
+                <li>Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch 458 441 (M.P.)</li>
+                <li className="text-xs pt-1">GST: 23AATPM9267A1ZH</li>
               </ul>
-            </Section>
-
-            <Section title="7. Dealer/B2B Terms">
-              <ul className="list-disc pl-5 space-y-2">
-                <li>Dealer applications are subject to verification and approval.</li>
-                <li>Bulk order pricing, credit terms, and minimum order quantities are determined on a case-by-case basis.</li>
-                <li>Dealer pricing is confidential and non-transferable.</li>
-              </ul>
-            </Section>
-
-            <Section title="8. Intellectual Property">
-              <p>
-                All content on this website, including text, graphics, logos, and images, is the property of
-                Zorba Infotech and is protected under applicable intellectual property laws.
-              </p>
-            </Section>
-
-            <Section title="9. Limitation of Liability">
-              <p>
-                Zorba Infotech shall not be liable for any indirect, incidental, or consequential damages
-                arising from the use of our website or services. Our total liability shall not exceed the
-                amount paid for the specific product or service in question.
-              </p>
-            </Section>
-
-            <Section title="10. Governing Law">
-              <p>
-                These Terms shall be governed by the laws of India. Any disputes shall be subject to the
-                exclusive jurisdiction of the courts in Neemuch, Madhya Pradesh.
-              </p>
-            </Section>
-
-            <Section title="11. Contact">
-              <p className="mb-3">For questions about these Terms, please contact:</p>
-              <ul className="space-y-1.5 text-sm">
-                <li>📧 Email: zorbainfotech@gmail.com</li>
-                <li>📞 Phone: +91 99935 99730</li>
-                <li>📍 Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch 458 441 (M.P.)</li>
-              </ul>
-            </Section>
+            </div>
           </div>
         </div>
       </section>
     </Layout>
   );
 };
-
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="border-t pt-6">
-    <h2 className="font-display text-lg font-bold mb-3">{title}</h2>
-    <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
-      {children}
-    </div>
-  </div>
-);
 
 export default TermsOfService;

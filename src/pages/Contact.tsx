@@ -1,4 +1,5 @@
 import Layout from "@/components/layout/Layout";
+import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, MapPin, Clock, MessageCircle, ExternalLink } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
@@ -16,6 +17,12 @@ const Contact = () => {
 
   return (
     <Layout>
+      <SEO
+        title="Contact Zorba Infotech – Computer Shop in Neemuch, MP | Call & WhatsApp"
+        description="Contact Zorba Infotech at Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch 458441, MP. Call: +91 9993599730. Open Mon–Sat, 10:30 AM–10 PM. Computer sales, repair & IT support."
+        path="/contact"
+      />
+      <BreadcrumbSchema items={[{ name: "Home", url: "/" }, { name: "Contact", url: "/contact" }]} />
       <div className="container py-12">
         <div className="mx-auto max-w-5xl">
           <h1 className="text-3xl font-bold font-display">Contact Us</h1>
