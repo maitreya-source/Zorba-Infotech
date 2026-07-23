@@ -181,6 +181,11 @@ export const JobPostingSchema = ({ job }: { job: JobPostingData }) => {
     datePosted: job.datePosted,
     validThrough: job.validThrough,
     employmentType: job.employmentType ?? "FULL_TIME",
+    identifier: {
+      "@type": "PropertyValue",
+      name: "Zorba Infotech",
+      value: job.slug,
+    },
     hiringOrganization: JOB_HIRING_ORG,
     jobLocation: JOB_LOCATION,
     directApply: true,
