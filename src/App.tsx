@@ -15,6 +15,7 @@ import Products from "./pages/Products";
 import Catalog from "./pages/Catalog";
 import CatalogProduct from "./pages/CatalogProduct";
 import Payments from "./pages/Payments";
+import Careers from "./pages/Careers";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/dealers" element={<Dealers />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/payments" element={<Payments />} />
+              <Route path="/careers" element={<Careers />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
 

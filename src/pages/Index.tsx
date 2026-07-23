@@ -3,6 +3,7 @@ import HeroSection from "@/components/home/HeroSection";
 import CategoryGrid from "@/components/home/CategoryGrid";
 import DealerBanner from "@/components/home/DealerBanner";
 import ServicesSection from "@/components/home/ServicesSection";
+import LocalSEOSection from "@/components/home/LocalSEOSection";
 import { SEO } from "@/components/SEO";
 
 const Index = () => (
@@ -16,6 +17,7 @@ const Index = () => (
     <CategoryGrid />
     <DealerBanner />
     <ServicesSection />
+    <LocalSEOSection />
   </Layout>
 );
 

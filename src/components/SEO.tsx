@@ -1,7 +1,10 @@
 import { Helmet } from "react-helmet-async";
 
 const SITE_URL = "https://zorbainfotech.in";
-const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
+const LOGO_IMAGE = `${SITE_URL}/zorba-logo.png`;
+// Used for og:image / twitter:image. Ideally a 1200x630 banner; falls back to
+// the 512x512 logo, which still renders in link previews.
+const DEFAULT_IMAGE = LOGO_IMAGE;
 
 interface SEOProps {
   title?: string;
@@ -97,7 +100,7 @@ export const LocalBusinessSchema = () => {
       name: "Neemuch, Madhya Pradesh, India",
     },
     image: DEFAULT_IMAGE,
-    logo: `${SITE_URL}/favicon.ico`,
+    logo: LOGO_IMAGE,
   };
 
   return (
@@ -121,6 +124,88 @@ export const BreadcrumbSchema = ({
       position: i + 1,
       name: item.name,
       item: `${SITE_URL}${item.url}`,
+    })),
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+};
+
+export interface JobPostingData {
+  /** Stable slug used for the @id / anchor, e.g. "computer-hardware-technician" */
+  slug: string;
+  title: string;
+  description: string;
+  datePosted: string;
+  validThrough: string;
+  employmentType?: string;
+  /** Cities/regions this role draws candidates from, shown in the schema description. */
+  applicantAreas?: string[];
+}
+
+const JOB_HIRING_ORG = {
+  "@type": "Organization",
+  name: "Zorba Infotech",
+  sameAs: SITE_URL,
+  logo: LOGO_IMAGE,
+};
+
+const JOB_LOCATION = {
+  "@type": "Place",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Shop No. 5 & 6, U-Shape Market, Tagore Marg",
+    addressLocality: "Neemuch",
+    addressRegion: "Madhya Pradesh",
+    postalCode: "458441",
+    addressCountry: "IN",
+  },
+};
+
+/**
+ * Emits Google-for-Jobs compatible JobPosting structured data.
+ * Salary is intentionally omitted (advertised as "as per experience");
+ * omitting baseSalary is valid and safer than publishing a guessed figure.
+ */
+export const JobPostingSchema = ({ job }: { job: JobPostingData }) => {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    "@id": `${SITE_URL}/careers#${job.slug}`,
+    title: job.title,
+    description: job.description,
+    datePosted: job.datePosted,
+    validThrough: job.validThrough,
+    employmentType: job.employmentType ?? "FULL_TIME",
+    hiringOrganization: JOB_HIRING_ORG,
+    jobLocation: JOB_LOCATION,
+    directApply: true,
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+};
+
+export const FAQSchema = ({
+  items,
+}: {
+  items: { question: string; answer: string }[];
+}) => {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
     })),
   };
 
