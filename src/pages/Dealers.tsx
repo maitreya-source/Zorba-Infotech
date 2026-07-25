@@ -3,6 +3,7 @@ import Layout from "@/components/layout/Layout";
 import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Truck, Package, Shield, MessageCircle, Send } from "lucide-react";
+import { whatsappLink } from "@/lib/contact";
 
 const benefits = [
   { icon: TrendingUp, title: "Best Wholesale Pricing", desc: "Competitive margins on 500+ products from all major brands." },
@@ -21,7 +22,7 @@ const Dealers = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = `Dealer Inquiry:\nName: ${form.name}\nBusiness: ${form.business}\nPhone: ${form.phone}\nCity: ${form.city}\nMessage: ${form.message}`;
-    window.open(`https://wa.me/919993599730?text=${encodeURIComponent(text)}`, "_blank");
+    window.open(whatsappLink(text), "_blank");
   };
 
   const handleEmail = () => {

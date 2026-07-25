@@ -3,6 +3,7 @@ import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, MapPin, Clock, MessageCircle, ExternalLink } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { whatsappLink } from "@/lib/contact";
 
 const contactNumbers = [
   { label: "Zorba Swami", number: "9993599730" },
@@ -90,7 +91,7 @@ const Contact = () => {
                       Call Now
                     </Button>
                   </a>
-                  <a href="https://wa.me/919993599730?text=Hi%20Zorba%20Infotech!" target="_blank" rel="noopener noreferrer" className="flex-1">
+                  <a href={whatsappLink("Hi Zorba Infotech!")} target="_blank" rel="noopener noreferrer" className="flex-1">
                     <Button variant="whatsapp" className="w-full gap-2">
                       <MessageCircle className="h-4 w-4" />
                       WhatsApp

@@ -3,6 +3,7 @@ import Layout from "@/components/layout/Layout";
 import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { whatsappLink } from "@/lib/contact";
 import {
   Monitor, Cpu, Printer, Keyboard, Camera, Wifi, HardDrive,
   Shield, School, Wrench, Package, MessageCircle, ChevronDown, ChevronUp,
@@ -275,7 +276,7 @@ const Products = () => {
           <p className="text-lg font-semibold font-display mb-2">Can't find what you're looking for?</p>
           <p className="text-muted-foreground mb-6">We stock over 4,000 IT-related items. Reach out for current pricing and availability.</p>
           <div className="flex flex-wrap justify-center gap-3">
-            <a href="https://wa.me/919424899730?text=Hi%20Zorba%20Infotech!%20I'm%20looking%20for%20a%20product." target="_blank" rel="noopener noreferrer">
+            <a href={whatsappLink("Hi Zorba Infotech! I'm looking for a product.")} target="_blank" rel="noopener noreferrer">
               <Button variant="whatsapp" size="lg" className="gap-2">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp Sales

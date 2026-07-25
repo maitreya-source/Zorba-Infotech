@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { whatsappLink } from "@/lib/contact";
 import {
   ArrowLeft,
   Package,
@@ -48,9 +49,7 @@ export default function CatalogProduct() {
 
   if (!product) return null;
 
-  const whatsappText = encodeURIComponent(
-    `Hi Zorba Infotech! I'm interested in: ${product.name}${product.brand ? ` (${product.brand})` : ""}. Please share availability and pricing.`
-  );
+  const whatsappText = `Hi Zorba Infotech! I'm interested in: ${product.name}${product.brand ? ` (${product.brand})` : ""}. Please share availability and pricing.`;
 
   const details = [
     product.brand && { label: "Brand", value: product.brand },
@@ -189,7 +188,7 @@ export default function CatalogProduct() {
             {/* CTA buttons */}
             <div className="flex flex-wrap gap-3 pt-2">
               <a
-                href={`https://wa.me/919424899730?text=${whatsappText}`}
+                href={whatsappLink(whatsappText)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
