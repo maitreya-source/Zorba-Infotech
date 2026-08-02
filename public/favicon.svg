@@ -1,0 +1,17 @@
+<svg viewBox="0 0 180 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Taller Vertically Elongated Arch Dome Container Shape (rx=80, ry=95) -->
+  <path d="M 10 118 A 80 95 0 0 1 170 118 Z" fill="#0B0F19" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round" />
+
+  <!-- Completely Filled Red & Green Indicator Dots for Maximum Favicon Clarity -->
+  <circle cx="72" cy="52" r="9.5" fill="#EF4444" />
+  <circle cx="108" cy="52" r="9.5" fill="#22C55E" />
+
+  <!-- Straight Baseline Typography: Z, Completely Filled Solid Orange Circle 'O', R, B, A (y=104) -->
+  <g fill="#FFFFFF" font-family="Arial Black, Impact, 'Trebuchet MS', system-ui, sans-serif" font-weight="900" font-size="31">
+    <text x="36" y="104" text-anchor="middle">Z</text>
+    <circle cx="63" cy="93.5" r="11" fill="#F97316" />
+    <text x="90" y="104" text-anchor="middle">R</text>
+    <text x="117" y="104" text-anchor="middle">B</text>
+    <text x="144" y="104" text-anchor="middle">A</text>
+  </g>
+</svg>

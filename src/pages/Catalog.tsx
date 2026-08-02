@@ -23,18 +23,29 @@ export default function Catalog() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
       const [prods, cats] = await Promise.all([getProducts(), getCategories()]);
       setProducts(sortProducts(prods));
       setCategories(cats);
+    } catch (err: any) {
+      console.error("Firebase error in Catalog:", err);
+      setError(err?.message || "Failed to load catalog from Firebase.");
+    } finally {
       setLoading(false);
-    };
-    load();
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
+
 
   const catMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
@@ -123,6 +134,17 @@ export default function Catalog() {
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center border rounded-2xl bg-destructive/5 border-destructive/20 px-4">
+            <p className="font-bold text-destructive text-lg">Firebase Connection Error</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md">{error}</p>
+            <button
+              onClick={() => loadData()}
+              className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Retry Connection
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">

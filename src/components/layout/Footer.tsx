@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, Clock, ExternalLink } from "lucide-react";
-import zorbaLogo from "@/assets/zorba-logo.png";
+import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
 
 const Footer = () => (
   <footer className="border-t bg-card">
@@ -9,7 +9,7 @@ const Footer = () => (
         {/* Brand */}
         <div className="space-y-4">
           <div className="flex items-center gap-2.5">
-            <img src={zorbaLogo} alt="Zorba Infotech" className="h-8 w-8" width={32} height={32} loading="lazy" />
+            <ZorbaLogoIcon className="h-8 w-8" />
             <span className="font-display text-lg font-bold">Zorba Infotech</span>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">

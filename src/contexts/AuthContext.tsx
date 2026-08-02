@@ -2,11 +2,19 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import {
   type User,
   signInWithPopup,
+  signInWithRedirect,
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, googleProvider, db } from "@/lib/firebase";
+
+const ALLOWED_ADMIN_EMAILS = [
+  "maitreya.mul@gmail.com",
+  "manishm9730@gmail.com",
+  "zorbainfotech@gmail.com",
+  "maitreyam@google.com",
+];
 
 interface AuthContextType {
   user: User | null;
@@ -24,23 +32,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser?.email) {
-        const snap = await getDoc(doc(db, "admins", firebaseUser.email));
-        setIsAdmin(snap.exists());
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        const emailLower = firebaseUser.email?.toLowerCase().trim() || "";
+        const isWhitelisted = ALLOWED_ADMIN_EMAILS.includes(emailLower);
+
+        if (isWhitelisted) {
+          setIsAdmin(true);
+        } else {
+          try {
+            const snap = await getDoc(doc(db, "admins", emailLower));
+            setIsAdmin(snap.exists());
+          } catch {
+            setIsAdmin(false);
+          }
+        }
       } else {
+        setUser(null);
         setIsAdmin(false);
       }
       setLoading(false);
     });
+    return () => unsubscribe();
   }, []);
 
   const signIn = async () => {
-    await signInWithPopup(auth, googleProvider);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (popupErr: any) {
+      console.warn("signInWithPopup failed, trying redirect:", popupErr);
+      if (
+        popupErr?.code === "auth/popup-blocked" ||
+        popupErr?.code === "auth/popup-closed-by-user"
+      ) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        throw popupErr;
+      }
+    }
   };
 
   const signOut = async () => {
+    setUser(null);
+    setIsAdmin(false);
     await firebaseSignOut(auth);
   };
 

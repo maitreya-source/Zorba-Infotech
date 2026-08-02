@@ -1,25 +1,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAdmin() {
-      return request.auth != null &&
-             exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    
+    // Check if user is authenticated with one of the authorized admin emails
+    function isSuperAdmin() {
+      return request.auth != null && 
+        (request.auth.token.email == "maitreya.mul@gmail.com" ||
+         request.auth.token.email == "manishm9730@gmail.com" ||
+         request.auth.token.email == "zorbainfotech@gmail.com" ||
+         request.auth.token.email == "maitreyam@google.com");
     }
 
-    match /categories/{catId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
+    // Public catalog items: Anyone can view product & category listings
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAdmin();
     }
 
-    match /admins/{email} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
+    match /categories/{categoryId} {
+      allow read: if true;
+    }
+
+    // Allow full read and write access on all documents for authorized admin accounts
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
     }
   }
 }

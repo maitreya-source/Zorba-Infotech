@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import zorbaLogo from "@/assets/zorba-logo.png";
+import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
 
 const navLinks = [
   { label: "Home", to: "/" },
@@ -22,7 +22,7 @@ const Header = () => {
     <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <img src={zorbaLogo} alt="Zorba Infotech" className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" width={36} height={36} />
+          <ZorbaLogoIcon className="h-9 w-9 transition-transform duration-300 group-hover:scale-110" />
           <span className="font-display text-lg font-bold text-foreground">
             Zorba Infotech
           </span>

@@ -29,20 +29,26 @@ export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [prods, cats] = await Promise.all([getProducts(), getCategories()]);
       setProducts(prods);
       setCategories(cats);
+    } catch (err: any) {
+      console.error("Firebase connection error in AdminProducts:", err);
+      setError(err?.message || "Firebase connection error. Could not connect to database.");
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => { load(); }, []);
 
@@ -122,10 +128,18 @@ export default function AdminProducts() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Table / Loading / Error */}
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
+          <p className="font-bold text-destructive text-base">Firebase Connection Error</p>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-md">{error}</p>
+          <Button onClick={() => load()} className="mt-4 gap-2" variant="outline">
+            Retry Connection
+          </Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border bg-card py-20 text-center">

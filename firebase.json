@@ -1,24 +1,6 @@
 {
-  "hosting": {
-    "public": "dist",
-    "predeploy": [
-      "npm run build:seo"
-    ],
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  },
   "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
+    "rules": "firestore.rules"
   },
   "storage": {
     "rules": "storage.rules"

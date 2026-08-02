@@ -24,6 +24,13 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminProductForm from "./pages/admin/AdminProductForm";
 import AdminCategories from "./pages/admin/AdminCategories";
+import AdminServiceCalls from "./pages/admin/AdminServiceCalls";
+import AdminServiceCallForm from "./pages/admin/AdminServiceCallForm";
+import AdminDeviceCategories from "./pages/admin/AdminDeviceCategories";
+import AdminCustomers from "./pages/admin/AdminCustomers";
+import AdminImportCustomers from "./pages/admin/AdminImportCustomers";
+import AdminTechnicians from "./pages/admin/AdminTechnicians";
+import AdminReports from "./pages/admin/AdminReports";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +67,14 @@ const App = () => (
                   <Route path="/admin/products/new" element={<AdminProductForm />} />
                   <Route path="/admin/products/:id/edit" element={<AdminProductForm />} />
                   <Route path="/admin/categories" element={<AdminCategories />} />
+                  <Route path="/admin/service-calls" element={<AdminServiceCalls />} />
+                  <Route path="/admin/service-calls/new" element={<AdminServiceCallForm />} />
+                  <Route path="/admin/service-calls/:id/edit" element={<AdminServiceCallForm />} />
+                  <Route path="/admin/device-categories" element={<AdminDeviceCategories />} />
+                  <Route path="/admin/customers" element={<AdminCustomers />} />
+                  <Route path="/admin/customers/import" element={<AdminImportCustomers />} />
+                  <Route path="/admin/technicians" element={<AdminTechnicians />} />
+                  <Route path="/admin/reports" element={<AdminReports />} />
                 </Route>
               </Route>
 
