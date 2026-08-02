@@ -3,6 +3,7 @@ import {
   type User,
   signInWithPopup,
   signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -32,13 +33,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Process redirect result if returning from Google auth redirect
+    getRedirectResult(auth).catch((err) => {
+      console.warn("getRedirectResult warning:", err);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
         const emailLower = firebaseUser.email?.toLowerCase().trim() || "";
         const isWhitelisted = ALLOWED_ADMIN_EMAILS.includes(emailLower);
 
-        if (isWhitelisted) {
+        // Authorize if whitelisted, in dev mode, or registered in Firestore admins collection
+        if (isWhitelisted || import.meta.env.DEV) {
           setIsAdmin(true);
         } else {
           try {
@@ -59,17 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (popupErr: any) {
-      console.warn("signInWithPopup failed, trying redirect:", popupErr);
-      if (
-        popupErr?.code === "auth/popup-blocked" ||
-        popupErr?.code === "auth/popup-closed-by-user"
-      ) {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
-        throw popupErr;
-      }
+      await signInWithRedirect(auth, googleProvider);
+    } catch (err: any) {
+      console.error("signInWithRedirect error:", err);
+      throw err;
     }
   };
 
