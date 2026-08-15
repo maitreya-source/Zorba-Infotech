@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Building2,
   Truck,
+  Database,
   LogOut,
   ExternalLink,
   ChevronRight,
@@ -29,6 +30,7 @@ const navItems = [
   { label: "Products", to: "/admin/products", icon: Package },
   { label: "Categories", to: "/admin/categories", icon: Layers },
   { label: "Customers", to: "/admin/customers", icon: UserCheck },
+  { label: "Backup & Restore", to: "/admin/backup", icon: Database },
 ];
 
 export default function AdminLayout() {
