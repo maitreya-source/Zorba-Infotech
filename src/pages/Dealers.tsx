@@ -22,7 +22,7 @@ const Dealers = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = `Dealer Inquiry:\nName: ${form.name}\nBusiness: ${form.business}\nPhone: ${form.phone}\nCity: ${form.city}\nMessage: ${form.message}`;
-    window.open(whatsappLink(text), "_blank");
+    window.open(whatsappLink(text), "_blank", "noopener,noreferrer");
   };
 
   const handleEmail = () => {

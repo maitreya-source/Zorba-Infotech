@@ -2,28 +2,49 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Check if user is authenticated with one of the authorized admin emails
-    function isSuperAdmin() {
+    function isAuthenticated() {
       return request.auth != null && 
-        (request.auth.token.email == "maitreya.mul@gmail.com" ||
-         request.auth.token.email == "manishm9730@gmail.com" ||
-         request.auth.token.email == "zorbainfotech@gmail.com" ||
-         request.auth.token.email == "zorbasquad@gmail.com" ||
-         request.auth.token.email == "maitreyam@google.com");
+        (request.auth.token.email_verified == true || 
+         request.auth.token.firebase.sign_in_provider == 'google.com');
+    }
+
+    function isSuperAdminEmail() {
+      return request.auth.token.email in [
+        "maitreya.mul@gmail.com",
+        "manishm9730@gmail.com",
+        "zorbainfotech@gmail.com",
+        "zorbasquad@gmail.com",
+        "maitreyam@google.com"
+      ];
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        isSuperAdminEmail() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
+      );
+    }
+
+    // Allow authenticated users to check their own admin doc; only super-admins can grant admin access
+    match /admins/{email} {
+      allow read: if isAuthenticated() && (request.auth.token.email == email || isAdmin());
+      allow write: if isAuthenticated() && isSuperAdminEmail();
     }
 
     // Public catalog items: Anyone can view product & category listings
     match /products/{productId} {
       allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /categories/{categoryId} {
       allow read: if true;
+      allow write: if isAdmin();
     }
 
     // Allow full read and write access on all documents for authorized admin accounts
     match /{document=**} {
-      allow read, write: if isSuperAdmin();
+      allow read, write: if isAdmin();
     }
   }
 }

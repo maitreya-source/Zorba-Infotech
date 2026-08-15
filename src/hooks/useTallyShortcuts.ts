@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface TallyShortcutOptions {
   onAltC?: () => void;  // Create New Customer / Category
@@ -15,13 +15,17 @@ interface TallyShortcutOptions {
 }
 
 export function useTallyShortcuts(options: TallyShortcutOptions) {
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const opts = optionsRef.current;
       // Ctrl + A (or Cmd + A) -> Accept / Save current screen
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "a" || e.code === "KeyA")) {
-        if (options.onCtrlA) {
+        if (opts.onCtrlA) {
           e.preventDefault();
-          options.onCtrlA();
+          opts.onCtrlA();
           return;
         }
       }
@@ -29,56 +33,56 @@ export function useTallyShortcuts(options: TallyShortcutOptions) {
       // Ctrl + F2 -> Change Date
       if ((e.ctrlKey || e.metaKey) && e.key === "F2") {
         e.preventDefault();
-        options.onCtrlF2?.();
+        opts.onCtrlF2?.();
         return;
       }
 
       // F2 -> Focus Date field
       if (e.key === "F2") {
         e.preventDefault();
-        if (options.onF2) options.onF2();
-        else if (options.onCtrlF2) options.onCtrlF2();
+        if (opts.onF2) opts.onF2();
+        else if (opts.onCtrlF2) opts.onCtrlF2();
         return;
       }
 
       // Esc -> Close current screen / modal
       if (e.key === "Escape") {
-        options.onEsc?.();
+        opts.onEsc?.();
         return;
       }
 
       // F5 -> Replacement Sent to Service Center
       if (e.key === "F5") {
-        if (options.onF5) {
+        if (opts.onF5) {
           e.preventDefault();
-          options.onF5();
+          opts.onF5();
           return;
         }
       }
 
       // F6 -> Replacement Received from Service Center
       if (e.key === "F6") {
-        if (options.onF6) {
+        if (opts.onF6) {
           e.preventDefault();
-          options.onF6();
+          opts.onF6();
           return;
         }
       }
 
       // F8 -> Replacement Product Given to Customer
       if (e.key === "F8") {
-        if (options.onF8) {
+        if (opts.onF8) {
           e.preventDefault();
-          options.onF8();
+          opts.onF8();
           return;
         }
       }
 
       // F9 -> Replacement Product Received from Customer
       if (e.key === "F9") {
-        if (options.onF9) {
+        if (opts.onF9) {
           e.preventDefault();
-          options.onF9();
+          opts.onF9();
           return;
         }
       }
@@ -86,24 +90,24 @@ export function useTallyShortcuts(options: TallyShortcutOptions) {
       // Alt + C -> Create Customer/Category
       if (e.altKey && (e.key.toLowerCase() === "c" || e.code === "KeyC")) {
         e.preventDefault();
-        options.onAltC?.();
+        opts.onAltC?.();
         return;
       }
       // Alt + A -> Add new item/service call
       if (e.altKey && (e.key.toLowerCase() === "a" || e.code === "KeyA")) {
         e.preventDefault();
-        options.onAltA?.();
+        opts.onAltA?.();
         return;
       }
       // Alt + D -> Delete item/row
       if (e.altKey && (e.key.toLowerCase() === "d" || e.code === "KeyD")) {
         e.preventDefault();
-        options.onAltD?.();
+        opts.onAltD?.();
         return;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [options]);
+  }, []);
 }

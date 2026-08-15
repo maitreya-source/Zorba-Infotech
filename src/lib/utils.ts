@@ -224,3 +224,15 @@ export function generateServiceCenterFollowUpMessage(options: {
   );
 }
 
+/**
+ * Validates and sanitizes external URLs to prevent XSS / javascript: protocol execution.
+ * Returns the trimmed URL if http: or https:, otherwise returns null.
+ */
+export function sanitizeExternalUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return null;
+}

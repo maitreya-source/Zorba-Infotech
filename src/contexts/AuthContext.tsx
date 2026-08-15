@@ -45,8 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const emailLower = firebaseUser.email?.toLowerCase().trim() || "";
         const isWhitelisted = ALLOWED_ADMIN_EMAILS.includes(emailLower);
 
-        // Authorize if whitelisted, in dev mode, or registered in Firestore admins collection
-        if (isWhitelisted || import.meta.env.DEV) {
+        // Authorize if whitelisted or registered in Firestore admins collection
+        if (isWhitelisted) {
           setIsAdmin(true);
         } else {
           try {

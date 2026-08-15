@@ -471,7 +471,7 @@ export default function AdminServiceCallForm() {
       })
     );
 
-    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank");
+    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
   // Follow-up with Courier Partner WhatsApp
@@ -492,7 +492,7 @@ export default function AdminServiceCallForm() {
       })
     );
 
-    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank");
+    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
   // Follow-up with Service Center WhatsApp
@@ -515,7 +515,7 @@ export default function AdminServiceCallForm() {
       })
     );
 
-    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank");
+    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
   return (

@@ -10,11 +10,14 @@ import {
   query,
   orderBy,
   where,
+  limit,
   serverTimestamp,
+  runTransaction,
+  writeBatch,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { toTitleCase, formatIndianPhoneNumber } from "./utils";
+import { toTitleCase, formatIndianPhoneNumber, generateSearchTokens } from "./utils";
 import type {
   Category,
   Product,
@@ -42,7 +45,7 @@ export function formatFirebaseError(err: any): string {
   const code = err?.code || "";
 
   if (code.includes("permission-denied") || msg.includes("permission-denied") || msg.includes("Missing or insufficient permissions")) {
-    return "Firestore Permission Denied: Update Firestore Security Rules in Firebase Console (e.g. allow read, write: if request.auth != null; or allow read, write: if true;).";
+    return "Firestore Permission Denied: You do not have sufficient permissions to perform this operation. Please verify your admin account credentials.";
   }
   if (code.includes("unavailable") || msg.includes("unavailable") || msg.includes("Failed to get document because the client is offline")) {
     return "Firestore Unavailable: Check internet connection or Firebase service status.";
@@ -71,23 +74,30 @@ export async function fetchWithTimeout<T>(promise: Promise<T>, ms: number = FIRE
   }
 }
 
-export function cleanFirestoreData<T extends Record<string, any>>(data: T): T {
-  const result: any = {};
-  for (const key in data) {
-    const val = data[key];
-    if (val !== undefined) {
-      if (val !== null && typeof val === "object" && !Array.isArray(val) && !((val as any) instanceof Date)) {
-        if (typeof val.toMillis === "function" || typeof val._methodName === "string") {
-          result[key] = val;
-        } else {
-          result[key] = cleanFirestoreData(val);
-        }
-      } else {
-        result[key] = val;
+export function cleanFirestoreData<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined)
+      .map((item) => (typeof item === "object" && item !== null ? cleanFirestoreData(item) : item)) as unknown as T;
+  }
+  if (typeof data === "object" && !((data as any) instanceof Date)) {
+    // Preserve Firestore FieldValue and Timestamp instances
+    if (typeof (data as any).toMillis === "function" || (data as any)._methodName) {
+      return data;
+    }
+    const result: Record<string, any> = {};
+    for (const key of Object.keys(data as Record<string, any>)) {
+      const val = (data as Record<string, any>)[key];
+      if (val !== undefined) {
+        result[key] = typeof val === "object" && val !== null ? cleanFirestoreData(val) : val;
       }
     }
+    return result as T;
   }
-  return result as T;
+  return data;
 }
 
 // ─── Default Categories ───────────────────────────────────────────────────────
@@ -133,7 +143,7 @@ export async function getCategories(): Promise<Category[]> {
 export async function createCategory(
   data: Omit<Category, "id" | "createdAt">
 ): Promise<void> {
-  const docId = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const docId = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `cat-${Date.now()}`;
   const docRef = doc(db, "categories", docId);
   await setDoc(docRef, {
     id: docId,
@@ -357,14 +367,24 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
   const formattedName = toTitleCase(data.name);
   const formattedPhone = formatIndianPhoneNumber(data.phone);
   const formattedCompany = data.companyName ? toTitleCase(data.companyName) : undefined;
+  const additionalPhones = data.additionalPhones?.map(formatIndianPhoneNumber);
+
+  const searchTokens = generateSearchTokens({
+    name: formattedName,
+    phone: formattedPhone,
+    companyName: formattedCompany,
+    email: data.email,
+    id: docRef.id,
+  });
 
   const newCust: Customer = {
     id: docRef.id,
     ...data,
     name: formattedName,
     phone: formattedPhone,
-    additionalPhones: data.additionalPhones?.map(formatIndianPhoneNumber),
+    additionalPhones,
     companyName: formattedCompany,
+    searchTokens,
     createdAt: Date.now(),
   };
   await setDoc(docRef, cleanFirestoreData(newCust));
@@ -372,16 +392,30 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
 }
 
 export async function updateCustomer(id: string, data: Partial<Customer>): Promise<void> {
-  const formattedName = data.name ? toTitleCase(data.name) : undefined;
-  const formattedPhone = data.phone ? formatIndianPhoneNumber(data.phone) : undefined;
-  const formattedCompany = data.companyName ? toTitleCase(data.companyName) : undefined;
+  const existingSnap = await getDoc(doc(db, "customers", id)).catch(() => null);
+  const existing = existingSnap?.exists() ? (existingSnap.data() as Customer) : null;
+
+  const formattedName = data.name ? toTitleCase(data.name) : existing?.name;
+  const formattedPhone = data.phone ? formatIndianPhoneNumber(data.phone) : existing?.phone;
+  const formattedCompany = data.companyName !== undefined ? (data.companyName ? toTitleCase(data.companyName) : undefined) : existing?.companyName;
+  const email = data.email !== undefined ? data.email : existing?.email;
+  const additionalPhones = data.additionalPhones ? data.additionalPhones.map(formatIndianPhoneNumber) : existing?.additionalPhones;
+
+  const searchTokens = generateSearchTokens({
+    name: formattedName,
+    phone: formattedPhone,
+    companyName: formattedCompany,
+    email,
+    id,
+  });
 
   const formattedData: Partial<Customer> = {
     ...data,
     ...(formattedName ? { name: formattedName } : {}),
     ...(formattedPhone ? { phone: formattedPhone } : {}),
-    ...(data.additionalPhones ? { additionalPhones: data.additionalPhones.map(formatIndianPhoneNumber) } : {}),
-    ...(formattedCompany ? { companyName: formattedCompany } : {}),
+    ...(additionalPhones ? { additionalPhones } : {}),
+    ...(data.companyName !== undefined ? { companyName: formattedCompany } : {}),
+    searchTokens,
   };
   await setDoc(doc(db, "customers", id), cleanFirestoreData(formattedData), { merge: true });
 }
@@ -389,9 +423,28 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
 export async function searchCustomers(queryText: string, limitCount = 30): Promise<Customer[]> {
   const clean = queryText.trim().toLowerCase();
   try {
+    if (!clean) {
+      const q = query(collection(db, "customers"), orderBy("createdAt", "desc"), limit(limitCount));
+      const snap = await fetchWithTimeout(getDocs(q));
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Customer);
+    }
+
+    // Try tokenized Firestore query first
+    try {
+      const q = query(
+        collection(db, "customers"),
+        where("searchTokens", "array-contains", clean),
+        limit(limitCount)
+      );
+      const snap = await fetchWithTimeout(getDocs(q));
+      if (!snap.empty) {
+        return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Customer);
+      }
+    } catch {
+      // Fallback to in-memory filter if tokens are missing/unindexed
+    }
+
     const all = await getCustomers();
-    if (!clean) return all.slice(0, limitCount);
-    
     const qDigits = clean.replace(/\D/g, "");
     return all
       .filter((c) => {
@@ -993,6 +1046,46 @@ export async function getServiceCall(id: string): Promise<ServiceCall | null> {
   }
 }
 
+export async function getNextTicketNumber(fyId: string, monthKey: string): Promise<string> {
+  const [cYear, cMonth] = monthKey.split("-");
+  const prefix = `SC-${cYear}-${cMonth}-`;
+  const counterRef = doc(db, "counters", `service_calls_${monthKey}`);
+
+  try {
+    const nextCount = await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      let current = 0;
+      if (counterDoc.exists()) {
+        current = counterDoc.data().current || 0;
+      } else {
+        try {
+          const q = query(collection(db, "financial_years", fyId, "months", monthKey, "service_calls"));
+          const snap = await getDocs(q);
+          const existingNums = snap.docs
+            .map((d) => {
+              const ticket = d.data().ticketNo || d.id || "";
+              const match = ticket.match(new RegExp(`^SC-${cYear}-${cMonth}-(\\d+)`));
+              return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter((n) => !isNaN(n) && n > 0);
+          if (existingNums.length > 0) {
+            current = Math.max(...existingNums);
+          }
+        } catch {
+          // Ignore fallback query failure
+        }
+      }
+      const next = current + 1;
+      transaction.set(counterRef, { current: next, updatedAt: serverTimestamp() }, { merge: true });
+      return next;
+    });
+    return `${prefix}${String(nextCount).padStart(4, "0")}`;
+  } catch (err) {
+    console.warn("Atomic counter transaction failed, using timestamp fallback:", err);
+    return `${prefix}${Date.now().toString().slice(-4)}`;
+  }
+}
+
 export async function createServiceCall(
   data: Omit<ServiceCall, "id" | "ticketNo" | "createdAt" | "updatedAt"> & { ticketNo?: string }
 ): Promise<ServiceCall> {
@@ -1022,30 +1115,10 @@ export async function createServiceCall(
   const fyId = fyMeta.fyId;
   const monthKey = fyMeta.monthKey;
 
-  // 2. Generate Next Ticket Number if not provided
+  // 2. Generate Next Ticket Number atomically if not provided
   let ticketNo = (data.ticketNo || "").trim();
   if (!ticketNo) {
-    let existingCalls: ServiceCall[] = [];
-    try {
-      existingCalls = await getServiceCalls();
-    } catch {
-      existingCalls = [];
-    }
-    const [cYear, cMonth] = monthKey.split("-");
-    const prefix = `SC-${cYear}-${cMonth}-`;
-
-    const numbers = existingCalls
-      .map((c) => {
-        const str = (c.ticketNo || c.id || "").trim();
-        const match = str.match(new RegExp(`^SC-${cYear}-${cMonth}-(\\d+)`));
-        if (match) return parseInt(match[1], 10);
-        return 0;
-      })
-      .filter((n) => !isNaN(n) && n > 0);
-
-    const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
-    const nextNum = maxNum + 1;
-    ticketNo = `${prefix}${String(nextNum).padStart(4, "0")}`;
+    ticketNo = await getNextTicketNumber(fyId, monthKey);
   }
 
   const now = Date.now();
@@ -1089,13 +1162,14 @@ export async function createServiceCall(
   // 3. Ensure Financial Year and Month document hierarchy
   ensureFinancialYearDoc(fyId, monthKey).catch(() => {});
 
-  // 4. Save into Hierarchical Subcollection: financial_years/{fyId}/months/{monthKey}/service_calls/{ticketNo}
+  // 4. Save into Hierarchical Subcollection and top-level mirror atomically
   const subDocRef = doc(db, "financial_years", fyId, "months", monthKey, "service_calls", ticketNo);
-  await setDoc(subDocRef, cleanData);
-
-  // 5. Also save / mirror to top-level collection for direct console viewing
   const topDocRef = doc(db, "service_calls", ticketNo);
-  await setDoc(topDocRef, cleanData);
+
+  const batch = writeBatch(db);
+  batch.set(subDocRef, cleanData);
+  batch.set(topDocRef, cleanData);
+  await batch.commit();
 
   // Auto-save model and spare parts to catalog
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
@@ -1156,12 +1230,14 @@ export async function updateServiceCall(
 
   const cleanData = cleanFirestoreData(formattedData);
 
-  // Update in FY subcollection
+  // Update in FY subcollection and top-level using atomic writeBatch
   const subDocRef = doc(db, "financial_years", fyId, "months", monthKey, "service_calls", id);
-  await setDoc(subDocRef, cleanData, { merge: true }).catch(() => {});
+  const topDocRef = doc(db, "service_calls", id);
 
-  // Update at top-level
-  await setDoc(doc(db, "service_calls", id), cleanData, { merge: true });
+  const batch = writeBatch(db);
+  batch.set(subDocRef, cleanData, { merge: true });
+  batch.set(topDocRef, cleanData, { merge: true });
+  await batch.commit();
 
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
     saveDeviceModel(data.deviceCategory, data.modelNumber.trim()).catch(() => {});
@@ -1178,11 +1254,13 @@ export async function updateServiceCall(
 export async function deleteServiceCall(id: string): Promise<void> {
   try {
     const existing = await getServiceCall(id);
+    const batch = writeBatch(db);
     if (existing?.fyId && existing?.monthKey) {
       const subDocRef = doc(db, "financial_years", existing.fyId, "months", existing.monthKey, "service_calls", id);
-      await deleteDoc(subDocRef).catch(() => {});
+      batch.delete(subDocRef);
     }
-    await deleteDoc(doc(db, "service_calls", id)).catch(() => {});
+    batch.delete(doc(db, "service_calls", id));
+    await batch.commit();
   } catch (err: any) {
     console.error("deleteServiceCall error:", err);
     throw new Error(formatFirebaseError(err));

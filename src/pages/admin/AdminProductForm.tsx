@@ -97,6 +97,9 @@ export default function AdminProductForm() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryDesc, setNewCategoryDesc] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleSubmitRef = useRef<() => void>(() => {});
+  const showCategoryModalRef = useRef(showCategoryModal);
+  showCategoryModalRef.current = showCategoryModal;
 
   const loadData = async () => {
     try {
@@ -145,14 +148,14 @@ export default function AdminProductForm() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
         e.preventDefault();
-        handleSubmit();
-      } else if (e.key === "Escape" && !showCategoryModal) {
+        handleSubmitRef.current();
+      } else if (e.key === "Escape" && !showCategoryModalRef.current) {
         navigate("/admin/products");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [form, customFields, photoFile, removePhoto, showCategoryModal]);
+  }, [navigate]);
 
   const set = (key: keyof FormState, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -269,6 +272,7 @@ export default function AdminProductForm() {
       setSaving(false);
     }
   };
+  handleSubmitRef.current = handleSubmit;
 
   if (loading) {
     return (

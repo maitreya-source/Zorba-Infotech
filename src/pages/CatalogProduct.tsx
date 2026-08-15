@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getProduct, getCategories } from "@/lib/firestore";
 import type { Product, Category } from "@/lib/types";
+import { sanitizeExternalUrl } from "@/lib/utils";
 
 export default function CatalogProduct() {
   const { id } = useParams<{ id: string }>();
@@ -173,9 +174,9 @@ export default function CatalogProduct() {
             )}
 
             {/* External product URL */}
-            {product.productUrl && (
+            {sanitizeExternalUrl(product.productUrl) && (
               <a
-                href={product.productUrl}
+                href={sanitizeExternalUrl(product.productUrl)!}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"

@@ -72,6 +72,7 @@ export interface Customer {
   address?: string;
   companyName?: string;
   notes?: string;
+  searchTokens?: string[];
   createdAt: string | number;
 }
 

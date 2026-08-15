@@ -1,18 +1,29 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    function isAdmin() {
+    function isAuthenticated() {
       return request.auth != null && 
-        (request.auth.token.email == "maitreya.mul@gmail.com" ||
-         request.auth.token.email == "manishm9730@gmail.com" ||
-         request.auth.token.email == "zorbainfotech@gmail.com" ||
-         request.auth.token.email == "zorbasquad@gmail.com" ||
-         request.auth.token.email == "maitreyam@google.com");
+        (request.auth.token.email_verified == true || 
+         request.auth.token.firebase.sign_in_provider == 'google.com');
     }
 
-    match /products/{allPaths=**} {
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email in [
+          "maitreya.mul@gmail.com",
+          "manishm9730@gmail.com",
+          "zorbainfotech@gmail.com",
+          "zorbasquad@gmail.com",
+          "maitreyam@google.com"
+        ]);
+    }
+
+    match /products/{fileName} {
       allow read: if true;
-      allow write, delete: if isAdmin();
+      allow write: if isAdmin() 
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdmin();
     }
   }
 }
