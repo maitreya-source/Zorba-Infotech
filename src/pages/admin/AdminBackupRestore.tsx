@@ -16,6 +16,8 @@ import {
   Package,
   Clock,
   ShieldCheck,
+  ShieldAlert,
+  Lock,
   Filter,
   Check,
   X,
@@ -62,6 +64,7 @@ import {
   getCloudSnapshots,
   deleteCloudSnapshot,
   restoreDatabaseFromBackup,
+  isBackupDownloadAuthorized,
   type FullDatabaseBackup,
   type CloudSnapshot,
   type RestoreProgress,
@@ -76,6 +79,7 @@ import type { FinancialYearDoc } from "@/lib/types";
 
 export default function AdminBackupRestore() {
   const { user } = useAuth();
+  const isAuthorized = isBackupDownloadAuthorized(user?.email);
   const [snapshots, setSnapshots] = useState<CloudSnapshot[]>([]);
   const [financialYears, setFinancialYears] = useState<FinancialYearDoc[]>([]);
   const [loadingSnapshots, setLoadingSnapshots] = useState(true);
@@ -140,6 +144,10 @@ export default function AdminBackupRestore() {
 
   // 1. Export & Download JSON
   const handleExportDownload = async () => {
+    if (!isAuthorized) {
+      toast.error("Unauthorized: Database export downloads are restricted to Executive Owners.");
+      return;
+    }
     setExporting(true);
     try {
       const config = getExportScopeConfig();
@@ -159,6 +167,10 @@ export default function AdminBackupRestore() {
 
   // 2. Save Cloud Snapshot
   const handleSaveCloudSnapshot = async () => {
+    if (!isAuthorized) {
+      toast.error("Unauthorized: Cloud snapshot creation is restricted to Executive Owners.");
+      return;
+    }
     setSavingCloud(true);
     try {
       const config = getExportScopeConfig();
@@ -176,6 +188,10 @@ export default function AdminBackupRestore() {
 
   // 3. Handle File Upload & Run Pre-flight Validation
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAuthorized) {
+      toast.error("Unauthorized: Database restore operations are restricted to Executive Owners.");
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -210,6 +226,10 @@ export default function AdminBackupRestore() {
 
   // 4. Restore from Cloud Snapshot
   const handleRestoreCloudSnapshot = (snapshot: CloudSnapshot) => {
+    if (!isAuthorized) {
+      toast.error("Unauthorized: Database restore operations are restricted to Executive Owners.");
+      return;
+    }
     if (!snapshot.backupData) {
       toast.error("This cloud snapshot does not contain full backup data.");
       return;
@@ -222,6 +242,10 @@ export default function AdminBackupRestore() {
 
   // 5. Execute Restore with Safeguards
   const handleExecuteRestore = async () => {
+    if (!isAuthorized) {
+      toast.error("Unauthorized: Database restore operations are restricted to Executive Owners.");
+      return;
+    }
     if (!pendingBackup) return;
     setShowPreviewModal(false);
     setRestoring(true);
@@ -259,6 +283,10 @@ export default function AdminBackupRestore() {
 
   // 6. Delete Cloud Snapshot
   const handleDeleteSnapshot = async () => {
+    if (!isAuthorized) {
+      toast.error("Unauthorized: Deleting recovery checkpoints is restricted to Executive Owners.");
+      return;
+    }
     if (!deleteSnapshotId) return;
     try {
       await deleteCloudSnapshot(deleteSnapshotId);
@@ -333,6 +361,25 @@ export default function AdminBackupRestore() {
             <p className="text-slate-400 pt-1"># Export specific collection group (e.g. service calls):</p>
             <p className="text-emerald-400">
               gcloud firestore export gs://zorba-infotech-web.firebasestorage.app/backups --collection-ids=service_calls,customers
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Access Restriction Notice if Unauthorized */}
+      {!isAuthorized && (
+        <div className="rounded-2xl border border-amber-300 dark:border-amber-800/60 bg-amber-50/80 dark:bg-amber-950/40 p-4 flex items-start gap-3 text-amber-900 dark:text-amber-200 shadow-xs">
+          <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold text-xs flex items-center gap-2">
+              <span>Database Download & Restore Restricted to Executive Accounts</span>
+              <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 border-amber-300 text-[10px]">
+                Read-Only Access
+              </Badge>
+            </p>
+            <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+              Database JSON exports and cloud disaster recovery restores are reserved for executive owners (<code>manishm9730@gmail.com</code>, <code>zorbainfotech@gmail.com</code>, <code>maitreya.mul@gmail.com</code>).
+              Your current account (<strong>{user?.email || "Staff"}</strong>) cannot download raw customer database files or execute database restores.
             </p>
           </div>
         </div>
@@ -419,19 +466,29 @@ export default function AdminBackupRestore() {
           <div className="pt-2 flex flex-col sm:flex-row gap-2">
             <Button
               onClick={handleExportDownload}
-              disabled={exporting || restoring}
-              className="flex-1 gap-2 bg-[#2563EB] hover:bg-blue-700 text-white font-bold h-9 rounded-xl"
+              disabled={!isAuthorized || exporting || restoring}
+              className="flex-1 gap-2 bg-[#2563EB] hover:bg-blue-700 text-white font-bold h-9 rounded-xl disabled:opacity-50"
             >
-              {exporting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileJson className="h-4 w-4" />}
-              {exporting ? "Streaming Records..." : "Download Scoped JSON"}
+              {!isAuthorized ? (
+                <Lock className="h-4 w-4 text-slate-300" />
+              ) : exporting ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileJson className="h-4 w-4" />
+              )}
+              {exporting ? "Streaming Records..." : !isAuthorized ? "Export Restricted" : "Download Scoped JSON"}
             </Button>
             <Button
               onClick={handleSaveCloudSnapshot}
-              disabled={savingCloud || restoring}
+              disabled={!isAuthorized || savingCloud || restoring}
               variant="outline"
-              className="gap-2 h-9 rounded-xl font-semibold"
+              className="gap-2 h-9 rounded-xl font-semibold disabled:opacity-50"
             >
-              {savingCloud ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4 text-blue-500" />}
+              {savingCloud ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Cloud className="h-4 w-4 text-blue-500" />
+              )}
               Save to Cloud History
             </Button>
           </div>
@@ -470,11 +527,12 @@ export default function AdminBackupRestore() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={restoring}
-              className="mt-2 h-8 text-xs font-bold rounded-xl gap-1.5"
+              onClick={() => isAuthorized && fileInputRef.current?.click()}
+              disabled={!isAuthorized || restoring}
+              className="mt-2 h-8 text-xs font-bold rounded-xl gap-1.5 disabled:opacity-50"
             >
-              <Upload className="h-3.5 w-3.5" /> Browse & Validate Backup File
+              {!isAuthorized ? <Lock className="h-3.5 w-3.5 text-slate-400" /> : <Upload className="h-3.5 w-3.5" />}
+              {!isAuthorized ? "Restore Restricted" : "Browse & Validate Backup File"}
             </Button>
           </div>
         </div>
@@ -573,9 +631,9 @@ export default function AdminBackupRestore() {
                   <div className="pt-2 border-t flex items-center gap-1.5">
                     <Button
                       onClick={() => handleRestoreCloudSnapshot(s)}
-                      disabled={restoring || !s.backupData}
+                      disabled={!isAuthorized || restoring || !s.backupData}
                       size="sm"
-                      className={`flex-1 h-7 text-[11px] gap-1 rounded-lg font-bold text-white ${
+                      className={`flex-1 h-7 text-[11px] gap-1 rounded-lg font-bold text-white disabled:opacity-50 ${
                         isRollback
                           ? "bg-amber-600 hover:bg-amber-700"
                           : "bg-[#2563EB] hover:bg-blue-700"
@@ -586,20 +644,22 @@ export default function AdminBackupRestore() {
                     {s.backupData && (
                       <Button
                         onClick={() => downloadBackupAsJson(s.backupData!)}
+                        disabled={!isAuthorized}
                         size="icon"
                         variant="outline"
-                        className="h-7 w-7 text-slate-500 hover:text-slate-900 rounded-lg"
-                        title="Download JSON"
+                        className="h-7 w-7 text-slate-500 hover:text-slate-900 rounded-lg disabled:opacity-50"
+                        title={isAuthorized ? "Download JSON" : "Download restricted"}
                       >
                         <Download className="h-3 w-3" />
                       </Button>
                     )}
                     <Button
                       onClick={() => setDeleteSnapshotId(s.id)}
+                      disabled={!isAuthorized}
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-lg"
-                      title="Delete Snapshot"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-lg disabled:opacity-50"
+                      title={isAuthorized ? "Delete Snapshot" : "Delete restricted"}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

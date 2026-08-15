@@ -42,7 +42,20 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Allow full read and write access on all documents for authorized admin accounts
+    function isBackupExecutive() {
+      return isAuthenticated() && request.auth.token.email in [
+        "maitreya.mul@gmail.com",
+        "manishm9730@gmail.com",
+        "zorbainfotech@gmail.com"
+      ];
+    }
+
+    // Restrict disaster recovery backups collection to executive owners only
+    match /backups/{backupId} {
+      allow read, write: if isBackupExecutive();
+    }
+
+    // Allow full read and write access on all other documents for authorized admin accounts
     match /{document=**} {
       allow read, write: if isAdmin();
     }

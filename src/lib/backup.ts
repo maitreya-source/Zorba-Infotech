@@ -17,6 +17,20 @@ import { db } from "./firebase";
 import { cleanFirestoreData, formatFirebaseError } from "./firestore";
 import { validateBackupPayload, type PreFlightValidationReport } from "./backupValidation";
 
+// ─── Authorization Constants & Checkers ───────────────────────────────────────
+
+export const BACKUP_AUTHORIZED_EMAILS = [
+  "maitreya.mul@gmail.com",
+  "manishm9730@gmail.com",
+  "zorbainfotech@gmail.com",
+];
+
+export function isBackupDownloadAuthorized(email?: string | null): boolean {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  return BACKUP_AUTHORIZED_EMAILS.includes(clean);
+}
+
 export interface BackupScopeOptions {
   fyId?: string; // e.g. "FY2627" or "all"
   monthKey?: string; // e.g. "2026-08" or "all"
