@@ -28,6 +28,8 @@ import type {
   ServiceCenter,
   Courier,
   Technician,
+  TeamMember,
+  TeamRole,
   FinancialYearDoc,
   FYMonthDoc,
 } from "./types";
@@ -74,7 +76,7 @@ export function cleanFirestoreData<T extends Record<string, any>>(data: T): T {
   for (const key in data) {
     const val = data[key];
     if (val !== undefined) {
-      if (val !== null && typeof val === "object" && !Array.isArray(val) && !(val instanceof Date)) {
+      if (val !== null && typeof val === "object" && !Array.isArray(val) && !((val as any) instanceof Date)) {
         if (typeof val.toMillis === "function" || typeof val._methodName === "string") {
           result[key] = val;
         } else {
@@ -198,7 +200,7 @@ export async function getProduct(id: string): Promise<Product | null> {
 }
 
 export async function createProduct(
-  data: Omit<Product, "id" | "createdAt">
+  data: Omit<Product, "id" | "createdAt" | "updatedAt">
 ): Promise<Product> {
   const modelNo = (data.model || "").trim();
   if (!modelNo) {
@@ -217,6 +219,7 @@ export async function createProduct(
     ...data,
     model: cleanDocId,
     createdAt: serverTimestamp() as any,
+    updatedAt: serverTimestamp() as any,
   };
 
   await setDoc(docRef, cleanFirestoreData(productData));
@@ -236,10 +239,16 @@ export async function createProduct(
 
 export async function updateProduct(
   id: string,
-  data: Partial<Omit<Product, "id" | "createdAt">>
+  data: Partial<Omit<Product, "id" | "createdAt" | "updatedAt">>
 ): Promise<void> {
   try {
-    await updateDoc(doc(db, "products", id), cleanFirestoreData(data));
+    await updateDoc(
+      doc(db, "products", id),
+      cleanFirestoreData({
+        ...data,
+        updatedAt: serverTimestamp(),
+      })
+    );
   } catch (err: any) {
     console.error("updateProduct error:", err);
     throw new Error(formatFirebaseError(err));
@@ -536,123 +545,166 @@ export async function deleteCourier(id: string): Promise<void> {
   await deleteDoc(doc(db, "couriers", id));
 }
 
-// ─── Staff Members ────────────────────────────────────────────────────────────
+// ─── Team Members (Unified Personnel: Backoffice, Technician, Manager) ───────
 
-const DEFAULT_STAFF: Omit<StaffMember, "id" | "createdAt">[] = [
-  { name: "Rajesh Sharma", role: "Frontdesk / Backoffice Coordinator", phone: "+91 98230 11223", active: true },
-  { name: "Amit Patel", role: "Service Operations Manager", phone: "+91 94220 44556", active: true },
-  { name: "Sunita Verma", role: "Support & Dispatch Lead", phone: "+91 98900 77889", active: true },
+const DEFAULT_TEAM_MEMBERS: Omit<TeamMember, "id" | "createdAt">[] = [
+  { name: "Rajesh Sharma", role: "backoffice", phone: "+91 98230 11223", email: "rajesh@zorba.in", active: true },
+  { name: "Amit Patel", role: "manager", phone: "+91 94220 44556", email: "amit@zorba.in", active: true },
+  { name: "Sunita Verma", role: "backoffice", phone: "+91 98900 77889", email: "sunita@zorba.in", active: true },
+  { name: "Manoj Kumar", role: "technician", phone: "+91 98230 55441", email: "manoj@zorba.in", specialization: "CCTV & Security", active: true },
+  { name: "Vikas Sharma", role: "technician", phone: "+91 94220 88776", email: "vikas@zorba.in", specialization: "Printers & Toners", active: true },
+  { name: "Deepak Soni", role: "technician", phone: "+91 98900 33221", email: "deepak@zorba.in", specialization: "Laptops & Networking", active: true },
 ];
 
-export async function getStaff(): Promise<StaffMember[]> {
+export async function getTeamMembers(): Promise<TeamMember[]> {
   try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "staff")));
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffMember);
+    const snap = await fetchWithTimeout(getDocs(collection(db, "team_members")));
+    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TeamMember);
     if (items.length === 0) {
-      for (const s of DEFAULT_STAFF) {
-        await createStaff(s).catch(() => {});
+      for (const tm of DEFAULT_TEAM_MEMBERS) {
+        await createTeamMember(tm).catch(() => {});
       }
-      const res = await getDocs(collection(db, "staff"));
-      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffMember);
+      const res = await getDocs(collection(db, "team_members"));
+      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as TeamMember);
       if (seeded.length > 0) return seeded;
     } else {
       return items;
     }
   } catch (err: any) {
-    console.warn("getStaff warning, using fallbacks:", err);
+    console.warn("getTeamMembers warning, using fallbacks:", err);
   }
-  return DEFAULT_STAFF.map((s, i) => ({
-    id: `staff-${i}`,
-    ...s,
+  return DEFAULT_TEAM_MEMBERS.map((tm, i) => ({
+    id: `team-${i}`,
+    ...tm,
     createdAt: Date.now(),
   }));
+}
+
+export async function createTeamMember(
+  data: Omit<TeamMember, "id" | "createdAt">
+): Promise<TeamMember> {
+  const docRef = doc(collection(db, "team_members"));
+  const newMember: TeamMember = {
+    id: docRef.id,
+    ...data,
+    name: toTitleCase(data.name),
+    phone: formatIndianPhoneNumber(data.phone),
+    createdAt: Date.now(),
+  };
+  await setDoc(docRef, cleanFirestoreData(newMember));
+  return newMember;
+}
+
+export async function updateTeamMember(
+  id: string,
+  data: Partial<TeamMember>
+): Promise<void> {
+  const payload: Partial<TeamMember> = {
+    ...data,
+    ...(data.name ? { name: toTitleCase(data.name) } : {}),
+    ...(data.phone ? { phone: formatIndianPhoneNumber(data.phone) } : {}),
+  };
+  await setDoc(doc(db, "team_members", id), cleanFirestoreData(payload), { merge: true });
+}
+
+export async function deleteTeamMember(id: string): Promise<void> {
+  await deleteDoc(doc(db, "team_members", id));
+}
+
+// ─── Backward-Compatibility Aliases ──────────────────────────────────────────
+
+export async function getStaff(): Promise<StaffMember[]> {
+  const team = await getTeamMembers();
+  return team
+    .filter((m) => m.role === "backoffice" || m.role === "manager")
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      role: m.role === "manager" ? "Service Operations Manager" : "Frontdesk / Backoffice Coordinator",
+      phone: m.phone,
+      active: m.active,
+      createdAt: m.createdAt,
+    }));
 }
 
 export const getStaffMembers = getStaff;
 
-export async function createStaff(
-  data: Omit<StaffMember, "id" | "createdAt">
-): Promise<StaffMember> {
-  const docRef = doc(collection(db, "staff"));
-  const newStaff: StaffMember = {
-    id: docRef.id,
-    ...data,
-    createdAt: Date.now(),
+export async function createStaff(data: Omit<StaffMember, "id" | "createdAt">): Promise<StaffMember> {
+  const tm = await createTeamMember({
+    name: data.name,
+    role: data.role?.toLowerCase().includes("manager") ? "manager" : "backoffice",
+    phone: data.phone || "",
+    active: data.active !== false,
+  });
+  return {
+    id: tm.id,
+    name: tm.name,
+    role: data.role,
+    phone: tm.phone,
+    active: tm.active,
+    createdAt: tm.createdAt,
   };
-  await setDoc(docRef, cleanFirestoreData(newStaff));
-  return newStaff;
-}
-
-export async function updateStaff(
-  id: string,
-  data: Partial<StaffMember>
-): Promise<void> {
-  await setDoc(doc(db, "staff", id), cleanFirestoreData(data), { merge: true });
-}
-
-export async function deleteStaff(id: string): Promise<void> {
-  await deleteDoc(doc(db, "staff", id));
 }
 
 export const createStaffMember = createStaff;
+
+export async function updateStaff(id: string, data: Partial<StaffMember>): Promise<void> {
+  await updateTeamMember(id, {
+    ...(data.name ? { name: data.name } : {}),
+    ...(data.phone ? { phone: data.phone } : {}),
+    ...(data.active !== undefined ? { active: data.active } : {}),
+    ...(data.role ? { role: data.role.toLowerCase().includes("manager") ? "manager" : "backoffice" } : {}),
+  });
+}
+
 export const updateStaffMember = updateStaff;
-export const deleteStaffMember = deleteStaff;
-
-// ─── Technicians ──────────────────────────────────────────────────────────────
-
-const DEFAULT_TECHNICIANS: Omit<Technician, "id" | "createdAt">[] = [
-  { name: "Manoj Kumar", phone: "+91 98230 55441", email: "manoj@zorba.in", specialization: "CCTV & Security", active: true },
-  { name: "Vikas Sharma", phone: "+91 94220 88776", email: "vikas@zorba.in", specialization: "Printers & Toners", active: true },
-  { name: "Deepak Soni", phone: "+91 98900 33221", email: "deepak@zorba.in", specialization: "Laptops & Networking", active: true },
-];
+export const deleteStaff = deleteTeamMember;
+export const deleteStaffMember = deleteTeamMember;
 
 export async function getTechnicians(): Promise<Technician[]> {
-  try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "technicians")));
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Technician);
-    if (items.length === 0) {
-      for (const t of DEFAULT_TECHNICIANS) {
-        await createTechnician(t).catch(() => {});
-      }
-      const res = await getDocs(collection(db, "technicians"));
-      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as Technician);
-      if (seeded.length > 0) return seeded;
-    } else {
-      return items;
-    }
-  } catch (err: any) {
-    console.warn("getTechnicians warning, using fallbacks:", err);
-  }
-  return DEFAULT_TECHNICIANS.map((t, i) => ({
-    id: `tech-${i}`,
-    ...t,
-    createdAt: Date.now(),
-  }));
+  const team = await getTeamMembers();
+  return team
+    .filter((m) => m.role === "technician")
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      phone: m.phone,
+      email: m.email,
+      specialization: m.specialization || "General Hardware & Networking",
+      active: m.active,
+      createdAt: m.createdAt,
+    }));
 }
 
-export async function createTechnician(
-  data: Omit<Technician, "id" | "createdAt">
-): Promise<Technician> {
-  const docRef = doc(collection(db, "technicians"));
-  const newTech: Technician = {
-    id: docRef.id,
-    ...data,
-    createdAt: Date.now(),
+export async function createTechnician(data: Omit<Technician, "id" | "createdAt">): Promise<Technician> {
+  const tm = await createTeamMember({
+    name: data.name,
+    role: "technician",
+    phone: data.phone,
+    email: data.email,
+    specialization: data.specialization,
+    active: data.active !== false,
+  });
+  return {
+    id: tm.id,
+    name: tm.name,
+    phone: tm.phone,
+    email: tm.email,
+    specialization: tm.specialization,
+    active: tm.active,
+    createdAt: tm.createdAt,
   };
-  await setDoc(docRef, cleanFirestoreData(newTech));
-  return newTech;
 }
 
-export async function updateTechnician(
-  id: string,
-  data: Partial<Technician>
-): Promise<void> {
-  await setDoc(doc(db, "technicians", id), cleanFirestoreData(data), { merge: true });
+export async function updateTechnician(id: string, data: Partial<Technician>): Promise<void> {
+  const { createdAt: _ca, ...rest } = data;
+  await updateTeamMember(id, {
+    ...rest,
+    role: "technician",
+  });
 }
 
-export async function deleteTechnician(id: string): Promise<void> {
-  await deleteDoc(doc(db, "technicians", id));
-}
+export const deleteTechnician = deleteTeamMember;
 
 // ─── Financial Years & Months (Hierarchy) ────────────────────────────────────
 

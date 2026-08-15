@@ -284,7 +284,9 @@ export default function AdminServiceCalls() {
         cmp = pA - pB;
         if (cmp === 0) {
           // secondary sort: newest first
-          cmp = (b.createdAt || 0) - (a.createdAt || 0);
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() || 0 : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() || 0 : 0;
+          cmp = timeB - timeA;
         }
         break;
       }

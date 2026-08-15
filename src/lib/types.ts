@@ -32,8 +32,8 @@ export interface Product {
   featured: boolean;
   order: number | null;
   customFields: CustomField[];
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export type ServiceCallType =
@@ -112,6 +112,19 @@ export interface SparePartCatalogItem {
   name: string;
   unitPrice: number;
   category?: string;
+  createdAt: number;
+}
+
+export type TeamRole = "backoffice" | "technician" | "manager";
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: TeamRole;
+  phone: string;
+  email?: string;
+  specialization?: string; // e.g. "CCTV & Security", "Printers", "Laptops & Networking"
+  active: boolean;
   createdAt: number;
 }
 

@@ -31,6 +31,7 @@ import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminImportCustomers from "./pages/admin/AdminImportCustomers";
 import AdminTechnicians from "./pages/admin/AdminTechnicians";
 import AdminStaff from "./pages/admin/AdminStaff";
+import AdminTeam from "./pages/admin/AdminTeam";
 import AdminServiceCenters from "./pages/admin/AdminServiceCenters";
 import AdminReports from "./pages/admin/AdminReports";
 
@@ -75,6 +76,7 @@ const App = () => (
                   <Route path="/admin/device-categories" element={<AdminDeviceCategories />} />
                   <Route path="/admin/customers" element={<AdminCustomers />} />
                   <Route path="/admin/customers/import" element={<AdminImportCustomers />} />
+                  <Route path="/admin/team" element={<AdminTeam />} />
                   <Route path="/admin/technicians" element={<AdminTechnicians />} />
                   <Route path="/admin/staff" element={<AdminStaff />} />
                   <Route path="/admin/service-centers" element={<AdminServiceCenters />} />

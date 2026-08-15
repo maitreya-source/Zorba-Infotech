@@ -22,12 +22,11 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { label: "Service Calls", to: "/admin/service-calls", icon: Activity },
   { label: "Daily/Monthly Reports", to: "/admin/reports", icon: BarChart3 },
-  { label: "Technicians", to: "/admin/technicians", icon: UserCheck },
-  { label: "Back Office Staff", to: "/admin/staff", icon: ShieldCheck },
+  { label: "Team & Personnel", to: "/admin/team", icon: Users },
   { label: "Service Centers", to: "/admin/service-centers", icon: Building2 },
   { label: "Products", to: "/admin/products", icon: Package },
   { label: "Categories", to: "/admin/categories", icon: Layers },
-  { label: "Customers", to: "/admin/customers", icon: Users },
+  { label: "Customers", to: "/admin/customers", icon: UserCheck },
 ];
 
 export default function AdminLayout() {

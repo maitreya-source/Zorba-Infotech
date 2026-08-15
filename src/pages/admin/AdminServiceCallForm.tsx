@@ -327,7 +327,7 @@ export default function AdminServiceCallForm() {
     setStatus(eventData.status);
 
     if (id) {
-      await addTimelineEvent(id, eventData).catch(() => {});
+      await addTimelineEvent(id, newEvent).catch(() => {});
     }
   };
 
