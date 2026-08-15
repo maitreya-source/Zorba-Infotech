@@ -33,6 +33,7 @@ import AdminTechnicians from "./pages/admin/AdminTechnicians";
 import AdminStaff from "./pages/admin/AdminStaff";
 import AdminTeam from "./pages/admin/AdminTeam";
 import AdminServiceCenters from "./pages/admin/AdminServiceCenters";
+import AdminCouriers from "./pages/admin/AdminCouriers";
 import AdminReports from "./pages/admin/AdminReports";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
                   <Route path="/admin/technicians" element={<AdminTechnicians />} />
                   <Route path="/admin/staff" element={<AdminStaff />} />
                   <Route path="/admin/service-centers" element={<AdminServiceCenters />} />
+                  <Route path="/admin/couriers" element={<AdminCouriers />} />
                   <Route path="/admin/reports" element={<AdminReports />} />
                 </Route>
               </Route>
