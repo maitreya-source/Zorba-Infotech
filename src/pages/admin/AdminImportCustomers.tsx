@@ -134,34 +134,58 @@ export default function AdminImportCustomers() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto text-xs">
-      {/* Header Bar */}
-      <div className="flex items-center justify-between border-b pb-3">
-        <div className="flex items-center gap-3">
-          <Link to="/admin/customers">
-            <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs text-muted-foreground">
-              <ArrowLeft className="h-4 w-4" /> Back to Directory
-            </Button>
+    <div className="p-4 md:p-6 space-y-4 max-w-5xl mx-auto text-xs">
+      {/* Top Breadcrumb & Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+          <span>Admin</span>
+          <span>/</span>
+          <Link to="/admin/customers" className="hover:text-slate-900 transition-colors">
+            Customers
           </Link>
-          <div>
-            <h1 className="text-lg font-bold font-display leading-tight">
-              CSV Bulk Contact Importer
-            </h1>
-            <p className="text-[11px] text-muted-foreground">
-              Upload customer contacts from Excel / CSV files for instant auto-complete
-            </p>
-          </div>
+          <span>/</span>
+          <span className="font-bold text-slate-900 dark:text-white">
+            Bulk CSV Import
+          </span>
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleDownloadSample}
-          className="gap-1.5 text-xs h-8 font-semibold border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50"
-        >
-          <Download className="h-3.5 w-3.5" /> Download Sample CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link to="/admin/customers">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-xs font-semibold rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs hover:bg-slate-50 text-slate-700 dark:text-slate-300 gap-1.5"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Customers
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 text-white shadow-md">
+        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
+              Bulk CSV Contact Importer
+            </h1>
+            <p className="text-xs text-slate-300">
+              Upload customer contacts from Excel / CSV files for instant auto-complete in service tickets
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadSample}
+            className="h-9 text-xs rounded-xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold gap-1.5 shrink-0"
+          >
+            <Download className="h-4 w-4 text-emerald-400" /> Download Sample CSV
+          </Button>
+        </div>
       </div>
 
       {/* Upload Drop Zone Card */}

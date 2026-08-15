@@ -1,5 +1,6 @@
 import {
   collection,
+  collectionGroup,
   doc,
   getDocs,
   getDoc,
@@ -8,11 +9,12 @@ import {
   deleteDoc,
   query,
   orderBy,
+  where,
   serverTimestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { toTitleCase, formatIndianPhoneNumber, generateSearchTokens } from "./utils";
+import { toTitleCase, formatIndianPhoneNumber } from "./utils";
 import type {
   Category,
   Product,
@@ -24,7 +26,10 @@ import type {
   Customer,
   ServiceCall,
   ServiceCenter,
+  Courier,
   Technician,
+  FinancialYearDoc,
+  FYMonthDoc,
 } from "./types";
 
 const FIREBASE_TIMEOUT_MS = 10000;
@@ -37,54 +42,69 @@ export function formatFirebaseError(err: any): string {
   if (code.includes("permission-denied") || msg.includes("permission-denied") || msg.includes("Missing or insufficient permissions")) {
     return "Firestore Permission Denied: Update Firestore Security Rules in Firebase Console (e.g. allow read, write: if request.auth != null; or allow read, write: if true;).";
   }
-  if (code.includes("not-found") || msg.includes("not-found") || msg.includes("does not exist")) {
-    return "Firestore Database Not Found: Go to Firebase Console -> Firestore Database and click 'Create database'.";
+  if (code.includes("unavailable") || msg.includes("unavailable") || msg.includes("Failed to get document because the client is offline")) {
+    return "Firestore Unavailable: Check internet connection or Firebase service status.";
   }
-  if (code.includes("unavailable") || msg.includes("unavailable") || msg.includes("Could not reach Cloud Firestore backend")) {
-    return "Firebase Connection Unavailable: Could not reach Cloud Firestore backend. Please check your internet connection or firewall.";
+  if (msg.includes("Operation timed out")) {
+    return "Firestore Request Timed Out (10s): Slow network or unreachable Firebase backend.";
   }
   return msg;
 }
 
-export function cleanFirestoreData<T extends object>(obj: T): T {
-  if (obj === null || typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map(cleanFirestoreData) as unknown as T;
-  const cleaned: any = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined) {
-      cleaned[key] = cleanFirestoreData(value);
+export async function fetchWithTimeout<T>(promise: Promise<T>, ms: number = FIREBASE_TIMEOUT_MS): Promise<T> {
+  let timeoutHandle: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(`Operation timed out after ${ms}ms`));
+    }, ms);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timeoutHandle);
+    return result;
+  } catch (err) {
+    clearTimeout(timeoutHandle);
+    throw err;
+  }
+}
+
+export function cleanFirestoreData<T extends Record<string, any>>(data: T): T {
+  const result: any = {};
+  for (const key in data) {
+    const val = data[key];
+    if (val !== undefined) {
+      if (val !== null && typeof val === "object" && !Array.isArray(val) && !(val instanceof Date)) {
+        if (typeof val.toMillis === "function" || typeof val._methodName === "string") {
+          result[key] = val;
+        } else {
+          result[key] = cleanFirestoreData(val);
+        }
+      } else {
+        result[key] = val;
+      }
     }
   }
-  return cleaned;
+  return result as T;
 }
 
-async function fetchWithTimeout<T>(
-  promise: Promise<T>,
-  customErrorMsg = "Unable to connect to Firebase. Please check your network connection or Firebase configuration."
-): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(customErrorMsg)), FIREBASE_TIMEOUT_MS)
-    ),
-  ]);
-}
+// ─── Default Categories ───────────────────────────────────────────────────────
 
-// ─── Categories ───────────────────────────────────────────────────────────────
-
-const DEFAULT_CATEGORIES: Omit<Category, "id" | "createdAt">[] = [
-  { name: "Laptops, Desktops & Printers", iconName: "Monitor", color: "from-blue-500/10 to-blue-600/5", order: 1 },
-  { name: "Accessories & Peripherals", iconName: "Keyboard", color: "from-purple-500/10 to-purple-600/5", order: 2 },
-  { name: "Components", iconName: "Cpu", color: "from-red-500/10 to-red-600/5", order: 3 },
-  { name: "Consumables & Billing Supplies", iconName: "Printer", color: "from-amber-500/10 to-amber-600/5", order: 4 },
-  { name: "CCTV & Security Systems", iconName: "Camera", color: "from-emerald-500/10 to-emerald-600/5", order: 5 },
-  { name: "Biometrics & Attendance", iconName: "Fingerprint", color: "from-cyan-500/10 to-cyan-600/5", order: 6 },
-  { name: "School & Institutional Solutions", iconName: "School", color: "from-indigo-500/10 to-indigo-600/5", order: 7 },
-  { name: "Networking & Fiber Optics", iconName: "Wifi", color: "from-teal-500/10 to-teal-600/5", order: 8 },
-  { name: "Spare Parts", iconName: "Wrench", color: "from-orange-500/10 to-orange-600/5", order: 9 },
-  { name: "Mounts & Stands", iconName: "Tv", color: "from-slate-500/10 to-slate-600/5", order: 10 },
-  { name: "Software Solutions", iconName: "Shield", color: "from-green-500/10 to-green-600/5", order: 11 },
+const DEFAULT_CATEGORIES = [
+  { name: "CCTV & Security", iconName: "Camera", color: "from-blue-500/10 to-blue-600/5", order: 1, description: "DVR, NVR, Cameras & Surveillance" },
+  { name: "Printer", iconName: "Printer", color: "from-emerald-500/10 to-emerald-600/5", order: 2, description: "Inkjet, Laser, Thermal & Multifunction Printers" },
+  { name: "Toner / Cartridge", iconName: "Layers", color: "from-cyan-500/10 to-cyan-600/5", order: 3, description: "Toner refill, Drum replacement & Cartridges" },
+  { name: "Laptop", iconName: "Laptop", color: "from-purple-500/10 to-purple-600/5", order: 4, description: "Laptops, MacBooks & Notebooks" },
+  { name: "Desktop & PC", iconName: "Monitor", color: "from-amber-500/10 to-amber-600/5", order: 5, description: "Desktops, CPU Towers, All-in-One PCs" },
+  { name: "Router & Networking", iconName: "Wifi", color: "from-red-500/10 to-red-600/5", order: 6, description: "Routers, Switches, Access Points, Fiber ONTs" },
+  { name: "UPS & Inverter", iconName: "Cpu", color: "from-indigo-500/10 to-indigo-600/5", order: 7, description: "UPS Units, Batteries & Power Supplies" },
+  { name: "Scanner & Billing", iconName: "Barcode", color: "from-pink-500/10 to-pink-600/5", order: 8, description: "Barcode Scanners, Receipt Printers, POS Terminals" },
+  { name: "Biometric & Attendance", iconName: "Fingerprint", color: "from-rose-500/10 to-rose-600/5", order: 9, description: "Fingerprint & Face Recognition Devices" },
+  { name: "Monitor & Display", iconName: "Tv", color: "from-violet-500/10 to-violet-600/5", order: 10, description: "LCD/LED Monitors, Touch Screens & Interactive Panels" },
+  { name: "Accessories", iconName: "Package", color: "from-slate-500/10 to-slate-600/5", order: 11, description: "Cables, Adapters, Keyboards & Mice" },
 ];
+
+// ─── Master Categories ────────────────────────────────────────────────────────
 
 export async function getCategories(): Promise<Category[]> {
   try {
@@ -111,8 +131,13 @@ export async function getCategories(): Promise<Category[]> {
 export async function createCategory(
   data: Omit<Category, "id" | "createdAt">
 ): Promise<void> {
-  const docRef = doc(collection(db, "categories"));
-  await setDoc(docRef, { ...data, createdAt: serverTimestamp() });
+  const docId = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const docRef = doc(db, "categories", docId);
+  await setDoc(docRef, {
+    id: docId,
+    ...data,
+    createdAt: serverTimestamp(),
+  }, { merge: true });
 }
 
 export async function updateCategory(
@@ -126,19 +151,30 @@ export async function deleteCategory(id: string): Promise<void> {
   await deleteDoc(doc(db, "categories", id));
 }
 
-export async function seedDefaultCategories(): Promise<void> {
+export async function seedDefaultCategories(force: boolean = false): Promise<void> {
   try {
     const existing = await getDocs(collection(db, "categories"));
-    if (!existing.empty) return;
+    if (!force && !existing.empty && existing.size >= DEFAULT_CATEGORIES.length) return;
+
     for (const cat of DEFAULT_CATEGORIES) {
-      await createCategory(cat);
+      const docId = cat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const docRef = doc(db, "categories", docId);
+      await setDoc(
+        docRef,
+        {
+          id: docId,
+          ...cat,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
     }
   } catch (err) {
     console.warn("Could not seed categories:", err);
   }
 }
 
-// ─── Products ─────────────────────────────────────────────────────────────────
+// ─── Products (Unique Model Number Document ID) ───────────────────────────────
 
 export async function getProducts(): Promise<Product[]> {
   try {
@@ -162,126 +198,137 @@ export async function getProduct(id: string): Promise<Product | null> {
 }
 
 export async function createProduct(
-  data: Omit<Product, "id" | "createdAt" | "updatedAt">
-): Promise<string> {
-  const docRef = doc(collection(db, "products"));
-  await setDoc(docRef, {
+  data: Omit<Product, "id" | "createdAt">
+): Promise<Product> {
+  const modelNo = (data.model || "").trim();
+  if (!modelNo) {
+    throw new Error("Model number is required to create a product.");
+  }
+  const cleanDocId = modelNo.replace(/[/\\#?%]/g, "-").toUpperCase();
+  const docRef = doc(db, "products", cleanDocId);
+  
+  const existing = await getDoc(docRef);
+  if (existing.exists()) {
+    throw new Error(`A product with Model Number "${modelNo}" already exists.`);
+  }
+
+  const productData: Product = {
+    id: cleanDocId,
     ...data,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return docRef.id;
+    model: cleanDocId,
+    createdAt: serverTimestamp() as any,
+  };
+
+  await setDoc(docRef, cleanFirestoreData(productData));
+
+  // Sync model number to service call models auto-suggest
+  if (data.categoryId) {
+    getCategories().then((cats) => {
+      const cat = cats.find((c) => c.id === data.categoryId);
+      if (cat) {
+        saveDeviceModel(cat.name, cleanDocId).catch(() => {});
+      }
+    }).catch(() => {});
+  }
+
+  return productData;
 }
 
 export async function updateProduct(
   id: string,
   data: Partial<Omit<Product, "id" | "createdAt">>
 ): Promise<void> {
-  await updateDoc(doc(db, "products", id), {
-    ...data,
-    updatedAt: serverTimestamp(),
-  });
+  try {
+    await updateDoc(doc(db, "products", id), cleanFirestoreData(data));
+  } catch (err: any) {
+    console.error("updateProduct error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  await deleteDoc(doc(db, "products", id));
+  try {
+    await deleteDoc(doc(db, "products", id));
+  } catch (err: any) {
+    console.error("deleteProduct error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
 }
-
-// ─── Storage ──────────────────────────────────────────────────────────────────
 
 export async function uploadProductPhoto(
   file: File,
   productId: string
 ): Promise<string> {
-  const storageRef = ref(storage, `products/${productId}/photo`);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+  try {
+    const ext = file.name.split(".").pop();
+    const storageRef = ref(storage, `products/${productId}.${ext}`);
+    const snap = await uploadBytes(storageRef, file);
+    return await getDownloadURL(snap.ref);
+  } catch (err: any) {
+    console.error("uploadProductPhoto error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
 }
 
 export async function deleteProductPhoto(productId: string): Promise<void> {
   try {
-    await deleteObject(ref(storage, `products/${productId}/photo`));
-  } catch {
-    // ignore — file may not exist
-  }
-}
-
-export async function checkIsAdmin(email: string): Promise<boolean> {
-  try {
-    const snap = await getDoc(doc(db, "admins", email));
-    return snap.exists();
-  } catch {
-    return false;
-  }
-}
-
-// ─── Device Categories ────────────────────────────────────────────────────────
-
-const DEFAULT_DEVICE_CATEGORIES = [
-  { name: "Printer", description: "Inkjet, Laser, Thermal & Multifunction Printers" },
-  { name: "Toner / Cartridge", description: "Toner refill, Drum replacement & Cartridges" },
-  { name: "Laptop", description: "Laptops, MacBooks & Notebooks" },
-  { name: "Desktop & PC", description: "Desktops, CPU Towers, All-in-One PCs" },
-  { name: "CCTV & Security", description: "DVR, NVR, Cameras & Surveillance" },
-  { name: "Router & Networking", description: "Routers, Switches, Access Points, Fiber ONTs" },
-  { name: "UPS & Inverter", description: "UPS Units, Batteries & Power Supplies" },
-  { name: "Scanner & Billing", description: "Barcode Scanners, Receipt Printers, POS Terminals" },
-  { name: "Biometric & Attendance", description: "Fingerprint & Face Recognition Devices" },
-  { name: "Monitor & Display", description: "LCD/LED Monitors, Touch Screens & Interactive Panels" },
-];
-
-export async function seedDefaultDeviceCategories(): Promise<void> {
-  try {
-    const existing = await getDocs(collection(db, "device_categories"));
-    if (!existing.empty) return;
-    for (const cat of DEFAULT_DEVICE_CATEGORIES) {
-      await createDeviceCategory(cat.name, cat.description);
+    const extensions = ["jpg", "jpeg", "png", "webp", "gif"];
+    for (const ext of extensions) {
+      try {
+        const storageRef = ref(storage, `products/${productId}.${ext}`);
+        await deleteObject(storageRef);
+        break;
+      } catch {
+        // continue
+      }
     }
   } catch (err) {
-    console.warn("Could not seed device categories:", err);
+    console.warn("Could not delete photo:", err);
   }
 }
+
+// ─── Legacy Device Categories Forwarder ───────────────────────────────────────
 
 export async function getDeviceCategories(): Promise<DeviceCategory[]> {
   try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "device_categories")));
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DeviceCategory);
-    if (items.length === 0) {
-      await seedDefaultDeviceCategories();
-      const res = await getDocs(collection(db, "device_categories"));
-      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as DeviceCategory);
-      if (seeded.length > 0) return seeded;
-    } else {
-      return items;
-    }
-  } catch (err: any) {
-    console.warn("getDeviceCategories warning, using fallbacks:", err);
+    const cats = await getCategories();
+    return cats.map((c) => ({
+      id: c.id,
+      name: c.name,
+      description: c.description || "",
+      createdAt: Date.now(),
+    }));
+  } catch {
+    return DEFAULT_CATEGORIES.map((c) => ({
+      id: c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      name: c.name,
+      description: c.description || "",
+      createdAt: Date.now(),
+    }));
   }
-  return DEFAULT_DEVICE_CATEGORIES.map((c, i) => ({
-    id: `default-cat-${i}`,
-    name: c.name,
-    description: c.description,
-    createdAt: Date.now(),
-  }));
 }
 
 export async function createDeviceCategory(
   name: string,
   description?: string
 ): Promise<DeviceCategory> {
-  const docRef = doc(collection(db, "device_categories"));
-  const newCat: DeviceCategory = {
-    id: docRef.id,
+  await createCategory({
+    name,
+    description: description || "",
+    iconName: "Package",
+    color: "from-blue-500/10 to-blue-600/5",
+    order: 99,
+  });
+  return {
+    id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     name,
     description: description || "",
     createdAt: Date.now(),
   };
-  await setDoc(docRef, newCat);
-  return newCat;
 }
 
 export async function deleteDeviceCategory(id: string): Promise<void> {
-  await deleteDoc(doc(db, "device_categories", id));
+  await deleteCategory(id);
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────
@@ -301,13 +348,6 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
   const formattedName = toTitleCase(data.name);
   const formattedPhone = formatIndianPhoneNumber(data.phone);
   const formattedCompany = data.companyName ? toTitleCase(data.companyName) : undefined;
-  const searchTokens = generateSearchTokens({
-    name: formattedName,
-    phone: formattedPhone,
-    companyName: formattedCompany,
-    email: data.email,
-    id: docRef.id,
-  });
 
   const newCust: Customer = {
     id: docRef.id,
@@ -316,7 +356,6 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
     phone: formattedPhone,
     additionalPhones: data.additionalPhones?.map(formatIndianPhoneNumber),
     companyName: formattedCompany,
-    searchTokens,
     createdAt: Date.now(),
   };
   await setDoc(docRef, cleanFirestoreData(newCust));
@@ -327,13 +366,6 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
   const formattedName = data.name ? toTitleCase(data.name) : undefined;
   const formattedPhone = data.phone ? formatIndianPhoneNumber(data.phone) : undefined;
   const formattedCompany = data.companyName ? toTitleCase(data.companyName) : undefined;
-  const searchTokens = generateSearchTokens({
-    name: formattedName,
-    phone: formattedPhone,
-    companyName: formattedCompany,
-    email: data.email,
-    id,
-  });
 
   const formattedData: Partial<Customer> = {
     ...data,
@@ -341,7 +373,6 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
     ...(formattedPhone ? { phone: formattedPhone } : {}),
     ...(data.additionalPhones ? { additionalPhones: data.additionalPhones.map(formatIndianPhoneNumber) } : {}),
     ...(formattedCompany ? { companyName: formattedCompany } : {}),
-    searchTokens,
   };
   await setDoc(doc(db, "customers", id), cleanFirestoreData(formattedData), { merge: true });
 }
@@ -446,12 +477,133 @@ export async function deleteServiceCenter(id: string): Promise<void> {
   await deleteDoc(doc(db, "service_centers", id));
 }
 
-// ─── Technicians / Assignees ──────────────────────────────────────────────────
+// ─── Couriers (Logistics Partners) ────────────────────────────────────────────
+
+const DEFAULT_COURIERS: Omit<Courier, "id" | "createdAt">[] = [
+  { name: "Trackon Courier", phone: "+91 98110 55667", contactPerson: "Ramesh Sharma", active: true },
+  { name: "Reliance Logistics", phone: "+91 98220 33445", contactPerson: "Suresh Gupta", active: true },
+  { name: "Blue Dart Express", phone: "+91 99330 11223", contactPerson: "Helpdesk", active: true },
+  { name: "DTDC Express", phone: "+91 98110 99887", contactPerson: "Frontdesk", active: true },
+  { name: "Speed Post (India Post)", phone: "+91 94110 77665", contactPerson: "Post Master", active: true },
+  { name: "Delhivery", phone: "+91 98770 44332", contactPerson: "Operations", active: true },
+];
+
+export async function getCouriers(): Promise<Courier[]> {
+  try {
+    const snap = await fetchWithTimeout(getDocs(collection(db, "couriers")));
+    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Courier);
+    if (items.length === 0) {
+      for (const c of DEFAULT_COURIERS) {
+        await createCourier(c).catch(() => {});
+      }
+      const res = await getDocs(collection(db, "couriers"));
+      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as Courier);
+      if (seeded.length > 0) return seeded;
+    } else {
+      return items;
+    }
+  } catch (err: any) {
+    console.warn("getCouriers warning, using fallbacks:", err);
+  }
+  return DEFAULT_COURIERS.map((c, i) => ({
+    id: `courier-${i}`,
+    ...c,
+    createdAt: Date.now(),
+  }));
+}
+
+export async function createCourier(
+  data: Omit<Courier, "id" | "createdAt">
+): Promise<Courier> {
+  const docRef = doc(collection(db, "couriers"));
+  const newCourier: Courier = {
+    id: docRef.id,
+    ...data,
+    createdAt: Date.now(),
+  };
+  await setDoc(docRef, cleanFirestoreData(newCourier));
+  return newCourier;
+}
+
+export async function updateCourier(
+  id: string,
+  data: Partial<Courier>
+): Promise<void> {
+  await setDoc(doc(db, "couriers", id), cleanFirestoreData(data), { merge: true });
+}
+
+export async function deleteCourier(id: string): Promise<void> {
+  await deleteDoc(doc(db, "couriers", id));
+}
+
+// ─── Staff Members ────────────────────────────────────────────────────────────
+
+const DEFAULT_STAFF: Omit<StaffMember, "id" | "createdAt">[] = [
+  { name: "Rajesh Sharma", role: "Frontdesk / Backoffice Coordinator", phone: "+91 98230 11223", active: true },
+  { name: "Amit Patel", role: "Service Operations Manager", phone: "+91 94220 44556", active: true },
+  { name: "Sunita Verma", role: "Support & Dispatch Lead", phone: "+91 98900 77889", active: true },
+];
+
+export async function getStaff(): Promise<StaffMember[]> {
+  try {
+    const snap = await fetchWithTimeout(getDocs(collection(db, "staff")));
+    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffMember);
+    if (items.length === 0) {
+      for (const s of DEFAULT_STAFF) {
+        await createStaff(s).catch(() => {});
+      }
+      const res = await getDocs(collection(db, "staff"));
+      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffMember);
+      if (seeded.length > 0) return seeded;
+    } else {
+      return items;
+    }
+  } catch (err: any) {
+    console.warn("getStaff warning, using fallbacks:", err);
+  }
+  return DEFAULT_STAFF.map((s, i) => ({
+    id: `staff-${i}`,
+    ...s,
+    createdAt: Date.now(),
+  }));
+}
+
+export const getStaffMembers = getStaff;
+
+export async function createStaff(
+  data: Omit<StaffMember, "id" | "createdAt">
+): Promise<StaffMember> {
+  const docRef = doc(collection(db, "staff"));
+  const newStaff: StaffMember = {
+    id: docRef.id,
+    ...data,
+    createdAt: Date.now(),
+  };
+  await setDoc(docRef, cleanFirestoreData(newStaff));
+  return newStaff;
+}
+
+export async function updateStaff(
+  id: string,
+  data: Partial<StaffMember>
+): Promise<void> {
+  await setDoc(doc(db, "staff", id), cleanFirestoreData(data), { merge: true });
+}
+
+export async function deleteStaff(id: string): Promise<void> {
+  await deleteDoc(doc(db, "staff", id));
+}
+
+export const createStaffMember = createStaff;
+export const updateStaffMember = updateStaff;
+export const deleteStaffMember = deleteStaff;
+
+// ─── Technicians ──────────────────────────────────────────────────────────────
 
 const DEFAULT_TECHNICIANS: Omit<Technician, "id" | "createdAt">[] = [
-  { name: "Technician 1", phone: "+91 98230 11111", specialization: "Printer & Toner Refill Specialist", active: true },
-  { name: "Technician 2", phone: "+91 98230 22222", specialization: "Laptop & Chip Level Repair", active: true },
-  { name: "Technician 3", phone: "+91 98230 33333", specialization: "CCTV, Biometrics & Networking", active: true },
+  { name: "Manoj Kumar", phone: "+91 98230 55441", email: "manoj@zorba.in", specialization: "CCTV & Security", active: true },
+  { name: "Vikas Sharma", phone: "+91 94220 88776", email: "vikas@zorba.in", specialization: "Printers & Toners", active: true },
+  { name: "Deepak Soni", phone: "+91 98900 33221", email: "deepak@zorba.in", specialization: "Laptops & Networking", active: true },
 ];
 
 export async function getTechnicians(): Promise<Technician[]> {
@@ -459,8 +611,8 @@ export async function getTechnicians(): Promise<Technician[]> {
     const snap = await fetchWithTimeout(getDocs(collection(db, "technicians")));
     const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Technician);
     if (items.length === 0) {
-      for (const tech of DEFAULT_TECHNICIANS) {
-        await createTechnician(tech).catch(() => {});
+      for (const t of DEFAULT_TECHNICIANS) {
+        await createTechnician(t).catch(() => {});
       }
       const res = await getDocs(collection(db, "technicians"));
       const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as Technician);
@@ -471,9 +623,9 @@ export async function getTechnicians(): Promise<Technician[]> {
   } catch (err: any) {
     console.warn("getTechnicians warning, using fallbacks:", err);
   }
-  return DEFAULT_TECHNICIANS.map((tech, i) => ({
-    id: `default-tech-${i}`,
-    ...tech,
+  return DEFAULT_TECHNICIANS.map((t, i) => ({
+    id: `tech-${i}`,
+    ...t,
     createdAt: Date.now(),
   }));
 }
@@ -487,45 +639,241 @@ export async function createTechnician(
     ...data,
     createdAt: Date.now(),
   };
-  try {
-    await setDoc(docRef, cleanFirestoreData(newTech));
-    return newTech;
-  } catch (err: any) {
-    console.error("createTechnician error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
+  await setDoc(docRef, cleanFirestoreData(newTech));
+  return newTech;
 }
 
 export async function updateTechnician(
   id: string,
   data: Partial<Technician>
 ): Promise<void> {
-  try {
-    await setDoc(doc(db, "technicians", id), cleanFirestoreData(data), { merge: true });
-  } catch (err: any) {
-    console.error("updateTechnician error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
+  await setDoc(doc(db, "technicians", id), cleanFirestoreData(data), { merge: true });
 }
 
 export async function deleteTechnician(id: string): Promise<void> {
+  await deleteDoc(doc(db, "technicians", id));
+}
+
+// ─── Financial Years & Months (Hierarchy) ────────────────────────────────────
+
+export interface FinancialYearMeta {
+  fyId: string; // e.g. "FY2526"
+  label: string; // e.g. "FY 2025-26"
+  startYear: number;
+  endYear: number;
+  startDate: string;
+  endDate: string;
+  monthKey: string; // e.g. "2025-08"
+  monthName: string; // e.g. "August 2025"
+  monthNumber: number; // 8
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+export function getFinancialYear(dateInput: Date | string | number = new Date()): FinancialYearMeta {
+  let date: Date;
+  if (typeof dateInput === "number") {
+    date = new Date(dateInput);
+  } else if (typeof dateInput === "string") {
+    date = new Date(dateInput);
+  } else {
+    date = dateInput;
+  }
+  if (isNaN(date.getTime())) date = new Date();
+
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1; // 1-12
+
+  // In India, FY starts in April (month 4).
+  // Jan-Mar belongs to previous calendar year's FY.
+  const startYear = month >= 4 ? year : year - 1;
+  const endYear = startYear + 1;
+
+  const startYY = String(startYear).slice(-2);
+  const endYY = String(endYear).slice(-2);
+  const fyId = `FY${startYY}${endYY}`;
+  const label = `FY ${startYear}-${endYY}`;
+
+  const monthKey = `${date.getFullYear()}-${String(month).padStart(2, "0")}`;
+  const monthName = `${MONTH_NAMES[month - 1]} ${date.getFullYear()}`;
+
+  return {
+    fyId,
+    label,
+    startYear,
+    endYear,
+    startDate: `${startYear}-04-01`,
+    endDate: `${endYear}-03-31`,
+    monthKey,
+    monthName,
+    monthNumber: month,
+  };
+}
+
+export async function ensureFinancialYearDoc(fyId: string, monthKey: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, "technicians", id));
-  } catch (err: any) {
-    console.error("deleteTechnician error:", err);
-    throw new Error(formatFirebaseError(err));
+    const fyDocRef = doc(db, "financial_years", fyId);
+    const startYY = parseInt(fyId.slice(2, 4), 10);
+    const endYY = parseInt(fyId.slice(4, 6), 10);
+    const startYear = 2000 + startYY;
+    const endYear = 2000 + endYY;
+
+    await setDoc(
+      fyDocRef,
+      {
+        id: fyId,
+        label: `FY ${startYear}-${String(endYY).padStart(2, "0")}`,
+        startYear,
+        endYear,
+        startDate: `${startYear}-04-01`,
+        endDate: `${endYear}-03-31`,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    const [mYear, mMonth] = monthKey.split("-").map((n) => parseInt(n, 10));
+    const monthName = `${MONTH_NAMES[(mMonth || 1) - 1]} ${mYear}`;
+    const monthDocRef = doc(db, "financial_years", fyId, "months", monthKey);
+
+    await setDoc(
+      monthDocRef,
+      {
+        id: monthKey,
+        monthKey,
+        monthName,
+        monthNumber: mMonth,
+        fyId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn("ensureFinancialYearDoc warning:", err);
   }
 }
 
-// ─── Service Calls ────────────────────────────────────────────────────────────
+export async function seedFinancialYears(): Promise<void> {
+  // 2 backdated FYs: FY2324 (2023-24), FY2425 (2024-25)
+  // Current: FY2526 (2025-26), FY2627 (2026-27)
+  // 5 upcoming FYs: FY2728, FY2829, FY2930, FY3031, FY3132
+  const fyList = [
+    { startYear: 2023, endYear: 2024, fyId: "FY2324" },
+    { startYear: 2024, endYear: 2025, fyId: "FY2425" },
+    { startYear: 2025, endYear: 2026, fyId: "FY2526" },
+    { startYear: 2026, endYear: 2027, fyId: "FY2627" },
+    { startYear: 2027, endYear: 2028, fyId: "FY2728" },
+    { startYear: 2028, endYear: 2029, fyId: "FY2829" },
+    { startYear: 2029, endYear: 2030, fyId: "FY2930" },
+    { startYear: 2030, endYear: 2031, fyId: "FY3031" },
+    { startYear: 2031, endYear: 2032, fyId: "FY3132" },
+  ];
+
+  for (const fy of fyList) {
+    const fyDocRef = doc(db, "financial_years", fy.fyId);
+    await setDoc(
+      fyDocRef,
+      {
+        id: fy.fyId,
+        label: `FY ${fy.startYear}-${String(fy.endYear).slice(-2)}`,
+        startYear: fy.startYear,
+        endYear: fy.endYear,
+        startDate: `${fy.startYear}-04-01`,
+        endDate: `${fy.endYear}-03-31`,
+        createdAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // 12 months for Indian FY (April of startYear to March of endYear)
+    for (let m = 4; m <= 12; m++) {
+      const monthKey = `${fy.startYear}-${String(m).padStart(2, "0")}`;
+      const monthDocRef = doc(db, "financial_years", fy.fyId, "months", monthKey);
+      await setDoc(
+        monthDocRef,
+        {
+          id: monthKey,
+          monthKey,
+          monthName: `${MONTH_NAMES[m - 1]} ${fy.startYear}`,
+          monthNumber: m,
+          fyId: fy.fyId,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+    for (let m = 1; m <= 3; m++) {
+      const monthKey = `${fy.endYear}-${String(m).padStart(2, "0")}`;
+      const monthDocRef = doc(db, "financial_years", fy.fyId, "months", monthKey);
+      await setDoc(
+        monthDocRef,
+        {
+          id: monthKey,
+          monthKey,
+          monthName: `${MONTH_NAMES[m - 1]} ${fy.endYear}`,
+          monthNumber: m,
+          fyId: fy.fyId,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+  }
+}
+
+export async function getFinancialYears(): Promise<FinancialYearDoc[]> {
+  try {
+    const snap = await fetchWithTimeout(getDocs(collection(db, "financial_years")));
+    if (snap.empty) {
+      await seedFinancialYears();
+      const res = await getDocs(collection(db, "financial_years"));
+      return res.docs.map((d) => ({ id: d.id, ...d.data() }) as FinancialYearDoc);
+    }
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as FinancialYearDoc)
+      .sort((a, b) => (b.startYear || 0) - (a.startYear || 0));
+  } catch (err: any) {
+    console.error("getFinancialYears error:", err);
+    return [];
+  }
+}
+
+// ─── Service Calls (Hierarchical FY/Months & Global CollectionGroup) ──────────
 
 export async function getServiceCalls(): Promise<ServiceCall[]> {
   try {
-    const [callsSnap, customersSnap] = await Promise.all([
-      fetchWithTimeout(getDocs(collection(db, "service_calls"))),
-      fetchWithTimeout(getDocs(collection(db, "customers"))).catch(() => null),
-    ]);
+    let callsDocs: any[] = [];
+    try {
+      // CollectionGroup searches across all subcollections named "service_calls"
+      const cgQuery = query(collectionGroup(db, "service_calls"));
+      const cgSnap = await fetchWithTimeout(getDocs(cgQuery));
+      callsDocs = cgSnap.docs;
+    } catch {
+      // Fallback to top-level collection
+      const topSnap = await fetchWithTimeout(getDocs(collection(db, "service_calls")));
+      callsDocs = topSnap.docs;
+    }
 
+    if (callsDocs.length === 0) {
+      try {
+        const topSnap = await fetchWithTimeout(getDocs(collection(db, "service_calls")));
+        callsDocs = topSnap.docs;
+      } catch {}
+    }
+
+    // Deduplicate by ticketNo or id
+    const seen = new Set<string>();
+    const uniqueDocs = callsDocs.filter((d) => {
+      const id = (d.data().ticketNo || d.id);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
+    const customersSnap = await fetchWithTimeout(getDocs(collection(db, "customers"))).catch(() => null);
     const customerMap = new Map<string, Customer>();
     if (customersSnap) {
       customersSnap.docs.forEach((d) => {
@@ -533,7 +881,7 @@ export async function getServiceCalls(): Promise<ServiceCall[]> {
       });
     }
 
-    return callsSnap.docs.map((d) => {
+    return uniqueDocs.map((d) => {
       const callData = d.data() as ServiceCall;
       const cust = callData.customerId ? customerMap.get(callData.customerId) : undefined;
       return {
@@ -554,9 +902,22 @@ export async function getServiceCalls(): Promise<ServiceCall[]> {
 
 export async function getServiceCall(id: string): Promise<ServiceCall | null> {
   try {
-    const snap = await fetchWithTimeout(getDoc(doc(db, "service_calls", id)));
-    if (!snap.exists()) return null;
-    const callData = snap.data() as ServiceCall;
+    let callData: ServiceCall | null = null;
+    const topSnap = await fetchWithTimeout(getDoc(doc(db, "service_calls", id))).catch(() => null);
+    
+    if (topSnap && topSnap.exists()) {
+      callData = topSnap.data() as ServiceCall;
+    } else {
+      // Search via collectionGroup
+      const cgQuery = query(collectionGroup(db, "service_calls"), where("ticketNo", "==", id));
+      const cgSnap = await fetchWithTimeout(getDocs(cgQuery)).catch(() => null);
+      if (cgSnap && !cgSnap.empty) {
+        callData = cgSnap.docs[0].data() as ServiceCall;
+      }
+    }
+
+    if (!callData) return null;
+
     let cust: Customer | undefined;
     if (callData.customerId) {
       const custSnap = await getDoc(doc(db, "customers", callData.customerId)).catch(() => null);
@@ -564,8 +925,9 @@ export async function getServiceCall(id: string): Promise<ServiceCall | null> {
         cust = { id: custSnap.id, ...custSnap.data() } as Customer;
       }
     }
+
     return {
-      id: snap.id,
+      id: callData.ticketNo || id,
       ...callData,
       customer: cust,
       customerName: cust?.name || callData.customerName || "",
@@ -582,7 +944,7 @@ export async function getServiceCall(id: string): Promise<ServiceCall | null> {
 export async function createServiceCall(
   data: Omit<ServiceCall, "id" | "ticketNo" | "createdAt" | "updatedAt"> & { ticketNo?: string }
 ): Promise<ServiceCall> {
-  // Ensure customer document exists and get canonical customerId
+  // Ensure customer record exists
   let customerId = data.customerId;
   if (!customerId || customerId.startsWith("cust-")) {
     if (data.customerName && data.customerPhone) {
@@ -595,7 +957,6 @@ export async function createServiceCall(
       customerId = createdCust.id;
     }
   } else if (customerId && (data.customerName || data.customerPhone)) {
-    // Keep customer record updated if modified
     await updateCustomer(customerId, {
       ...(data.customerName ? { name: data.customerName } : {}),
       ...(data.customerPhone ? { phone: data.customerPhone } : {}),
@@ -604,8 +965,13 @@ export async function createServiceCall(
     }).catch(() => {});
   }
 
-  let ticketNo = (data.ticketNo || "").trim();
+  // 1. Calculate Financial Year and Month
+  const fyMeta = getFinancialYear(data.dateTime || new Date());
+  const fyId = fyMeta.fyId;
+  const monthKey = fyMeta.monthKey;
 
+  // 2. Generate Next Ticket Number if not provided
+  let ticketNo = (data.ticketNo || "").trim();
   if (!ticketNo) {
     let existingCalls: ServiceCall[] = [];
     try {
@@ -613,15 +979,13 @@ export async function createServiceCall(
     } catch {
       existingCalls = [];
     }
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
-    const prefix = `SC-${currentYear}-${currentMonth}-`;
+    const [cYear, cMonth] = monthKey.split("-");
+    const prefix = `SC-${cYear}-${cMonth}-`;
 
     const numbers = existingCalls
       .map((c) => {
         const str = (c.ticketNo || c.id || "").trim();
-        const match = str.match(new RegExp(`^SC-${currentYear}-${currentMonth}-(\\d+)`));
+        const match = str.match(new RegExp(`^SC-${cYear}-${cMonth}-(\\d+)`));
         if (match) return parseInt(match[1], 10);
         return 0;
       })
@@ -632,7 +996,6 @@ export async function createServiceCall(
     ticketNo = `${prefix}${String(nextNum).padStart(4, "0")}`;
   }
 
-  const docRef = doc(db, "service_calls", ticketNo);
   const now = Date.now();
   const initialTimeline: TimelineEvent[] = [
     {
@@ -647,7 +1010,7 @@ export async function createServiceCall(
     },
   ];
 
-  // Exclude embedded customer details from the service_calls firestore document
+  // Exclude embedded customer details from document payload
   const {
     customerName: _cName,
     customerPhone: _cPhone,
@@ -660,6 +1023,8 @@ export async function createServiceCall(
   const newCallDoc = {
     id: ticketNo,
     ticketNo,
+    fyId,
+    monthKey,
     ...cleanCallData,
     customerId: customerId || "cust-unknown",
     timeline: data.timeline && data.timeline.length > 0 ? data.timeline : initialTimeline,
@@ -667,22 +1032,23 @@ export async function createServiceCall(
     updatedAt: now,
   };
 
-  await setDoc(docRef, cleanFirestoreData(newCallDoc));
+  const cleanData = cleanFirestoreData(newCallDoc);
 
-  // Save initial timeline in subcollection as well
-  try {
-    const subcolRef = doc(collection(db, "service_calls", ticketNo, "timeline"), `evt-${now}`);
-    await setDoc(subcolRef, cleanFirestoreData(initialTimeline[0]));
-  } catch (err) {
-    console.warn("Could not write subcollection timeline event:", err);
-  }
+  // 3. Ensure Financial Year and Month document hierarchy
+  ensureFinancialYearDoc(fyId, monthKey).catch(() => {});
 
-  // Also auto-save model to catalog if entered
+  // 4. Save into Hierarchical Subcollection: financial_years/{fyId}/months/{monthKey}/service_calls/{ticketNo}
+  const subDocRef = doc(db, "financial_years", fyId, "months", monthKey, "service_calls", ticketNo);
+  await setDoc(subDocRef, cleanData);
+
+  // 5. Also save / mirror to top-level collection for direct console viewing
+  const topDocRef = doc(db, "service_calls", ticketNo);
+  await setDoc(topDocRef, cleanData);
+
+  // Auto-save model and spare parts to catalog
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
     saveDeviceModel(data.deviceCategory, data.modelNumber.trim()).catch(() => {});
   }
-
-  // Also auto-save spare parts to catalog if entered
   if (data.parts && data.parts.length > 0) {
     for (const part of data.parts) {
       if (part.name && part.name.trim()) {
@@ -704,7 +1070,6 @@ export async function updateServiceCall(
   id: string,
   data: Partial<ServiceCall>
 ): Promise<void> {
-  // If customer info is modified and customerId is present, update the customer document
   if (data.customerId) {
     if (data.customerName || data.customerPhone || data.customerEmail || data.customerAddress) {
       await updateCustomer(data.customerId, {
@@ -716,7 +1081,11 @@ export async function updateServiceCall(
     }
   }
 
-  // Exclude embedded customer fields from service_calls doc payload
+  const existing = await getServiceCall(id);
+  const fyMeta = getFinancialYear(data.dateTime || existing?.dateTime || new Date());
+  const fyId = data.fyId || existing?.fyId || fyMeta.fyId;
+  const monthKey = data.monthKey || existing?.monthKey || fyMeta.monthKey;
+
   const {
     customerName: _cName,
     customerPhone: _cPhone,
@@ -728,16 +1097,23 @@ export async function updateServiceCall(
 
   const formattedData: Partial<ServiceCall> = {
     ...cleanUpdateData,
+    fyId,
+    monthKey,
     updatedAt: Date.now(),
   };
-  await updateDoc(doc(db, "service_calls", id), cleanFirestoreData(formattedData));
 
-  // Auto-save model to catalog
+  const cleanData = cleanFirestoreData(formattedData);
+
+  // Update in FY subcollection
+  const subDocRef = doc(db, "financial_years", fyId, "months", monthKey, "service_calls", id);
+  await setDoc(subDocRef, cleanData, { merge: true }).catch(() => {});
+
+  // Update at top-level
+  await setDoc(doc(db, "service_calls", id), cleanData, { merge: true });
+
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
     saveDeviceModel(data.deviceCategory, data.modelNumber.trim()).catch(() => {});
   }
-
-  // Auto-save spare parts to catalog
   if (data.parts && data.parts.length > 0) {
     for (const part of data.parts) {
       if (part.name && part.name.trim()) {
@@ -748,7 +1124,32 @@ export async function updateServiceCall(
 }
 
 export async function deleteServiceCall(id: string): Promise<void> {
-  await deleteDoc(doc(db, "service_calls", id));
+  try {
+    const existing = await getServiceCall(id);
+    if (existing?.fyId && existing?.monthKey) {
+      const subDocRef = doc(db, "financial_years", existing.fyId, "months", existing.monthKey, "service_calls", id);
+      await deleteDoc(subDocRef).catch(() => {});
+    }
+    await deleteDoc(doc(db, "service_calls", id)).catch(() => {});
+  } catch (err: any) {
+    console.error("deleteServiceCall error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function addTimelineEvent(
+  ticketNo: string,
+  event: TimelineEvent
+): Promise<void> {
+  try {
+    const call = await getServiceCall(ticketNo);
+    const existingTimeline = call?.timeline || [];
+    const updatedTimeline = [...existingTimeline, event];
+    await updateServiceCall(ticketNo, { timeline: updatedTimeline });
+  } catch (err: any) {
+    console.error("addTimelineEvent error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
 }
 
 // ─── Device Models Catalog ───────────────────────────────────────────────────
@@ -787,12 +1188,16 @@ export async function saveDeviceModel(categoryName: string, modelName: string): 
   return newModel;
 }
 
-// ─── Spare Parts Catalog ─────────────────────────────────────────────────────
+// ─── Spare Parts Catalog ──────────────────────────────────────────────────────
 
-export async function getSparePartsCatalog(): Promise<SparePartCatalogItem[]> {
+export async function getSparePartsCatalog(category?: string): Promise<SparePartCatalogItem[]> {
   try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "spare_parts_catalog")));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SparePartCatalogItem);
+    const snap = await fetchWithTimeout(getDocs(collection(db, "spare_parts")));
+    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SparePartCatalogItem);
+    if (category) {
+      return all.filter((p) => p.category?.toLowerCase() === category.toLowerCase());
+    }
+    return all;
   } catch (err: any) {
     console.error("getSparePartsCatalog error:", err);
     return [];
@@ -809,141 +1214,16 @@ export async function saveSparePartToCatalog(
 
   const existing = await getSparePartsCatalog();
   const found = existing.find((p) => p.name.toLowerCase() === cleanName.toLowerCase());
-  if (found) {
-    if (unitPrice > 0 && found.unitPrice !== unitPrice) {
-      await updateDoc(doc(db, "spare_parts_catalog", found.id), { unitPrice });
-      return { ...found, unitPrice };
-    }
-    return found;
-  }
+  if (found) return found;
 
-  const docRef = doc(collection(db, "spare_parts_catalog"));
-  const newItem: SparePartCatalogItem = {
+  const docRef = doc(collection(db, "spare_parts"));
+  const newPart: SparePartCatalogItem = {
     id: docRef.id,
     name: cleanName,
-    unitPrice: Number(unitPrice) || 0,
+    unitPrice,
     category,
     createdAt: Date.now(),
   };
-  await setDoc(docRef, cleanFirestoreData(newItem));
-  return newItem;
-}
-
-// ─── Staff Members (Mandatory Handled By assignment) ──────────────────────────
-
-const DEFAULT_STAFF: Omit<StaffMember, "id" | "createdAt">[] = [
-  { name: "Maitreya Mulchandani", role: "Manager / Backoffice Operations", active: true },
-  { name: "Manish Mulchandani", role: "Director / Senior Staff", active: true },
-  { name: "Frontdesk Staff", role: "Service Coordinator", active: true },
-  { name: "Backoffice Staff", role: "Dispatch & Logistics", active: true },
-];
-
-export async function getStaffMembers(): Promise<StaffMember[]> {
-  try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "staff_members")));
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffMember);
-    if (items.length === 0) {
-      for (const s of DEFAULT_STAFF) {
-        await createStaffMember(s).catch(() => {});
-      }
-      const res = await getDocs(collection(db, "staff_members"));
-      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffMember);
-      if (seeded.length > 0) return seeded;
-    } else {
-      return items;
-    }
-  } catch (err: any) {
-    console.warn("getStaffMembers warning, using fallbacks:", err);
-  }
-  return DEFAULT_STAFF.map((s, i) => ({
-    id: `default-staff-${i}`,
-    ...s,
-    createdAt: Date.now(),
-  }));
-}
-
-export async function createStaffMember(
-  data: Omit<StaffMember, "id" | "createdAt">
-): Promise<StaffMember> {
-  const docRef = doc(collection(db, "staff_members"));
-  const newStaff: StaffMember = {
-    id: docRef.id,
-    ...data,
-    name: toTitleCase(data.name),
-    createdAt: Date.now(),
-  };
-  await setDoc(docRef, cleanFirestoreData(newStaff));
-  return newStaff;
-}
-
-export async function updateStaffMember(
-  id: string,
-  data: Partial<StaffMember>
-): Promise<void> {
-  const formattedData: Partial<StaffMember> = {
-    ...data,
-    ...(data.name ? { name: toTitleCase(data.name) } : {}),
-  };
-  await setDoc(doc(db, "staff_members", id), cleanFirestoreData(formattedData), { merge: true });
-}
-
-export async function deleteStaffMember(id: string): Promise<void> {
-  await deleteDoc(doc(db, "staff_members", id));
-}
-
-// ─── Timeline Events Subcollection ───────────────────────────────────────────
-
-export async function addTimelineEvent(
-  ticketId: string,
-  eventData: Omit<TimelineEvent, "id" | "timestamp">
-): Promise<TimelineEvent> {
-  const cleanTicket = ticketId.trim();
-  const now = Date.now();
-  const newEvent: TimelineEvent = {
-    id: `evt-${now}`,
-    timestamp: now,
-    ...eventData,
-  };
-
-  try {
-    const subcolDocRef = doc(collection(db, "service_calls", cleanTicket, "timeline"), newEvent.id);
-    await setDoc(subcolDocRef, cleanFirestoreData(newEvent));
-  } catch (err) {
-    console.warn("Failed to write subcollection event:", err);
-  }
-
-  // Update parent service call timeline & status
-  try {
-    const parentDoc = await getDoc(doc(db, "service_calls", cleanTicket));
-    if (parentDoc.exists()) {
-      const existingTimeline: TimelineEvent[] = parentDoc.data()?.timeline || [];
-      await updateDoc(doc(db, "service_calls", cleanTicket), {
-        timeline: [...existingTimeline, newEvent],
-        status: eventData.status,
-        updatedAt: now,
-      });
-    }
-  } catch (err) {
-    console.warn("Failed to update parent document timeline:", err);
-  }
-
-  return newEvent;
-}
-
-export async function getTimelineEvents(ticketId: string): Promise<TimelineEvent[]> {
-  try {
-    const subcolRef = collection(db, "service_calls", ticketId, "timeline");
-    const snap = await fetchWithTimeout(getDocs(query(subcolRef, orderBy("timestamp", "asc"))));
-    if (snap.docs.length > 0) {
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TimelineEvent);
-    }
-    const parent = await getDoc(doc(db, "service_calls", ticketId));
-    if (parent.exists() && parent.data()?.timeline) {
-      return parent.data().timeline as TimelineEvent[];
-    }
-    return [];
-  } catch (err: any) {
-    console.error("getTimelineEvents error:", err);
-    return [];
-  }
+  await setDoc(docRef, cleanFirestoreData(newPart));
+  return newPart;
 }

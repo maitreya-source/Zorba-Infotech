@@ -7,21 +7,13 @@ import {
   MapPin,
   Plus,
   Trash2,
-  UserPlus,
-  FolderPlus,
-  Check,
   Calendar,
-  Sparkles,
-  Printer,
-  MessageCircle,
-  Pencil,
   Save,
-  Activity,
-  Package,
-  History,
-  ShieldCheck,
+  MessageCircle,
+  Truck,
   FileText,
   UserCheck,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,6 +32,7 @@ import {
   getCustomers,
   getDeviceCategories,
   getServiceCenters,
+  getCouriers,
   getTechnicians,
   getStaffMembers,
   getServiceCall,
@@ -47,11 +40,18 @@ import {
   updateServiceCall,
   addTimelineEvent,
 } from "@/lib/firestore";
-import { toTitleCase, formatIndianPhoneNumber, generateWhatsAppMessage } from "@/lib/utils";
+import {
+  toTitleCase,
+  formatIndianPhoneNumber,
+  generateWhatsAppMessage,
+  generateCourierFollowUpMessage,
+  generateServiceCenterFollowUpMessage,
+} from "@/lib/utils";
 import type {
   Customer,
   DeviceCategory,
   ServiceCenter,
+  Courier,
   Technician,
   StaffMember,
   TimelineEvent,
@@ -69,6 +69,7 @@ import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
+import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import CreateTechnicianModal from "@/components/admin/CreateTechnicianModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
@@ -114,11 +115,11 @@ export default function AdminServiceCallForm() {
   const [warrantyStatus, setWarrantyStatus] = useState<WarrantyStatus>("not_applicable");
   const [status, setStatus] = useState<ServiceCallStatus>("received");
 
-  // Internal-Only Tracking Fields (Excluded from WhatsApp)
+  // Purchase Details (Clean optional inputs, excluded from WhatsApp/print)
   const [dateOfPurchase, setDateOfPurchase] = useState("");
   const [billNumber, setBillNumber] = useState("");
 
-  // Mandatory Back-Office Staff Member
+  // Mandatory Back-Office Staff Member (No auto-pick since login is shared)
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [handledByStaffId, setHandledByStaffId] = useState("");
   const [handledByStaffName, setHandledByStaffName] = useState("");
@@ -130,6 +131,10 @@ export default function AdminServiceCallForm() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [serviceCenterAddress, setServiceCenterAddress] = useState("");
   const [rmaNumber, setRmaNumber] = useState("");
+
+  // Couriers State
+  const [couriers, setCouriers] = useState<Courier[]>([]);
+  const [selectedCourierId, setSelectedCourierId] = useState<string>("");
   const [courierName, setCourierName] = useState("Trackon Courier");
   const [courierChargesInput, setCourierChargesInput] = useState<string>("0");
 
@@ -159,25 +164,26 @@ export default function AdminServiceCallForm() {
   const [showEditCustomerModal, setShowEditCustomerModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
+  const [showCourierModal, setShowCourierModal] = useState(false);
   const [showTechModal, setShowTechModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   const loadMasterData = async () => {
     try {
-      const [custs, cats, centers, techs, staff] = await Promise.all([
+      const [custs, cats, centers, crs, techs, staff] = await Promise.all([
         getCustomers().catch(() => []),
         getDeviceCategories().catch(() => []),
         getServiceCenters().catch(() => []),
+        getCouriers().catch(() => []),
         getTechnicians().catch(() => []),
         getStaffMembers().catch(() => []),
       ]);
 
       setCustomers(custs);
       setStaffList(staff);
-      if (staff.length > 0 && !handledByStaffId) {
-        setHandledByStaffId(staff[0].id);
-        setHandledByStaffName(staff[0].name);
-      }
+      setCouriers(crs);
+      setServiceCenters(centers);
+      setTechnicians(techs);
 
       const fallbackCats = cats.length > 0 ? cats : [
         { id: "cat-1", name: "CCTV & Security", description: "Cameras & Surveillance" },
@@ -196,9 +202,6 @@ export default function AdminServiceCallForm() {
       if (!deviceCategory && fallbackCats.length > 0) {
         setDeviceCategory(fallbackCats[0].name);
       }
-
-      setServiceCenters(centers);
-      setTechnicians(techs);
     } catch (err) {
       console.error("Error loading master data:", err);
     }
@@ -222,8 +225,8 @@ export default function AdminServiceCallForm() {
       setType(sc.type);
       setDateTime(sc.dateTime);
       setSelectedCustomerId(sc.customerId || "");
-      setCustomerName(sc.customerName);
-      setCustomerPhone(sc.customerPhone);
+      setCustomerName(sc.customerName || "");
+      setCustomerPhone(sc.customerPhone || "");
       setCustomerEmail(sc.customerEmail || "");
       setCustomerAddress(sc.customerAddress || "");
 
@@ -288,6 +291,7 @@ export default function AdminServiceCallForm() {
       else if (showEditCustomerModal) setShowEditCustomerModal(false);
       else if (showCategoryModal) setShowCategoryModal(false);
       else if (showCenterModal) setShowCenterModal(false);
+      else if (showCourierModal) setShowCourierModal(false);
       else if (showTechModal) setShowTechModal(false);
       else if (showQuickTimelineModal) setShowQuickTimelineModal(false);
       else if (showPrintModal) setShowPrintModal(false);
@@ -391,7 +395,7 @@ export default function AdminServiceCallForm() {
         warrantyStatus,
         status,
 
-        // Internal tracking fields (excluded from WhatsApp)
+        // Purchase details
         dateOfPurchase: dateOfPurchase.trim() || undefined,
         billNumber: billNumber.trim() || undefined,
 
@@ -442,7 +446,7 @@ export default function AdminServiceCallForm() {
     }
   };
 
-  // WhatsApp Message Sender (excludes internal DOP, Bill No, Internal Notes)
+  // WhatsApp Message Sender (Customer confirmation)
   const handleSendWhatsApp = () => {
     if (!customerPhone) {
       toast.error("Customer phone number is missing");
@@ -470,8 +474,52 @@ export default function AdminServiceCallForm() {
     window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank");
   };
 
+  // Follow-up with Courier Partner WhatsApp
+  const handleCourierWhatsAppFollowUp = () => {
+    const selectedCourier = couriers.find((c) => c.name.toLowerCase() === courierName.toLowerCase());
+    const phone = selectedCourier?.phone || "+919823044441";
+    const cleanPhone = phone.replace(/\D/g, "");
+    const waPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+
+    const text = encodeURIComponent(
+      generateCourierFollowUpMessage({
+        courierName: courierName || "Courier Partner",
+        courierDocketNumber: rmaNumber || "Pending Docket",
+        ticketNo: ticketNo || "SC-INTAKE",
+        customerName: customerName ? toTitleCase(customerName) : undefined,
+        destination: serviceCenterName || "Authorized Service Center",
+        dateTime,
+      })
+    );
+
+    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank");
+  };
+
+  // Follow-up with Service Center WhatsApp
+  const handleServiceCenterWhatsAppFollowUp = () => {
+    const selectedSC = serviceCenters.find((sc) => sc.id === selectedServiceCenterId || sc.name.toLowerCase() === serviceCenterName.toLowerCase());
+    const phone = selectedSC?.whatsappPhone || selectedSC?.phone || "+919589199738";
+    const cleanPhone = phone.replace(/\D/g, "");
+    const waPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+
+    const text = encodeURIComponent(
+      generateServiceCenterFollowUpMessage({
+        serviceCenterName: serviceCenterName || "Authorized Service Center",
+        rmaNumber: rmaNumber || undefined,
+        ticketNo: ticketNo || "SC-INTAKE",
+        deviceCategory,
+        modelNumber,
+        serialNumber,
+        issueDescription,
+        dateSent: dateTime,
+      })
+    );
+
+    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank");
+  };
+
   return (
-    <div className="space-y-6 max-w-[1440px] mx-auto pb-16">
+    <div className="space-y-4 max-w-[1440px] mx-auto pb-16 text-xs">
       {/* Top Breadcrumb & Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
@@ -491,7 +539,7 @@ export default function AdminServiceCallForm() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-3.5 text-xs font-semibold rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs hover:bg-slate-50 text-slate-700 dark:text-slate-300 gap-1.5"
+              className="h-8 px-3 text-xs font-semibold rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs hover:bg-slate-50 text-slate-700 dark:text-slate-300 gap-1.5"
             >
               <ArrowLeft className="h-3.5 w-3.5" /> Back to List
             </Button>
@@ -499,19 +547,19 @@ export default function AdminServiceCallForm() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Section 0: Header & Meta Card (Date, Status, Handled Staff, Technician) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Section 0: Header Voucher Metadata (Reduced title size, aligned cells) */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg md:text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white">
                 {isEditing ? "Edit Service Call Ticket" : "New Service Call Ticket"}
               </h1>
-              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/50 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50 text-[11px] px-2 py-0.5 rounded-full font-semibold">
                 Service Intake Voucher
               </Badge>
               {ticketNo && (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50 font-mono text-xs px-2.5 py-0.5 rounded-full font-bold">
+                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/50 font-mono text-[11px] px-2 py-0.5 rounded-full font-bold">
                   {ticketNo}
                 </Badge>
               )}
@@ -525,7 +573,8 @@ export default function AdminServiceCallForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+          {/* Aligned 4-Column Header Inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2 border-t border-slate-100 dark:border-slate-800">
             {/* Date of Call */}
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
@@ -537,7 +586,7 @@ export default function AdminServiceCallForm() {
                 type="date"
                 value={dateTime}
                 onChange={(e) => setDateTime(e.target.value)}
-                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium"
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium"
               />
             </div>
 
@@ -547,7 +596,7 @@ export default function AdminServiceCallForm() {
                 Overall Ticket Status
               </Label>
               <Select value={status} onValueChange={(val: ServiceCallStatus) => setStatus(val)}>
-                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold">
+                <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold">
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -562,7 +611,7 @@ export default function AdminServiceCallForm() {
               </Select>
             </div>
 
-            {/* Mandatory Back-Office Staff (Handled By) */}
+            {/* Mandatory Back-Office Staff (Handled By - Explicit dropdown selection) */}
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <span>Handled By (Backoffice)</span>
@@ -576,7 +625,7 @@ export default function AdminServiceCallForm() {
                   if (found) setHandledByStaffName(found.name);
                 }}
               >
-                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold text-[#2563EB]">
+                <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold text-[#2563EB]">
                   <SelectValue placeholder="Select Staff Member..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -611,7 +660,7 @@ export default function AdminServiceCallForm() {
                   if (found) setTechnicianName(found.name);
                 }}
               >
-                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
                   <SelectValue placeholder="Assign Tech..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -626,106 +675,65 @@ export default function AdminServiceCallForm() {
           </div>
         </div>
 
-        {/* Section 1: Service Call Type */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+        {/* Section 1: Sleek 36px Segmented Pill Control for Service Call Type */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-[11px]">
               1
             </span>
-            <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+            <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
               Service Call Type
-            </h2>
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            {/* Type 1: Service Center */}
+          {/* 36px Segmented Pill Control */}
+          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 gap-1">
             <button
               type="button"
               onClick={() => setType("company_service_center")}
-              className={`relative flex items-center gap-3.5 p-4 rounded-xl text-left transition-all border ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 type === "company_service_center"
-                  ? "border-2 border-[#2563EB] bg-blue-50/25 dark:bg-blue-950/20 text-[#1E3A8A] dark:text-blue-200 shadow-xs"
-                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                  ? "bg-[#2563EB] text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                type === "company_service_center"
-                  ? "bg-[#2563EB] text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-              }`}>
-                <Building2 className="h-4 w-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold truncate">Service Center</p>
-                <p className="text-[10px] text-slate-400 truncate">Parcel to Authorized OEM</p>
-              </div>
-              {type === "company_service_center" && (
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0" />
-              )}
+              <Building2 className="h-3.5 w-3.5" /> Company Service Center
             </button>
 
-            {/* Type 2: In-House Service / Refill */}
             <button
               type="button"
               onClick={() => setType("in_house_repair")}
-              className={`relative flex items-center gap-3.5 p-4 rounded-xl text-left transition-all border ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 type === "in_house_repair"
-                  ? "border-2 border-[#2563EB] bg-blue-50/25 dark:bg-blue-950/20 text-[#1E3A8A] dark:text-blue-200 shadow-xs"
-                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                  ? "bg-[#2563EB] text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                type === "in_house_repair"
-                  ? "bg-[#2563EB] text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-              }`}>
-                <Wrench className="h-4 w-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold truncate">In-House Service / Refill</p>
-                <p className="text-[10px] text-slate-400 truncate">Bench Diagnostics & Repair</p>
-              </div>
-              {type === "in_house_repair" && (
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0" />
-              )}
+              <Wrench className="h-3.5 w-3.5" /> In-House Service / Refill
             </button>
 
-            {/* Type 3: Onsite Visit & Install */}
             <button
               type="button"
               onClick={() => setType("onsite_visit")}
-              className={`relative flex items-center gap-3.5 p-4 rounded-xl text-left transition-all border ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 type === "onsite_visit"
-                  ? "border-2 border-[#2563EB] bg-blue-50/25 dark:bg-blue-950/20 text-[#1E3A8A] dark:text-blue-200 shadow-xs"
-                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                  ? "bg-[#2563EB] text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                type === "onsite_visit"
-                  ? "bg-[#2563EB] text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-              }`}>
-                <MapPin className="h-4 w-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold truncate">Onsite Visit & Install</p>
-                <p className="text-[10px] text-slate-400 truncate">Field Tech At Customer Site</p>
-              </div>
-              {type === "onsite_visit" && (
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0" />
-              )}
+              <MapPin className="h-3.5 w-3.5" /> Onsite Visit & Install
             </button>
           </div>
         </div>
 
         {/* Section 2: Customer Details with Fast Server-Side Typeahead */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-[11px]">
                 2
               </span>
-              <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Customer Details
               </h2>
             </div>
@@ -737,7 +745,7 @@ export default function AdminServiceCallForm() {
                   onClick={() => setShowEditCustomerModal(true)}
                   className="font-semibold text-[#2563EB] hover:underline"
                 >
-                  Edit Customer Profile
+                  Edit Profile
                 </button>
               )}
               <span className="text-slate-300">|</span>
@@ -751,62 +759,63 @@ export default function AdminServiceCallForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* Auto-Fill Customer Profile (Typeahead autocomplete for 5000+ customers) */}
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Auto-Fill Customer (Typeahead Search)
+                Auto-Fill Customer (Search Name / Phone)
               </Label>
               <CustomerTypeahead
                 selectedCustomerId={selectedCustomerId}
                 onSelectCustomer={handleSelectCustomer}
                 onAddNewCustomer={() => setShowCustomerModal(true)}
                 initialName={customerName ? `${customerName} (${customerPhone})` : ""}
-                className="mt-1.5"
+                className="mt-1"
               />
             </div>
 
             {/* Customer Name */}
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Customer Name
+                Customer Name <span className="text-red-500">*</span>
               </Label>
               <Input
                 placeholder="e.g. Sharma Rajesh"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 required
-                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
               />
             </div>
 
             {/* Contact / Phone */}
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Contact / Phone
+                Contact Phone <span className="text-red-500">*</span>
               </Label>
               <Input
                 placeholder="+91 9876543210"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 required
-                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
               />
             </div>
           </div>
         </div>
 
-        {/* Section 3: Device Details, Internal Tracking & Hierarchical Catalog */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+        {/* Section 3: Device & Warranty Details (DOP & Bill No directly integrated in grid) */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+          <div className="flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-[11px]">
               3
             </span>
-            <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
-              Device & Warranty Details
+            <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+              Device, Warranty & Purchase Details
             </h2>
           </div>
 
+          {/* Row 1: Category, Warranty, Model, Serial, Qty */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
             {/* Device Category */}
             <div>
@@ -823,7 +832,7 @@ export default function AdminServiceCallForm() {
                 </button>
               </div>
               <Select value={deviceCategory} onValueChange={setDeviceCategory}>
-                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -842,7 +851,7 @@ export default function AdminServiceCallForm() {
                 Warranty Status
               </Label>
               <Select value={warrantyStatus} onValueChange={(val: WarrantyStatus) => setWarrantyStatus(val)}>
-                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
                   <SelectValue placeholder="Warranty" />
                 </SelectTrigger>
                 <SelectContent>
@@ -862,7 +871,7 @@ export default function AdminServiceCallForm() {
                 categoryName={deviceCategory}
                 value={modelNumber}
                 onChange={setModelNumber}
-                className="mt-1.5"
+                className="mt-1"
               />
             </div>
 
@@ -875,7 +884,7 @@ export default function AdminServiceCallForm() {
                 placeholder="e.g. 15082026"
                 value={serialNumber}
                 onChange={(e) => setSerialNumber(e.target.value)}
-                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
               />
             </div>
 
@@ -889,62 +898,55 @@ export default function AdminServiceCallForm() {
                 min="1"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
               />
             </div>
           </div>
 
-          {/* Internal Tracking Fields (Internal Only - Excluded from WhatsApp) */}
-          <div className="p-3.5 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                Internal Tracking Details
-              </span>
-              <Badge variant="outline" className="text-[10px] bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-none font-semibold">
-                Internal Only • Excluded from WhatsApp
-              </Badge>
+          {/* Row 2: Date of Purchase & Purchase Invoice (Seamlessly aligned, no box) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+            <div>
+              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                Date of Purchase (DOP)
+              </Label>
+              <Input
+                type="date"
+                value={dateOfPurchase}
+                onChange={(e) => setDateOfPurchase(e.target.value)}
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              <div>
-                <Label className="text-xs text-slate-600 dark:text-slate-400">Date of Purchase (DOP)</Label>
-                <Input
-                  type="date"
-                  value={dateOfPurchase}
-                  onChange={(e) => setDateOfPurchase(e.target.value)}
-                  className="mt-1 h-9 text-xs rounded-lg bg-white dark:bg-slate-900"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs text-slate-600 dark:text-slate-400">Purchase Invoice / Bill Number</Label>
-                <Input
-                  placeholder="e.g. INV-2024-9981"
-                  value={billNumber}
-                  onChange={(e) => setBillNumber(e.target.value)}
-                  className="mt-1 h-9 text-xs rounded-lg bg-white dark:bg-slate-900 font-mono"
-                />
-              </div>
+            <div>
+              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                Purchase Invoice / Bill Number
+              </Label>
+              <Input
+                placeholder="e.g. INV-2024-9981"
+                value={billNumber}
+                onChange={(e) => setBillNumber(e.target.value)}
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
+              />
             </div>
           </div>
 
           {/* Issue / Service Task Description */}
-          <div>
+          <div className="pt-1">
             <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Issue / Service Task Description
+              Issue / Service Task Description <span className="text-red-500">*</span>
             </Label>
             <Textarea
               placeholder="Describe symptoms, requested repair, or installation tasks..."
               value={issueDescription}
               onChange={(e) => setIssueDescription(e.target.value)}
-              rows={3}
+              rows={2}
               required
-              className="mt-1.5 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+              className="mt-1 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
             />
 
             {/* Quick Suggestion Tags */}
-            <div className="flex flex-wrap gap-1.5 pt-2.5">
-              <span className="text-[11px] text-slate-400 font-medium self-center mr-1">Quick Suggestions:</span>
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              <span className="text-[10px] text-slate-400 font-medium self-center mr-1">Quick Suggestions:</span>
               {QUICK_TAGS.map((tag) => (
                 <button
                   key={tag}
@@ -952,7 +954,7 @@ export default function AdminServiceCallForm() {
                   onClick={() => {
                     setIssueDescription((prev) => (prev ? `${prev}, ${tag}` : tag));
                   }}
-                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-colors"
                 >
                   {tag}
                 </button>
@@ -961,29 +963,39 @@ export default function AdminServiceCallForm() {
           </div>
         </div>
 
-        {/* Section 4: Company Service Center Parcel Dispatch (Conditional if Service Center) */}
+        {/* Section 4: Company Service Center Parcel Dispatch (with Courier Selection & WhatsApp follow-ups) */}
         {type === "company_service_center" && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-[11px]">
                   4
                 </span>
-                <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
-                  Company Service Center Parcel Dispatch
+                <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Company Service Center Parcel & Courier Dispatch
                 </h2>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowCenterModal(true)}
-                className="text-xs font-semibold text-[#2563EB] hover:underline"
-              >
-                + Add Service Center
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCourierModal(true)}
+                  className="text-xs font-semibold text-[#2563EB] hover:underline"
+                >
+                  + Add Courier
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => setShowCenterModal(true)}
+                  className="text-xs font-semibold text-[#2563EB] hover:underline"
+                >
+                  + Add Service Center
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
               {/* Select Service Center */}
               <div>
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -1003,7 +1015,7 @@ export default function AdminServiceCallForm() {
                     }
                   }}
                 >
-                  <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                  <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
                     <SelectValue placeholder="Select Service Center" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1030,7 +1042,7 @@ export default function AdminServiceCallForm() {
                     if (addr) setServiceCenterAddress(addr.address);
                   }}
                 >
-                  <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                  <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
                     <SelectValue placeholder="Dispatch Address" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1045,31 +1057,83 @@ export default function AdminServiceCallForm() {
                 </Select>
               </div>
 
-              {/* Courier Name & RMA / Ticket */}
+              {/* Courier Partner Selection */}
               <div>
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Courier / Tracking RMA No.
+                  Courier Partner
                 </Label>
-                <Input
-                  placeholder="e.g. Trackon TRK-9981 / AUG-2026"
-                  value={rmaNumber}
-                  onChange={(e) => setRmaNumber(e.target.value)}
-                  className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
+                <Select
+                  value={courierName}
+                  onValueChange={(val) => {
+                    setCourierName(val);
+                    const found = couriers.find((c) => c.name === val);
+                    if (found) setSelectedCourierId(found.id);
+                  }}
+                >
+                  <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                    <SelectValue placeholder="Select Courier Partner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {couriers.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        {c.name} {c.phone ? `(${c.phone})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Courier & Transport Charges */}
+              {/* Courier Tracking RMA / Docket No */}
               <div>
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Courier Charges (₹)
+                  Docket / RMA Tracking No.
                 </Label>
                 <Input
-                  type="number"
-                  placeholder="0"
-                  value={courierChargesInput}
-                  onChange={(e) => setCourierChargesInput(e.target.value)}
-                  className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  placeholder="e.g. TRK-9981 / AUG-2026"
+                  value={rmaNumber}
+                  onChange={(e) => setRmaNumber(e.target.value)}
+                  className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
                 />
+              </div>
+            </div>
+
+            {/* Logistics Actions & One-Click WhatsApp Follow-ups */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div>
+                  <span className="text-xs text-slate-500 font-medium">Courier Charges: </span>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={courierChargesInput}
+                    onChange={(e) => setCourierChargesInput(e.target.value)}
+                    className="inline-block w-24 h-8 text-xs rounded-lg bg-slate-50/50 ml-1 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Follow up with Courier WhatsApp */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCourierWhatsAppFollowUp}
+                  className="h-8 px-2.5 text-[11px] font-bold rounded-lg border-blue-300 text-blue-700 dark:text-blue-300 bg-blue-50/50 hover:bg-blue-100 gap-1.5"
+                >
+                  <Truck className="h-3.5 w-3.5 text-blue-600" /> Follow up with Courier (WhatsApp)
+                </Button>
+
+                {/* Follow up with Service Center WhatsApp */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleServiceCenterWhatsAppFollowUp}
+                  className="h-8 px-2.5 text-[11px] font-bold rounded-lg border-emerald-300 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 hover:bg-emerald-100 gap-1.5"
+                >
+                  <Building2 className="h-3.5 w-3.5 text-emerald-600" /> Follow up with Service Center (WhatsApp)
+                </Button>
               </div>
             </div>
           </div>
@@ -1077,12 +1141,12 @@ export default function AdminServiceCallForm() {
 
         {/* Section 4 Alternative: Onsite Service Address (if Onsite Visit) */}
         {type === "onsite_visit" && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-[11px]">
                 4
               </span>
-              <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Onsite Service Address
               </h2>
             </div>
@@ -1094,20 +1158,20 @@ export default function AdminServiceCallForm() {
                 placeholder="Enter complete onsite location..."
                 value={onsiteAddress}
                 onChange={(e) => setOnsiteAddress(e.target.value)}
-                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
               />
             </div>
           </div>
         )}
 
         {/* Section 5: Spare Parts & Service Charges (Supports 0 parts without errors) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-[11px]">
                 5
               </span>
-              <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Spare Parts & Service Charges
               </h2>
             </div>
@@ -1121,9 +1185,9 @@ export default function AdminServiceCallForm() {
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {parts.length > 0 && (
-              <div className="grid grid-cols-12 gap-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+              <div className="grid grid-cols-12 gap-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
                 <div className="col-span-7">PART / ITEM NAME (Auto-saved to Catalog)</div>
                 <div className="col-span-2">QTY</div>
                 <div className="col-span-2">UNIT PRICE (₹)</div>
@@ -1150,7 +1214,7 @@ export default function AdminServiceCallForm() {
                     min="1"
                     value={p.quantity}
                     onChange={(e) => handleUpdatePart(idx, "quantity", e.target.value)}
-                    className="h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    className="h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                   />
                 </div>
                 <div className="col-span-2">
@@ -1159,11 +1223,11 @@ export default function AdminServiceCallForm() {
                     placeholder="0"
                     value={p.unitPrice}
                     onChange={(e) => handleUpdatePart(idx, "unitPrice", e.target.value)}
-                    className="h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    className="h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
                   />
                 </div>
                 <div className="col-span-1 flex items-center justify-end gap-1.5">
-                  <span className="font-bold text-slate-900 dark:text-white text-xs font-display">
+                  <span className="font-bold text-slate-900 dark:text-white text-xs font-display font-mono">
                     ₹{(p.totalPrice || 0).toLocaleString("en-IN")}
                   </span>
                   <button
@@ -1178,13 +1242,13 @@ export default function AdminServiceCallForm() {
             ))}
 
             {parts.length === 0 && (
-              <div className="text-xs text-slate-400 p-3 bg-slate-50/60 dark:bg-slate-950 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
+              <div className="text-xs text-slate-400 p-2.5 bg-slate-50/60 dark:bg-slate-950 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
                 No spare parts added (Intake without parts is supported). Click <button type="button" onClick={handleAddPartRow} className="text-[#2563EB] font-bold underline">+ Add Item</button> if needed.
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 dark:border-slate-800 items-center">
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Service & Repair Charges (₹)
@@ -1194,12 +1258,12 @@ export default function AdminServiceCallForm() {
                 placeholder="0"
                 value={serviceChargesInput}
                 onChange={(e) => setServiceChargesInput(e.target.value)}
-                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 md:w-64"
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 md:w-56 font-mono"
               />
             </div>
 
             {/* Billing Summary Box */}
-            <div className="bg-slate-50 dark:bg-slate-950/60 rounded-xl p-4 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+            <div className="bg-slate-50 dark:bg-slate-950/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   BILLING BREAKDOWN
@@ -1213,7 +1277,7 @@ export default function AdminServiceCallForm() {
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   GRAND TOTAL
                 </p>
-                <p className="text-2xl font-extrabold text-[#2563EB] font-display">
+                <p className="text-xl md:text-2xl font-extrabold text-[#2563EB] font-display font-mono">
                   ₹{grandTotal.toLocaleString("en-IN")}
                 </p>
               </div>
@@ -1222,7 +1286,7 @@ export default function AdminServiceCallForm() {
         </div>
 
         {/* Section 6: Miscellaneous Internal Comments */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-3">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs space-y-2">
           <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <FileText className="h-4 w-4 text-[#2563EB]" /> Internal Miscellaneous Comments / Audit Notes
           </Label>
@@ -1244,17 +1308,17 @@ export default function AdminServiceCallForm() {
         />
 
         {/* Section 8: Action Footer Bar (Save / WhatsApp / Cancel) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xs border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 mt-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xs border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 mt-4">
           <div className="text-xs text-slate-400 hidden sm:block">
             Press <kbd className="font-mono font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Ctrl+A</kbd> to Save
           </div>
 
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-2.5 ml-auto">
             <Button
               type="button"
               variant="outline"
               onClick={handleSendWhatsApp}
-              className="h-10 px-4 text-xs font-bold rounded-xl border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-2"
+              className="h-9 px-3.5 text-xs font-bold rounded-xl border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-1.5"
             >
               <MessageCircle className="h-4 w-4 text-emerald-500" /> Send via WhatsApp
             </Button>
@@ -1262,7 +1326,7 @@ export default function AdminServiceCallForm() {
             <Button
               type="submit"
               disabled={saving}
-              className="h-10 px-6 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white shadow-sm shadow-blue-600/25 gap-2"
+              className="h-9 px-5 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white shadow-sm shadow-blue-600/25 gap-1.5"
             >
               <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save / Accept (Ctrl+A)"}
             </Button>
@@ -1318,6 +1382,15 @@ export default function AdminServiceCallForm() {
         onCreated={(cat) => {
           setCategories((prev) => [...prev, cat]);
           setDeviceCategory(cat.name);
+        }}
+      />
+      <CreateCourierModal
+        open={showCourierModal}
+        onOpenChange={setShowCourierModal}
+        onCreated={(cr) => {
+          setCouriers((prev) => [...prev, cr]);
+          setCourierName(cr.name);
+          setSelectedCourierId(cr.id);
         }}
       />
       <CreateServiceCenterModal

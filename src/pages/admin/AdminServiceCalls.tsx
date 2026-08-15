@@ -41,8 +41,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getServiceCalls, deleteServiceCall, updateServiceCall } from "@/lib/firestore";
-import type { ServiceCall, ServiceCallStatus, ServiceCallType } from "@/lib/types";
+import { getServiceCalls, deleteServiceCall, updateServiceCall, getFinancialYears } from "@/lib/firestore";
+import type { ServiceCall, ServiceCallStatus, ServiceCallType, FinancialYearDoc } from "@/lib/types";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
@@ -96,6 +96,8 @@ export default function AdminServiceCalls() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [fyFilter, setFyFilter] = useState<string>("all");
+  const [fys, setFys] = useState<FinancialYearDoc[]>([]);
   const [activeTab, setActiveTab] = useState<"active" | "inactive">("active");
   
   // Interactive Header Sort: default sorted by status ascending (in_progress -> received)
@@ -245,6 +247,7 @@ export default function AdminServiceCalls() {
   const filtered = currentList.filter((c) => {
     const matchesType = typeFilter === "all" || c.type === typeFilter;
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+    const matchesFY = fyFilter === "all" || c.fyId === fyFilter || (!c.fyId && fyFilter === "all");
     const q = search.toLowerCase().trim();
     const matchesSearch =
       !q ||
@@ -254,9 +257,11 @@ export default function AdminServiceCalls() {
       c.deviceCategory.toLowerCase().includes(q) ||
       c.issueDescription.toLowerCase().includes(q) ||
       (c.modelNumber && c.modelNumber.toLowerCase().includes(q)) ||
-      (c.serialNumber && c.serialNumber.toLowerCase().includes(q));
+      (c.serialNumber && c.serialNumber.toLowerCase().includes(q)) ||
+      (c.fyId && c.fyId.toLowerCase().includes(q)) ||
+      (c.monthKey && c.monthKey.toLowerCase().includes(q));
 
-    return matchesType && matchesStatus && matchesSearch;
+    return matchesType && matchesStatus && matchesFY && matchesSearch;
   });
 
   // Handle clickable header sort toggle
@@ -461,6 +466,20 @@ export default function AdminServiceCalls() {
               className="pl-9 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs"
             />
           </div>
+
+          <Select value={fyFilter} onValueChange={setFyFilter}>
+            <SelectTrigger className="w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
+              <SelectValue placeholder="All FYs" />
+            </SelectTrigger>
+            <SelectContent className="max-h-56">
+              <SelectItem value="all">All Financial Years</SelectItem>
+              {fys.map((fy) => (
+                <SelectItem key={fy.id} value={fy.id}>
+                  {fy.label || fy.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">

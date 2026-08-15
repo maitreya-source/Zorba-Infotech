@@ -73,33 +73,38 @@ export default function AdminCustomers() {
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto text-xs">
-      {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-3">
-        <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary mb-1">
-            <Users className="h-3.5 w-3.5" /> Customer Management
-          </div>
-          <h1 className="text-xl md:text-2xl font-extrabold font-display">
-            Customer Directory
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Manage registered clients for auto-filling intake tickets and service history
-          </p>
-        </div>
+    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto text-xs">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 text-white shadow-md">
+        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
 
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setShowImportModal(true)}
-            variant="outline"
-            size="sm"
-            className="gap-1.5 font-bold border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Import CSV
-          </Button>
-          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-1.5 shadow-sm font-bold">
-            <UserPlus className="h-4 w-4" /> Add Customer
-          </Button>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
+              Customer Directory
+            </h1>
+            <p className="text-xs text-slate-300">
+              Manage registered clients, multiple phone numbers, and addresses for instant intake auto-fill
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              onClick={() => setShowImportModal(true)}
+              variant="outline"
+              size="sm"
+              className="h-9 text-xs rounded-xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold gap-1.5"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-400" /> Import CSV
+            </Button>
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              size="sm"
+              className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0"
+            >
+              <UserPlus className="h-4 w-4" /> Add Customer
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -123,114 +128,119 @@ export default function AdminCustomers() {
       {/* Main Directory Table */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mb-2" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
           <p className="text-xs text-muted-foreground">Loading customer directory...</p>
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
           <p className="font-bold text-destructive text-base">Firebase Connection Error</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-md">{error}</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md">{error}</p>
           <Button onClick={() => loadData()} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
             <RefreshCw className="h-3.5 w-3.5" /> Retry Connection
           </Button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-card py-20 text-center">
-          <Users className="h-12 w-12 text-muted-foreground/20 mb-3" />
-          <p className="font-bold text-base font-display">No Customers Found</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {customers.length === 0 ? 'Click "Add Customer" to create your first client profile.' : 'No customers match your search criteria.'}
+        <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
+          <Users className="h-10 w-10 text-muted-foreground/40" />
+          <p className="font-bold text-foreground text-sm font-display">No Customers Found</p>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            {customers.length === 0 ? "Click Add Customer to create your first client profile." : "No customers match your search criteria."}
           </p>
+          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-1 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl">
+            <UserPlus className="h-3.5 w-3.5" /> Add Customer
+          </Button>
         </div>
       ) : (
         <div className="rounded-2xl border bg-card overflow-hidden shadow-xs">
-          <table className="w-full text-xs">
-            <thead className="border-b bg-muted/40 font-bold uppercase tracking-wider text-muted-foreground/80">
-              <tr>
-                <th className="px-4 py-3 text-left">Customer Name (LastName FirstName)</th>
-                <th className="px-4 py-3 text-left">Phone Number</th>
-                <th className="px-4 py-3 text-left">Email Address</th>
-                <th className="px-4 py-3 text-left">Address / Location</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filtered.map((cust) => (
-                <tr key={cust.id} className="hover:bg-muted/30 transition-colors group">
-                  {/* Name & Company */}
-                  <td className="px-4 py-2.5">
-                    <div className="font-bold text-foreground text-xs">{cust.name}</div>
-                    {cust.companyName && (
-                      <div className="text-[11px] text-primary font-medium flex items-center gap-1 mt-0.5">
-                        <Building className="h-3 w-3" /> {cust.companyName}
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Phone */}
-                  <td className="px-4 py-2.5 font-mono font-semibold text-foreground">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-muted-foreground" /> {cust.phone}
-                      </span>
-                      {cust.additionalPhones && cust.additionalPhones.length > 0 && (
-                        <div className="text-[10px] text-muted-foreground font-sans pl-5">
-                          + {cust.additionalPhones.length} extra phone{cust.additionalPhones.length > 1 ? "s" : ""}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="border-b bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="px-4 py-3">Customer Name</th>
+                  <th className="px-4 py-3">Phone Number</th>
+                  <th className="px-4 py-3">Email Address</th>
+                  <th className="px-4 py-3">Address / Location</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filtered.map((cust) => (
+                  <tr key={cust.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors group">
+                    {/* Name & Company */}
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">{cust.name}</div>
+                      {cust.companyName && (
+                        <div className="text-[11px] text-[#2563EB] font-semibold flex items-center gap-1 mt-0.5">
+                          <Building className="h-3 w-3" /> {cust.companyName}
                         </div>
                       )}
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Email */}
-                  <td className="px-4 py-2.5 text-muted-foreground">
-                    {cust.email ? (
-                      <span className="flex items-center gap-1.5 text-foreground">
-                        <Mail className="h-3.5 w-3.5 text-muted-foreground" /> {cust.email}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/50 italic">—</span>
-                    )}
-                  </td>
+                    {/* Phone */}
+                    <td className="px-4 py-3 font-mono font-semibold text-slate-900 dark:text-white">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="flex items-center gap-1.5">
+                          <Phone className="h-3.5 w-3.5 text-slate-400" /> {cust.phone}
+                        </span>
+                        {cust.additionalPhones && cust.additionalPhones.length > 0 && (
+                          <div className="text-[10px] text-slate-400 font-sans pl-5">
+                            + {cust.additionalPhones.length} extra phone{cust.additionalPhones.length > 1 ? "s" : ""}
+                          </div>
+                        )}
+                      </div>
+                    </td>
 
-                  {/* Address */}
-                  <td className="px-4 py-2.5 max-w-xs truncate text-muted-foreground" title={cust.address}>
-                    {cust.address ? (
-                      <span className="flex items-center gap-1.5 text-foreground truncate">
-                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate">{cust.address}</span>
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/50 italic">—</span>
-                    )}
-                  </td>
+                    {/* Email */}
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                      {cust.email ? (
+                        <span className="flex items-center gap-1.5">
+                          <Mail className="h-3.5 w-3.5 text-slate-400" /> {cust.email}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic">—</span>
+                      )}
+                    </td>
 
-                  {/* Actions */}
-                  <td className="px-4 py-2.5 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-foreground hover:bg-muted"
-                        title="Edit Customer"
-                        onClick={() => setEditCustomer(cust)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                        title="Delete Customer"
-                        onClick={() => setDeleteId(cust.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    {/* Address */}
+                    <td className="px-4 py-3 max-w-xs truncate text-slate-600 dark:text-slate-300" title={cust.address}>
+                      {cust.address ? (
+                        <span className="flex items-center gap-1.5 truncate">
+                          <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{cust.address}</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic">—</span>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          title="Edit Customer"
+                          onClick={() => setEditCustomer(cust)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          title="Delete Customer"
+                          onClick={() => setDeleteId(cust.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -80,25 +80,6 @@ export default function AdminTechnicians() {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur-md border border-white/10 text-blue-300">
-                <UserCheck className="h-3.5 w-3.5 text-blue-400" /> Staff & Technicians
-              </div>
-
-              {/* Integrated Header Stats Bar */}
-              <div className="flex items-center gap-1.5 text-[11px] font-medium flex-wrap">
-                <span className="rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 font-bold">
-                  Total Staff: {totalStaff}
-                </span>
-                <span className="rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 font-bold">
-                  Active: {activeStaff}
-                </span>
-                <span className="rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 font-bold">
-                  Specializations: {specCount}
-                </span>
-              </div>
-            </div>
-
             <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
               Technicians Directory
             </h1>

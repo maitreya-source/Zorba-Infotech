@@ -9,6 +9,7 @@ import {
   Folder,
   UserCheck,
   ShieldCheck,
+  Building2,
   LogOut,
   ExternalLink,
   ChevronRight,
@@ -23,9 +24,9 @@ const navItems = [
   { label: "Daily/Monthly Reports", to: "/admin/reports", icon: BarChart3 },
   { label: "Technicians", to: "/admin/technicians", icon: UserCheck },
   { label: "Back Office Staff", to: "/admin/staff", icon: ShieldCheck },
+  { label: "Service Centers", to: "/admin/service-centers", icon: Building2 },
   { label: "Products", to: "/admin/products", icon: Package },
   { label: "Categories", to: "/admin/categories", icon: Layers },
-  { label: "Device Categories", to: "/admin/device-categories", icon: Folder },
   { label: "Customers", to: "/admin/customers", icon: Users },
 ];
 

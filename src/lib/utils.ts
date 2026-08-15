@@ -172,3 +172,55 @@ export function generateWhatsAppMessage(options: {
   return message;
 }
 
+/**
+ * WhatsApp follow-up message generator for Courier partners.
+ */
+export function generateCourierFollowUpMessage(options: {
+  courierName: string;
+  courierDocketNumber: string;
+  ticketNo: string;
+  customerName?: string;
+  destination?: string;
+  dateTime?: string;
+}): string {
+  return (
+    `*ZORBA INFOTECH - COURIER SHIPMENT TRACKING INQUIRY*\n\n` +
+    `Hello *${options.courierName}* Team,\n` +
+    `We would like to check the real-time delivery status for our dispatched parcel:\n\n` +
+    `📦 *Docket / AWB Number:* ${options.courierDocketNumber}\n` +
+    `🎫 *Internal Ticket Ref:* ${options.ticketNo}\n` +
+    (options.dateTime ? `📅 *Dispatch Date:* ${options.dateTime}\n` : "") +
+    (options.destination ? `📍 *Destination / Consignee:* ${options.destination}\n` : "") +
+    `\nPlease provide the current transit location and expected delivery timestamp.\n\n` +
+    `Thank you,\n*Zorba Infotech Logistics Desk*\n📞 +91 95891 99738`
+  );
+}
+
+/**
+ * WhatsApp follow-up message generator for OEM Service Centers.
+ */
+export function generateServiceCenterFollowUpMessage(options: {
+  serviceCenterName: string;
+  rmaNumber?: string;
+  ticketNo: string;
+  deviceCategory: string;
+  modelNumber?: string;
+  serialNumber?: string;
+  issueDescription: string;
+  dateSent?: string;
+}): string {
+  return (
+    `*ZORBA INFOTECH - SERVICE CENTER RMA / REPAIR STATUS INQUIRY*\n\n` +
+    `Dear *${options.serviceCenterName}* Support Team,\n` +
+    `We would like to request an update on the repair/replacement status for the following unit sent to your center:\n\n` +
+    `🎫 *Our Job Card / Ticket:* ${options.ticketNo}\n` +
+    (options.rmaNumber ? `🏷️ *Service Center RMA / Ref No:* ${options.rmaNumber}\n` : "") +
+    (options.dateSent ? `📅 *Dispatched On:* ${options.dateSent}\n` : "") +
+    `💻 *Device:* ${options.deviceCategory}${options.modelNumber ? ` - ${options.modelNumber}` : ""}\n` +
+    (options.serialNumber ? `🔢 *Serial / IMEI:* ${options.serialNumber}\n` : "") +
+    `🔍 *Reported Defect:* ${options.issueDescription}\n\n` +
+    `Kindly let us know if the unit is diagnosed / under repair / replaced / ready for dispatch.\n\n` +
+    `Thank you,\n*Zorba Infotech Service Desk*\n📞 +91 95891 99738`
+  );
+}
+

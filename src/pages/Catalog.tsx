@@ -227,17 +227,22 @@ function ProductCard({
       {/* Info */}
       <div className="flex flex-col flex-1 p-4 gap-2">
         {categoryName && (
-          <span className="text-xs font-medium text-primary/70 uppercase tracking-wide">
+          <span className="text-xs font-semibold text-primary uppercase tracking-wide">
             {categoryName}
           </span>
         )}
-        <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+        <h3 className="font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors">
           {product.name}
         </h3>
-        {(product.brand || product.model) && (
-          <p className="text-xs text-muted-foreground">
-            {[product.brand, product.model].filter(Boolean).join(" · ")}
-          </p>
+        {product.model && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center text-[11px] font-mono font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+              Model: {product.model}
+            </span>
+            {product.brand && (
+              <span className="text-xs text-muted-foreground">· {product.brand}</span>
+            )}
+          </div>
         )}
 
         <div className="mt-auto pt-2 flex items-center justify-between">

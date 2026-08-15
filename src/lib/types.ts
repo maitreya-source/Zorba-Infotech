@@ -5,6 +5,7 @@ export interface Category {
   name: string;
   iconName: string;
   color: string;
+  description?: string;
   order: number;
   createdAt: Timestamp;
 }
@@ -71,8 +72,25 @@ export interface Customer {
   address?: string;
   companyName?: string;
   notes?: string;
-  searchTokens?: string[];
   createdAt: string | number;
+}
+
+export interface FinancialYearDoc {
+  id: string; // e.g. "FY2526"
+  label: string; // e.g. "FY 2025-26"
+  startYear: number;
+  endYear: number;
+  startDate: string;
+  endDate: string;
+  isCurrent?: boolean;
+}
+
+export interface FYMonthDoc {
+  id: string; // e.g. "2025-08"
+  monthKey: string;
+  monthName: string; // e.g. "August 2025"
+  monthNumber: number; // 8
+  fyId: string; // "FY2526"
 }
 
 export interface DeviceCategory {
@@ -133,13 +151,34 @@ export interface ServiceCenterAddress {
   isDefault?: boolean;
 }
 
+export interface ServiceCenterPOC {
+  id: string;
+  name: string;
+  designation?: string;
+  phone: string;
+  isWhatsApp?: boolean;
+}
+
 export interface ServiceCenter {
   id: string;
   name: string;
   phone?: string;
+  whatsappPhone?: string; // Default WhatsApp number for follow-up
   email?: string;
   addresses: ServiceCenterAddress[];
   defaultAddressId?: string;
+  pocs?: ServiceCenterPOC[];
+  active?: boolean;
+  createdAt: string | number;
+}
+
+export interface Courier {
+  id: string;
+  name: string;
+  phone?: string; // Contact phone / WhatsApp number for follow-up
+  contactPerson?: string;
+  trackingUrlTemplate?: string;
+  active?: boolean;
   createdAt: string | number;
 }
 
@@ -156,6 +195,8 @@ export interface Technician {
 export interface ServiceCall {
   id: string;
   ticketNo: string; // Service Call Number
+  fyId?: string; // e.g. "FY2526"
+  monthKey?: string; // e.g. "2025-08"
   type: ServiceCallType;
   dateTime: string; // ISO or YYYY-MM-DD format
   customerId: string; // Reference to Customer document
