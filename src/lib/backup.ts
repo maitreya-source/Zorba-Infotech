@@ -9,13 +9,34 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
   limit,
+  startAfter,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { cleanFirestoreData, formatFirebaseError } from "./firestore";
+import { validateBackupPayload, type PreFlightValidationReport } from "./backupValidation";
+
+export interface BackupScopeOptions {
+  fyId?: string; // e.g. "FY2627" or "all"
+  monthKey?: string; // e.g. "2026-08" or "all"
+  modules?: {
+    serviceCalls?: boolean;
+    customers?: boolean;
+    products?: boolean;
+    categories?: boolean;
+    teamMembers?: boolean;
+    serviceCenters?: boolean;
+    couriers?: boolean;
+    masterCatalogs?: boolean;
+    systemSettings?: boolean;
+  };
+  exportedBy?: string;
+}
 
 export interface BackupMetadata {
   version: string;
+  scope: string;
   createdAt: number;
   createdAtISO: string;
   exportedBy?: string;
@@ -61,6 +82,7 @@ export interface CloudSnapshot {
   createdAt: number;
   createdAtISO: string;
   exportedBy: string;
+  scope: string;
   totalDocuments: number;
   summary: {
     serviceCalls: number;
@@ -77,75 +99,172 @@ export interface RestoreProgress {
   processedDocs: number;
   totalDocs: number;
   percent: number;
-  status: "idle" | "restoring" | "completed" | "error";
+  status: "idle" | "validating" | "restoring" | "completed" | "error";
   error?: string;
 }
 
-// ─── Export & Backup Generator ────────────────────────────────────────────────
+// ─── Paginated Collection Fetcher (Safe for 10k+ documents) ───────────────────
 
-export async function createFullDatabaseBackup(exportedBy?: string): Promise<FullDatabaseBackup> {
-  const fetchCol = async (colName: string) => {
+export async function fetchCollectionPaginated(
+  colPath: string,
+  batchLimit: number = 500
+): Promise<Array<{ id: string; [key: string]: any }>> {
+  const results: Array<{ id: string; [key: string]: any }> = [];
+  try {
+    let lastDoc: any = null;
+    let hasMore = true;
+
+    while (hasMore) {
+      const q = lastDoc
+        ? query(collection(db, colPath), startAfter(lastDoc), limit(batchLimit))
+        : query(collection(db, colPath), limit(batchLimit));
+
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        hasMore = false;
+        break;
+      }
+
+      snap.docs.forEach((d) => {
+        results.push({ id: d.id, ...d.data() });
+      });
+
+      if (snap.docs.length < batchLimit) {
+        hasMore = false;
+      } else {
+        lastDoc = snap.docs[snap.docs.length - 1];
+      }
+    }
+  } catch (err) {
+    console.warn(`Error paginating collection ${colPath}, falling back to single query:`, err);
     try {
-      const snap = await getDocs(collection(db, colName));
+      const snap = await getDocs(collection(db, colPath));
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     } catch {
       return [];
     }
-  };
+  }
+  return results;
+}
 
-  // 1. Fetch Top-Level Collections concurrently
-  const [
-    categories,
-    products,
-    customers,
-    team_members,
-    service_centers,
-    couriers,
-    device_models,
-    spare_parts,
-    service_calls,
-    financial_years,
-    counters,
-    admins,
-  ] = await Promise.all([
-    fetchCol("categories"),
-    fetchCol("products"),
-    fetchCol("customers"),
-    fetchCol("team_members"),
-    fetchCol("service_centers"),
-    fetchCol("couriers"),
-    fetchCol("device_models"),
-    fetchCol("spare_parts"),
-    fetchCol("service_calls"),
-    fetchCol("financial_years"),
-    fetchCol("counters"),
-    fetchCol("admins"),
-  ]);
+// ─── Scoped & Year-Partitioned Backup Generator ───────────────────────────────
 
-  // 2. Fetch Hierarchical subcollection service_calls via collectionGroup
+export async function createScopedDatabaseBackup(
+  options: BackupScopeOptions = {}
+): Promise<FullDatabaseBackup> {
+  const {
+    fyId = "all",
+    monthKey = "all",
+    modules = {
+      serviceCalls: true,
+      customers: true,
+      products: true,
+      categories: true,
+      teamMembers: true,
+      serviceCenters: true,
+      couriers: true,
+      masterCatalogs: true,
+      systemSettings: true,
+    },
+    exportedBy = "Super Admin",
+  } = options;
+
+  let categories: Array<{ id: string; [key: string]: any }> = [];
+  let products: Array<{ id: string; [key: string]: any }> = [];
+  let customers: Array<{ id: string; [key: string]: any }> = [];
+  let team_members: Array<{ id: string; [key: string]: any }> = [];
+  let service_centers: Array<{ id: string; [key: string]: any }> = [];
+  let couriers: Array<{ id: string; [key: string]: any }> = [];
+  let device_models: Array<{ id: string; [key: string]: any }> = [];
+  let spare_parts: Array<{ id: string; [key: string]: any }> = [];
+  let service_calls: Array<{ id: string; [key: string]: any }> = [];
   let hierarchicalServiceCalls: Array<{ id: string; fyId: string; monthKey: string; data: any }> = [];
-  try {
-    const cgSnap = await getDocs(collectionGroup(db, "service_calls"));
-    hierarchicalServiceCalls = cgSnap.docs
-      .map((d) => {
-        const pathSegments = d.ref.path.split("/");
-        // Format: financial_years/{fyId}/months/{monthKey}/service_calls/{id}
-        if (pathSegments.length >= 6 && pathSegments[0] === "financial_years") {
-          return {
-            id: d.id,
-            fyId: pathSegments[1],
-            monthKey: pathSegments[3],
-            data: d.data(),
-          };
-        }
-        return null;
-      })
-      .filter((item): item is NonNullable<typeof item> => item !== null);
-  } catch (err) {
-    console.warn("Could not fetch hierarchical service calls via collectionGroup:", err);
+  let financial_years: Array<{ id: string; [key: string]: any }> = [];
+  let counters: Array<{ id: string; [key: string]: any }> = [];
+  let admins: Array<{ id: string; [key: string]: any }> = [];
+
+  const tasks: Promise<void>[] = [];
+
+  if (modules.categories) tasks.push(fetchCollectionPaginated("categories").then((r) => { categories = r; }));
+  if (modules.products) tasks.push(fetchCollectionPaginated("products").then((r) => { products = r; }));
+  if (modules.customers) tasks.push(fetchCollectionPaginated("customers").then((r) => { customers = r; }));
+  if (modules.teamMembers) tasks.push(fetchCollectionPaginated("team_members").then((r) => { team_members = r; }));
+  if (modules.serviceCenters) tasks.push(fetchCollectionPaginated("service_centers").then((r) => { service_centers = r; }));
+  if (modules.couriers) tasks.push(fetchCollectionPaginated("couriers").then((r) => { couriers = r; }));
+  if (modules.masterCatalogs) {
+    tasks.push(fetchCollectionPaginated("device_models").then((r) => { device_models = r; }));
+    tasks.push(fetchCollectionPaginated("spare_parts").then((r) => { spare_parts = r; }));
+  }
+  if (modules.systemSettings) {
+    tasks.push(fetchCollectionPaginated("counters").then((r) => { counters = r; }));
+    tasks.push(fetchCollectionPaginated("admins").then((r) => { admins = r; }));
   }
 
+  // Handle Service Calls & Financial Years
+  if (modules.serviceCalls) {
+    tasks.push(
+      (async () => {
+        if (fyId === "all") {
+          financial_years = await fetchCollectionPaginated("financial_years");
+          service_calls = await fetchCollectionPaginated("service_calls");
+          try {
+            const cgSnap = await getDocs(collectionGroup(db, "service_calls"));
+            hierarchicalServiceCalls = cgSnap.docs
+              .map((d) => {
+                const parts = d.ref.path.split("/");
+                if (parts.length >= 6 && parts[0] === "financial_years") {
+                  return { id: d.id, fyId: parts[1], monthKey: parts[3], data: d.data() };
+                }
+                return null;
+              })
+              .filter((item): item is NonNullable<typeof item> => item !== null);
+          } catch (err) {
+            console.warn("CollectionGroup error:", err);
+          }
+        } else {
+          // Specific FY / Month scope
+          try {
+            const fyDoc = await getDocs(query(collection(db, "financial_years"), where("id", "==", fyId)));
+            financial_years = fyDoc.docs.map((d) => ({ id: d.id, ...d.data() }));
+          } catch {}
+
+          if (monthKey !== "all") {
+            const path = `financial_years/${fyId}/months/${monthKey}/service_calls`;
+            const monthCalls = await fetchCollectionPaginated(path);
+            hierarchicalServiceCalls = monthCalls.map((c) => ({
+              id: c.id,
+              fyId,
+              monthKey,
+              data: c,
+            }));
+            service_calls = monthCalls;
+          } else {
+            // All months for specific FY
+            const cgSnap = await getDocs(collectionGroup(db, "service_calls"));
+            hierarchicalServiceCalls = cgSnap.docs
+              .map((d) => {
+                const parts = d.ref.path.split("/");
+                if (parts.length >= 6 && parts[0] === "financial_years" && parts[1] === fyId) {
+                  return { id: d.id, fyId: parts[1], monthKey: parts[3], data: d.data() };
+                }
+                return null;
+              })
+              .filter((item): item is NonNullable<typeof item> => item !== null);
+            service_calls = hierarchicalServiceCalls.map((h) => ({ id: h.id, ...h.data }));
+          }
+        }
+      })()
+    );
+  }
+
+  await Promise.all(tasks);
+
   const now = Date.now();
+  const scopeDescription =
+    fyId !== "all"
+      ? `Financial Year: ${fyId} ${monthKey !== "all" ? `(${monthKey})` : ""}`
+      : "Complete Database Scope";
+
   const counts = {
     categories: categories.length,
     products: products.length,
@@ -174,12 +293,13 @@ export async function createFullDatabaseBackup(exportedBy?: string): Promise<Ful
       admins.length,
   };
 
-  const backup: FullDatabaseBackup = {
+  return {
     metadata: {
-      version: "2.0.0",
+      version: "2.1.0",
+      scope: scopeDescription,
       createdAt: now,
       createdAtISO: new Date(now).toISOString(),
-      exportedBy: exportedBy || "Admin User",
+      exportedBy,
       environment: "production",
       counts,
     },
@@ -199,11 +319,12 @@ export async function createFullDatabaseBackup(exportedBy?: string): Promise<Ful
       admins,
     },
   };
-
-  return backup;
 }
 
-// ─── Browser Download Helper ──────────────────────────────────────────────────
+export const createFullDatabaseBackup = (exportedBy?: string) =>
+  createScopedDatabaseBackup({ fyId: "all", exportedBy });
+
+// ─── File Download Helper ─────────────────────────────────────────────────────
 
 export function downloadBackupAsJson(backup: FullDatabaseBackup, filename?: string) {
   const dateStr = new Date(backup.metadata.createdAt)
@@ -236,6 +357,7 @@ export async function saveSnapshotToCloud(backup: FullDatabaseBackup): Promise<s
     createdAt: backup.metadata.createdAt,
     createdAtISO: backup.metadata.createdAtISO,
     exportedBy: backup.metadata.exportedBy || "Admin User",
+    scope: backup.metadata.scope || "Full Database",
     totalDocuments: backup.metadata.counts.totalDocuments,
     summary: {
       serviceCalls: backup.metadata.counts.service_calls,
@@ -253,7 +375,7 @@ export async function saveSnapshotToCloud(backup: FullDatabaseBackup): Promise<s
 
 export async function getCloudSnapshots(): Promise<CloudSnapshot[]> {
   try {
-    const q = query(collection(db, "backups"), orderBy("createdAt", "desc"), limit(20));
+    const q = query(collection(db, "backups"), orderBy("createdAt", "desc"), limit(25));
     const snap = await getDocs(q);
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as CloudSnapshot);
   } catch (err: any) {
@@ -266,51 +388,156 @@ export async function deleteCloudSnapshot(id: string): Promise<void> {
   await deleteDoc(doc(db, "backups", id));
 }
 
-// ─── Restore Engine ───────────────────────────────────────────────────────────
+// ─── Pre-Restore Automatic Rollback Checkpoint ────────────────────────────────
+
+export async function createPreRestoreRollbackSnapshot(adminEmail?: string): Promise<string> {
+  const currentBackup = await createFullDatabaseBackup(adminEmail || "Auto-Rollback Guard");
+  const rollbackId = `rollback-pre-restore-${Date.now()}`;
+  const docRef = doc(db, "backups", rollbackId);
+
+  const snapshotDoc: CloudSnapshot = {
+    id: rollbackId,
+    createdAt: currentBackup.metadata.createdAt,
+    createdAtISO: currentBackup.metadata.createdAtISO,
+    exportedBy: "System (Automatic Pre-Restore Checkpoint)",
+    scope: "Automatic Safety Rollback Guard",
+    totalDocuments: currentBackup.metadata.counts.totalDocuments,
+    summary: {
+      serviceCalls: currentBackup.metadata.counts.service_calls,
+      customers: currentBackup.metadata.counts.customers,
+      products: currentBackup.metadata.counts.products,
+      categories: currentBackup.metadata.counts.categories,
+      teamMembers: currentBackup.metadata.counts.team_members,
+    },
+    backupData: currentBackup,
+  };
+
+  await setDoc(docRef, cleanFirestoreData(snapshotDoc));
+  return rollbackId;
+}
+
+// ─── Resilient Restore Engine with Pre-Flight Schema Filtering ─────────────────
 
 export async function restoreDatabaseFromBackup(
   backup: FullDatabaseBackup,
   options?: {
+    skipInvalid?: boolean;
+    createRollbackPoint?: boolean;
+    adminEmail?: string;
     onProgress?: (progress: RestoreProgress) => void;
   }
-): Promise<{ restoredCount: number; errors: string[] }> {
+): Promise<{
+  restoredCount: number;
+  skippedCount: number;
+  rollbackSnapshotId?: string;
+  errors: string[];
+  validationReport: PreFlightValidationReport;
+}> {
   if (!backup || !backup.data || !backup.metadata) {
     throw new Error("Invalid backup format. Missing 'metadata' or 'data' payload.");
+  }
+
+  // 1. Run Pre-Flight Validation Pass
+  if (options?.onProgress) {
+    options.onProgress({
+      currentCollection: "Validating Schemas",
+      processedDocs: 0,
+      totalDocs: backup.metadata.counts.totalDocuments,
+      percent: 0,
+      status: "validating",
+    });
+  }
+
+  const validationReport = validateBackupPayload(backup);
+
+  if (!validationReport.isValid && !options?.skipInvalid) {
+    throw new Error(
+      `Backup contains ${validationReport.invalidCount} malformed or invalid records. Enable 'Skip Invalid Records' to proceed or correct the file.`
+    );
+  }
+
+  // 2. Create Automatic Rollback Snapshot before making changes
+  let rollbackSnapshotId: string | undefined;
+  if (options?.createRollbackPoint !== false) {
+    if (options?.onProgress) {
+      options.onProgress({
+        currentCollection: "Creating Safety Rollback Snapshot",
+        processedDocs: 0,
+        totalDocs: backup.metadata.counts.totalDocuments,
+        percent: 5,
+        status: "restoring",
+      });
+    }
+    try {
+      rollbackSnapshotId = await createPreRestoreRollbackSnapshot(options?.adminEmail);
+    } catch (err) {
+      console.warn("Could not create automatic pre-restore checkpoint:", err);
+    }
   }
 
   const { data } = backup;
   const errors: string[] = [];
   let processed = 0;
+  let skipped = 0;
 
-  // Calculate total documents to restore
-  const totalDocs =
-    (data.categories?.length || 0) +
-    (data.products?.length || 0) +
-    (data.customers?.length || 0) +
-    (data.team_members?.length || 0) +
-    (data.service_centers?.length || 0) +
-    (data.couriers?.length || 0) +
-    (data.device_models?.length || 0) +
-    (data.spare_parts?.length || 0) +
-    (data.service_calls?.length || 0) +
+  // Filter out invalid items if skipInvalid is enabled
+  const getCleanList = (items: any[] | undefined, colName: string) => {
+    if (!items) return [];
+    const colReport = validationReport.breakdown[colName];
+    if (!colReport || colReport.invalid === 0) return items;
+
+    const invalidIds = new Set(colReport.errors.map((e) => e.id));
+    const validItems = items.filter((item) => {
+      const id = item?.id || item?.ticketNo;
+      if (id && invalidIds.has(id)) {
+        skipped++;
+        return false;
+      }
+      return true;
+    });
+    return validItems;
+  };
+
+  const categories = getCleanList(data.categories, "categories");
+  const products = getCleanList(data.products, "products");
+  const customers = getCleanList(data.customers, "customers");
+  const team_members = getCleanList(data.team_members, "team_members");
+  const service_centers = getCleanList(data.service_centers, "service_centers");
+  const couriers = getCleanList(data.couriers, "couriers");
+  const device_models = data.device_models || [];
+  const spare_parts = data.spare_parts || [];
+  const service_calls = getCleanList(data.service_calls, "service_calls");
+  const financial_years = data.financial_years || [];
+  const counters = data.counters || [];
+  const admins = data.admins || [];
+
+  const totalValidDocs =
+    categories.length +
+    products.length +
+    customers.length +
+    team_members.length +
+    service_centers.length +
+    couriers.length +
+    device_models.length +
+    spare_parts.length +
+    service_calls.length +
     (data.hierarchicalServiceCalls?.length || 0) +
-    (data.financial_years?.length || 0) +
-    (data.counters?.length || 0) +
-    (data.admins?.length || 0);
+    financial_years.length +
+    counters.length +
+    admins.length;
 
   const reportProgress = (colName: string) => {
     if (options?.onProgress) {
       options.onProgress({
         currentCollection: colName,
         processedDocs: processed,
-        totalDocs: Math.max(totalDocs, 1),
-        percent: Math.min(100, Math.round((processed / Math.max(totalDocs, 1)) * 100)),
+        totalDocs: Math.max(totalValidDocs, 1),
+        percent: Math.min(100, Math.round((processed / Math.max(totalValidDocs, 1)) * 100)),
         status: "restoring",
       });
     }
   };
 
-  // Helper to commit in batches of 400 (Firestore limit is 500)
   const commitBatchList = async (
     items: Array<{ id: string; [key: string]: any }>,
     colName: string
@@ -342,35 +569,18 @@ export async function restoreDatabaseFromBackup(
   };
 
   try {
-    // 1. Categories
-    await commitBatchList(data.categories, "categories");
+    await commitBatchList(categories, "categories");
+    await commitBatchList(products, "products");
+    await commitBatchList(customers, "customers");
+    await commitBatchList(team_members, "team_members");
+    await commitBatchList(service_centers, "service_centers");
+    await commitBatchList(couriers, "couriers");
+    await commitBatchList(device_models, "device_models");
+    await commitBatchList(spare_parts, "spare_parts");
+    await commitBatchList(financial_years, "financial_years");
+    await commitBatchList(service_calls, "service_calls");
 
-    // 2. Products
-    await commitBatchList(data.products, "products");
-
-    // 3. Customers
-    await commitBatchList(data.customers, "customers");
-
-    // 4. Team Members
-    await commitBatchList(data.team_members, "team_members");
-
-    // 5. Service Centers
-    await commitBatchList(data.service_centers, "service_centers");
-
-    // 6. Couriers
-    await commitBatchList(data.couriers, "couriers");
-
-    // 7. Device Models & Spare Parts
-    await commitBatchList(data.device_models, "device_models");
-    await commitBatchList(data.spare_parts, "spare_parts");
-
-    // 8. Financial Years
-    await commitBatchList(data.financial_years, "financial_years");
-
-    // 9. Top-Level Service Calls
-    await commitBatchList(data.service_calls, "service_calls");
-
-    // 10. Hierarchical Subcollection Service Calls
+    // Hierarchical Subcollection calls
     if (data.hierarchicalServiceCalls && data.hierarchicalServiceCalls.length > 0) {
       reportProgress("hierarchical_service_calls");
       const BATCH_SIZE = 400;
@@ -403,28 +613,33 @@ export async function restoreDatabaseFromBackup(
       }
     }
 
-    // 11. Counters & Admins
-    await commitBatchList(data.counters, "counters");
-    await commitBatchList(data.admins, "admins");
+    await commitBatchList(counters, "counters");
+    await commitBatchList(admins, "admins");
 
     if (options?.onProgress) {
       options.onProgress({
-        currentCollection: "All Collections",
+        currentCollection: "Complete",
         processedDocs: processed,
-        totalDocs,
+        totalDocs: totalValidDocs,
         percent: 100,
         status: "completed",
       });
     }
 
-    return { restoredCount: processed, errors };
+    return {
+      restoredCount: processed,
+      skippedCount: skipped,
+      rollbackSnapshotId,
+      errors,
+      validationReport,
+    };
   } catch (err: any) {
     if (options?.onProgress) {
       options.onProgress({
         currentCollection: "Error",
         processedDocs: processed,
-        totalDocs,
-        percent: Math.min(100, Math.round((processed / Math.max(totalDocs, 1)) * 100)),
+        totalDocs: totalValidDocs,
+        percent: Math.min(100, Math.round((processed / Math.max(totalValidDocs, 1)) * 100)),
         status: "error",
         error: err?.message || String(err),
       });
