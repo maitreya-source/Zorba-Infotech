@@ -118,7 +118,7 @@ export default function JobCardPrintModal({
   const getTypeName = (type: string) => {
     switch (type) {
       case "company_service_center":
-        return "Company Service Center Return";
+        return "Company Service Center";
       case "in_house_repair":
         return "In-House Service / Repair";
       case "onsite_visit":

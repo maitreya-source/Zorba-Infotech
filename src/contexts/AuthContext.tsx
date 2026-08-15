@@ -14,6 +14,7 @@ const ALLOWED_ADMIN_EMAILS = [
   "maitreya.mul@gmail.com",
   "manishm9730@gmail.com",
   "zorbainfotech@gmail.com",
+  "zorbasquad@gmail.com",
   "maitreyam@google.com",
 ];
 
@@ -66,10 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async () => {
     try {
-      await signInWithRedirect(auth, googleProvider);
-    } catch (err: any) {
-      console.error("signInWithRedirect error:", err);
-      throw err;
+      await signInWithPopup(auth, googleProvider);
+    } catch (popupErr: any) {
+      console.warn("signInWithPopup error:", popupErr);
+      if (
+        popupErr?.code === "auth/popup-blocked" ||
+        popupErr?.code === "auth/cancelled-popup-request"
+      ) {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+      throw popupErr;
     }
   };
 

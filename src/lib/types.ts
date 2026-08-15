@@ -71,6 +71,7 @@ export interface Customer {
   address?: string;
   companyName?: string;
   notes?: string;
+  searchTokens?: string[];
   createdAt: string | number;
 }
 
@@ -79,6 +80,50 @@ export interface DeviceCategory {
   name: string;
   description?: string;
   createdAt: string | number;
+}
+
+export interface DeviceModel {
+  id: string;
+  categoryName: string;
+  modelName: string;
+  createdAt: number;
+}
+
+export interface SparePartCatalogItem {
+  id: string;
+  name: string;
+  unitPrice: number;
+  category?: string;
+  createdAt: number;
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  role?: string;
+  phone?: string;
+  active: boolean;
+  createdAt: number;
+}
+
+export interface TimelineEvent {
+  id: string;
+  timestamp: number;
+  stage:
+    | "intake_created"
+    | "replacement_sent_service_center"
+    | "replacement_received_service_center"
+    | "replacement_given_customer"
+    | "replacement_received_customer"
+    | "status_change"
+    | "comment_added";
+  title: string;
+  staffId: string;
+  staffName: string;
+  status: ServiceCallStatus;
+  courierName?: string;
+  courierDocketNumber?: string;
+  comments?: string;
 }
 
 export interface ServiceCenterAddress {
@@ -112,41 +157,62 @@ export interface ServiceCall {
   id: string;
   ticketNo: string; // Service Call Number
   type: ServiceCallType;
-  dateTime: string; // ISO or YYYY-MM-DDTHH:mm format, auto-populated, modifiable
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
+  dateTime: string; // ISO or YYYY-MM-DD format
+  customerId: string; // Reference to Customer document
+  
+  // Resolved / populated customer details for UI convenience
+  customerName?: string;
+  customerPhone?: string;
   customerEmail?: string;
   customerAddress?: string;
-  deviceCategory: string; // e.g. Printer, Toner, Laptop, Desktop, CCTV, Router
-  modelNumber?: string;   // optional
-  serialNumber?: string;  // optional
+  customer?: Customer;
+  
+  // Device details
+  deviceCategory: string;
+  modelNumber?: string;
+  serialNumber?: string;
   quantity: number;
-  issueDescription: string; // e.g. Toner refill, Antivirus installation
+  issueDescription: string;
   warrantyStatus: WarrantyStatus;
   status: ServiceCallStatus;
+
+  // Internal Tracking Fields (Internal Only - Excluded from WhatsApp)
+  dateOfPurchase?: string;
+  billNumber?: string;
+
+  // Back-office handled staff (Mandatory for auditing)
+  handledByStaffId?: string;
+  handledByStaffName?: string;
   
   // Service Center details
   serviceCenterId?: string;
   serviceCenterName?: string;  
   serviceCenterAddressId?: string;
   serviceCenterAddress?: string;
-  rmaNumber?: string;          // tracking / RMA number
-  courierCharges?: number;     // optional courier/transport charges for service center returns
+  rmaNumber?: string;          // tracking / RMA / Courier number
+  courierName?: string;        // Courier service name (e.g. Reliance, Trackon)
+  courierCharges?: number;     // optional courier/transport charges for service center
   
   // Onsite details
-  onsiteAddress?: string;      // for onsite visits
+  onsiteAddress?: string;
 
-  // Technician Assignee
+  // Technician Assignee (Technical staff)
   technicianId?: string;
   technicianName?: string;
 
-  // Billing
+  // Billing (supports 0 parts without errors)
   parts: ServicePart[];
   partsTotal: number;
   serviceCharges: number;
   grandTotal: number;
+  
+  // Internal notes / miscellaneous comments
   notes?: string;
+  internalComments?: string;
+
+  // Lifecycle Timeline
+  timeline?: TimelineEvent[];
+
   createdAt: string | number;
   updatedAt: string | number;
 }

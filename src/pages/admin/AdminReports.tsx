@@ -190,7 +190,7 @@ export default function AdminReports() {
             {serviceCenterCount + onsiteCount}
           </p>
           <div className="text-[11px] text-muted-foreground">
-            {serviceCenterCount} Warranty Returns · {onsiteCount} Visits
+            {serviceCenterCount} Service Center · {onsiteCount} Visits
           </div>
         </div>
       </div>

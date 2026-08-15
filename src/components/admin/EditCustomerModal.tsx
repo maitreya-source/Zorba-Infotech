@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { updateCustomer } from "@/lib/firestore";
+import { toTitleCase, formatIndianPhoneNumber } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 
 interface EditCustomerModalProps {
@@ -78,17 +79,21 @@ export default function EditCustomerModal({
       return;
     }
 
-    const cleanExtraPhones = additionalPhones.filter((p) => p.trim().length > 3);
+    const formattedName = toTitleCase(name);
+    const formattedPhone = formatIndianPhoneNumber(phone);
+    const cleanExtraPhones = additionalPhones
+      .filter((p) => p.trim().length > 3)
+      .map(formatIndianPhoneNumber);
 
     setSaving(true);
     try {
       await updateCustomer(customer.id, {
-        name: name.trim(),
-        phone: phone.trim(),
+        name: formattedName,
+        phone: formattedPhone,
         additionalPhones: cleanExtraPhones.length > 0 ? cleanExtraPhones : undefined,
         email: email.trim() || undefined,
         address: address.trim() || undefined,
-        companyName: companyName.trim() || undefined,
+        companyName: companyName.trim() ? toTitleCase(companyName) : undefined,
       });
 
       toast.success("Customer profile updated");

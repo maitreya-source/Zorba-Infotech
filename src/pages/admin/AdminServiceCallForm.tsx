@@ -9,23 +9,26 @@ import {
   Trash2,
   UserPlus,
   FolderPlus,
-  Save,
   Check,
-  UserCheck,
   Calendar,
   Sparkles,
-  ShieldCheck,
-  Package,
-  Receipt,
-  User,
-  Pencil,
   Printer,
+  MessageCircle,
+  Pencil,
+  Save,
+  Activity,
+  Package,
+  History,
+  ShieldCheck,
+  FileText,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -38,21 +41,30 @@ import {
   getDeviceCategories,
   getServiceCenters,
   getTechnicians,
+  getStaffMembers,
   getServiceCall,
   createServiceCall,
   updateServiceCall,
+  addTimelineEvent,
 } from "@/lib/firestore";
+import { toTitleCase, formatIndianPhoneNumber, generateWhatsAppMessage } from "@/lib/utils";
 import type {
   Customer,
   DeviceCategory,
   ServiceCenter,
   Technician,
+  StaffMember,
+  TimelineEvent,
   ServiceCallStatus,
   ServiceCallType,
   ServicePart,
   WarrantyStatus,
-  ServiceCall,
 } from "@/lib/types";
+import CustomerTypeahead from "@/components/admin/CustomerTypeahead";
+import ModelTypeahead from "@/components/admin/ModelTypeahead";
+import SparePartTypeahead from "@/components/admin/SparePartTypeahead";
+import TimelineCard from "@/components/admin/TimelineCard";
+import AddTimelineEventModal from "@/components/admin/AddTimelineEventModal";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
@@ -61,39 +73,30 @@ import CreateTechnicianModal from "@/components/admin/CreateTechnicianModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 
-const ISSUE_SUGGESTIONS = [
-  "Toner Refill & Drum Cleaning",
-  "Antivirus Installation & Setup",
-  "Display / Screen Replacement",
-  "Windows OS Installation",
-  "RAM / SSD Upgrade",
-  "CCTV Camera & DVR Config",
-  "Power Supply Repair",
+const QUICK_TAGS = [
+  "Power Dead Troubleshooting",
+  "Cable Termination & Setup",
+  "Display & Output Replacement",
+  "Warranty OEM Inspection",
+  "Parts Replacement",
+  "CCTV General Service",
+  "Power Supply Check",
 ];
 
 export default function AdminServiceCallForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
-  const dateInputRef = useRef<HTMLInputElement>(null);
   const [ticketNo, setTicketNo] = useState<string>("");
-  const [type, setType] = useState<ServiceCallType>("in_house_repair");
+  const [type, setType] = useState<ServiceCallType>("company_service_center");
   const [dateTime, setDateTime] = useState<string>(() => {
     return new Date().toISOString().slice(0, 10);
   });
 
-  const handleOpenDatePicker = () => {
-    if (dateInputRef.current) {
-      if (typeof dateInputRef.current.showPicker === "function") {
-        dateInputRef.current.showPicker();
-      } else {
-        dateInputRef.current.focus();
-      }
-    }
-  };
-
+  // Customer State
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [customerName, setCustomerName] = useState("");
@@ -101,15 +104,24 @@ export default function AdminServiceCallForm() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
 
+  // Device Details State
   const [categories, setCategories] = useState<DeviceCategory[]>([]);
-  const [deviceCategory, setDeviceCategory] = useState("");
+  const [deviceCategory, setDeviceCategory] = useState("CCTV & Security");
   const [modelNumber, setModelNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [quantity, setQuantity] = useState<number | string>(1);
   const [issueDescription, setIssueDescription] = useState("");
-
   const [warrantyStatus, setWarrantyStatus] = useState<WarrantyStatus>("not_applicable");
   const [status, setStatus] = useState<ServiceCallStatus>("received");
+
+  // Internal-Only Tracking Fields (Excluded from WhatsApp)
+  const [dateOfPurchase, setDateOfPurchase] = useState("");
+  const [billNumber, setBillNumber] = useState("");
+
+  // Mandatory Back-Office Staff Member
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [handledByStaffId, setHandledByStaffId] = useState("");
+  const [handledByStaffName, setHandledByStaffName] = useState("");
 
   // Service Centers State
   const [serviceCenters, setServiceCenters] = useState<ServiceCenter[]>([]);
@@ -118,26 +130,31 @@ export default function AdminServiceCallForm() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [serviceCenterAddress, setServiceCenterAddress] = useState("");
   const [rmaNumber, setRmaNumber] = useState("");
+  const [courierName, setCourierName] = useState("Trackon Courier");
   const [courierChargesInput, setCourierChargesInput] = useState<string>("0");
 
-  // Technicians State
+  // Technicians State (Technical Repair Assignee)
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>("");
   const [technicianName, setTechnicianName] = useState("");
 
-  // Onsite Details & Edit Lock State
+  // Onsite Details
   const [onsiteAddress, setOnsiteAddress] = useState("");
-  const [isEditingOnsiteAddress, setIsEditingOnsiteAddress] = useState(false);
 
-  // Billing (Using string state to allow erasing '0')
+  // Billing (Supports 0 parts without errors)
   const [parts, setParts] = useState<ServicePart[]>([]);
   const [serviceChargesInput, setServiceChargesInput] = useState<string>("0");
-  const [notes, setNotes] = useState("");
+  const [internalComments, setInternalComments] = useState("");
+
+  // Timeline Lifecycle Subcollection
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [quickTimelineStage, setQuickTimelineStage] = useState<TimelineEvent["stage"] | null>(null);
+  const [showQuickTimelineModal, setShowQuickTimelineModal] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Modals
+  // Inline Modals
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showEditCustomerModal, setShowEditCustomerModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -147,19 +164,27 @@ export default function AdminServiceCallForm() {
 
   const loadMasterData = async () => {
     try {
-      const custs = await getCustomers().catch(() => []);
-      const cats = await getDeviceCategories().catch(() => []);
-      const centers = await getServiceCenters().catch(() => []);
-      const techs = await getTechnicians().catch(() => []);
+      const [custs, cats, centers, techs, staff] = await Promise.all([
+        getCustomers().catch(() => []),
+        getDeviceCategories().catch(() => []),
+        getServiceCenters().catch(() => []),
+        getTechnicians().catch(() => []),
+        getStaffMembers().catch(() => []),
+      ]);
 
       setCustomers(custs);
-      
+      setStaffList(staff);
+      if (staff.length > 0 && !handledByStaffId) {
+        setHandledByStaffId(staff[0].id);
+        setHandledByStaffName(staff[0].name);
+      }
+
       const fallbackCats = cats.length > 0 ? cats : [
-        { id: "cat-1", name: "Printer", description: "Printers" },
-        { id: "cat-2", name: "Toner / Cartridge", description: "Refill" },
-        { id: "cat-3", name: "Laptop", description: "Laptops" },
-        { id: "cat-4", name: "Desktop & PC", description: "Desktops" },
-        { id: "cat-5", name: "CCTV & Security", description: "Cameras" },
+        { id: "cat-1", name: "CCTV & Security", description: "Cameras & Surveillance" },
+        { id: "cat-2", name: "Printer", description: "Printers" },
+        { id: "cat-3", name: "Toner / Cartridge", description: "Refill" },
+        { id: "cat-4", name: "Laptop", description: "Laptops" },
+        { id: "cat-5", name: "Desktop & PC", description: "Desktops" },
         { id: "cat-6", name: "Router & Networking", description: "Routers" },
         { id: "cat-7", name: "UPS & Inverter", description: "Power" },
         { id: "cat-8", name: "Scanner & Billing", description: "Scanners" },
@@ -208,6 +233,14 @@ export default function AdminServiceCallForm() {
       setQuantity(sc.quantity || 1);
       setIssueDescription(sc.issueDescription);
 
+      setDateOfPurchase(sc.dateOfPurchase || "");
+      setBillNumber(sc.billNumber || "");
+
+      if (sc.handledByStaffId) {
+        setHandledByStaffId(sc.handledByStaffId);
+        setHandledByStaffName(sc.handledByStaffName || "");
+      }
+
       setWarrantyStatus(sc.warrantyStatus);
       setStatus(sc.status);
 
@@ -217,6 +250,7 @@ export default function AdminServiceCallForm() {
       setSelectedAddressId(sc.serviceCenterAddressId || "");
       setServiceCenterAddress(sc.serviceCenterAddress || "");
       setRmaNumber(sc.rmaNumber || "");
+      setCourierName(sc.courierName || "Trackon Courier");
       setCourierChargesInput(String(sc.courierCharges || 0));
 
       // Technician
@@ -227,103 +261,104 @@ export default function AdminServiceCallForm() {
 
       setParts(sc.parts || []);
       setServiceChargesInput(String(sc.serviceCharges || 0));
-      setNotes(sc.notes || "");
+      setInternalComments(sc.internalComments || sc.notes || "");
+      setTimeline(sc.timeline || []);
+
       setLoading(false);
     });
   }, [id, navigate]);
 
-  // Handle Customer Selection
-  const handleSelectCustomer = (custVal: string) => {
-    setSelectedCustomerId(custVal);
-    const found = customers.find((c) => c.id === custVal);
-    if (found) {
-      setCustomerName(found.name);
-      setCustomerPhone(found.phone);
-      setCustomerEmail(found.email || "");
-      setCustomerAddress(found.address || "");
-      if (found.address) {
-        setOnsiteAddress(found.address);
+  // Handle Customer Selection from Typeahead
+  const handleSelectCustomer = (cust: Customer) => {
+    setSelectedCustomerId(cust.id);
+    setCustomerName(cust.name);
+    setCustomerPhone(cust.phone);
+    setCustomerEmail(cust.email || "");
+    setCustomerAddress(cust.address || "");
+    if (cust.address) {
+      setOnsiteAddress(cust.address);
+    }
+  };
+
+  // Keyboard Shortcuts Hook
+  useTallyShortcuts({
+    onCtrlA: () => handleSubmit(),
+    onEsc: () => {
+      if (showCustomerModal) setShowCustomerModal(false);
+      else if (showEditCustomerModal) setShowEditCustomerModal(false);
+      else if (showCategoryModal) setShowCategoryModal(false);
+      else if (showCenterModal) setShowCenterModal(false);
+      else if (showTechModal) setShowTechModal(false);
+      else if (showQuickTimelineModal) setShowQuickTimelineModal(false);
+      else if (showPrintModal) setShowPrintModal(false);
+      else navigate("/admin/service-calls");
+    },
+    onCtrlF2: () => {
+      if (dateInputRef.current) {
+        dateInputRef.current.focus();
+        if (typeof dateInputRef.current.showPicker === "function") {
+          dateInputRef.current.showPicker();
+        }
       }
-    }
+    },
+    onF5: () => triggerTimelineModal("replacement_sent_service_center"),
+    onF6: () => triggerTimelineModal("replacement_received_service_center"),
+    onF8: () => triggerTimelineModal("replacement_given_customer"),
+    onF9: () => triggerTimelineModal("replacement_received_customer"),
+  });
+
+  const triggerTimelineModal = (stage: TimelineEvent["stage"]) => {
+    setQuickTimelineStage(stage);
+    setShowQuickTimelineModal(true);
   };
 
-  // Handle Service Center Selection
-  const handleSelectServiceCenter = (scId: string) => {
-    setSelectedServiceCenterId(scId);
-    const found = serviceCenters.find((c) => c.id === scId);
-    if (found) {
-      setServiceCenterName(found.name);
-      const defaultAddr = found.addresses.find((a) => a.isDefault) || found.addresses[0];
-      if (defaultAddr) {
-        setSelectedAddressId(defaultAddr.id);
-        setServiceCenterAddress(defaultAddr.address);
-      }
-    }
-  };
-
-  // Handle Service Center Address Selection
-  const handleSelectCenterAddress = (addrId: string) => {
-    setSelectedAddressId(addrId);
-    const foundSC = serviceCenters.find((c) => c.id === selectedServiceCenterId);
-    if (foundSC) {
-      const addrObj = foundSC.addresses.find((a) => a.id === addrId);
-      if (addrObj) setServiceCenterAddress(addrObj.address);
-    }
-  };
-
-  // Handle Technician Selection
-  const handleSelectTechnician = (techId: string) => {
-    setSelectedTechnicianId(techId);
-    const found = technicians.find((t) => t.id === techId);
-    if (found) setTechnicianName(found.name);
-  };
-
-  // Add Part Row
-  const handleAddPart = () => {
-    const newPart: ServicePart = {
-      id: `part-${Date.now()}`,
-      name: "",
-      quantity: 1,
-      unitPrice: 0,
-      totalPrice: 0,
+  const handleAddTimelineEvent = async (eventData: Omit<TimelineEvent, "id" | "timestamp">) => {
+    const now = Date.now();
+    const newEvent: TimelineEvent = {
+      id: `evt-${now}`,
+      timestamp: now,
+      ...eventData,
     };
-    setParts((prev) => [...prev, newPart]);
+    setTimeline((prev) => [...prev, newEvent]);
+    setStatus(eventData.status);
+
+    if (id) {
+      await addTimelineEvent(id, eventData).catch(() => {});
+    }
   };
 
-  // Update Part Row
-  const handleUpdatePart = (
-    partId: string,
-    field: keyof ServicePart,
-    value: string | number
-  ) => {
-    setParts((prev) =>
-      prev.map((p) => {
-        if (p.id !== partId) return p;
-        const updated = { ...p, [field]: value };
-        const qty = Number(updated.quantity) || 0;
-        const price = Number(updated.unitPrice) || 0;
-        updated.totalPrice = qty * price;
-        return updated;
-      })
-    );
+  // Spare Parts Row handlers
+  const handleAddPartRow = () => {
+    setParts((prev) => [...prev, { id: `part-${Date.now()}`, name: "", quantity: 1, unitPrice: 0, totalPrice: 0 }]);
   };
 
-  // Remove Part Row
-  const handleRemovePart = (partId: string) => {
-    setParts((prev) => prev.filter((p) => p.id !== partId));
+  const handleUpdatePart = (index: number, field: keyof ServicePart, value: any) => {
+    setParts((prev) => {
+      const copy = [...prev];
+      const row = { ...copy[index], [field]: value };
+      if (field === "quantity" || field === "unitPrice") {
+        const q = Number(row.quantity) || 0;
+        const p = Number(row.unitPrice) || 0;
+        row.totalPrice = q * p;
+      }
+      copy[index] = row;
+      return copy;
+    });
   };
 
-  // Calculations
-  const courierChargesNum = type === "company_service_center" ? (Number(courierChargesInput) || 0) : 0;
+  const handleRemovePartRow = (index: number) => {
+    setParts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Calculation (0 parts is valid)
+  const cleanParts = parts.filter((p) => p.name.trim().length > 0);
+  const partsTotal = cleanParts.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
   const serviceChargesNum = Number(serviceChargesInput) || 0;
-  const partsTotal = parts.reduce((acc, p) => acc + (p.totalPrice || 0), 0);
-  const grandTotal = partsTotal + serviceChargesNum + courierChargesNum;
+  const courierChargesNum = Number(courierChargesInput) || 0;
+  const grandTotal = partsTotal + serviceChargesNum + (type === "company_service_center" ? courierChargesNum : 0);
 
   // Submit Handler
-  const handleSubmit = async (
-    e?: React.FormEvent,
-    options?: { autoPrint?: boolean; navigateBack?: boolean }
-  ) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!customerName.trim() || !customerPhone.trim()) {
       toast.error("Please enter Customer Name and Phone Number");
@@ -333,6 +368,10 @@ export default function AdminServiceCallForm() {
       toast.error("Please describe the Issue / Task");
       return;
     }
+    if (!handledByStaffId) {
+      toast.error("Mandatory Field: Please select the Back-Office Staff Member handling this call");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -340,8 +379,8 @@ export default function AdminServiceCallForm() {
         type,
         dateTime,
         customerId: selectedCustomerId || `cust-${Date.now()}`,
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
+        customerName: toTitleCase(customerName),
+        customerPhone: formatIndianPhoneNumber(customerPhone),
         customerEmail: customerEmail.trim() || undefined,
         customerAddress: customerAddress.trim() || undefined,
         deviceCategory,
@@ -352,12 +391,21 @@ export default function AdminServiceCallForm() {
         warrantyStatus,
         status,
 
+        // Internal tracking fields (excluded from WhatsApp)
+        dateOfPurchase: dateOfPurchase.trim() || undefined,
+        billNumber: billNumber.trim() || undefined,
+
+        // Backoffice handled staff
+        handledByStaffId,
+        handledByStaffName,
+
         // Service center
         serviceCenterId: selectedServiceCenterId || undefined,
         serviceCenterName: serviceCenterName.trim() || undefined,
         serviceCenterAddressId: selectedAddressId || undefined,
         serviceCenterAddress: serviceCenterAddress.trim() || undefined,
         rmaNumber: rmaNumber.trim() || undefined,
+        courierName: courierName.trim() || undefined,
         courierCharges: type === "company_service_center" ? courierChargesNum : undefined,
 
         // Technician
@@ -367,354 +415,415 @@ export default function AdminServiceCallForm() {
         // Onsite
         onsiteAddress: type === "onsite_visit" ? onsiteAddress.trim() : undefined,
 
-        parts,
+        parts: cleanParts,
         partsTotal,
         serviceCharges: serviceChargesNum,
         grandTotal,
-        notes: notes.trim() || undefined,
+        internalComments: internalComments.trim() || undefined,
+        notes: internalComments.trim() || undefined,
+        timeline,
       };
 
-      let currentTicket = ticketNo;
       if (isEditing && id) {
         await updateServiceCall(id, payload);
-        toast.success("Service Call ticket updated successfully");
+        toast.success("Service Call ticket updated successfully!");
       } else {
-        const createdCall = await createServiceCall(payload);
-        if (createdCall?.ticketNo) {
-          currentTicket = createdCall.ticketNo;
-          setTicketNo(createdCall.ticketNo);
-        }
-        toast.success("Service Call ticket created successfully");
+        const created = await createServiceCall(payload);
+        setTicketNo(created.ticketNo);
+        toast.success(`Service Call created: ${created.ticketNo}`);
       }
 
-      // Save does NOT mean close - Auto open print modal and stay on page
-      if (options?.autoPrint !== false) {
-        setShowPrintModal(true);
-      }
-
-      if (options?.navigateBack === true) {
-        navigate("/admin/service-calls");
-      }
+      navigate("/admin/service-calls");
     } catch (err: any) {
-      console.error("Error saving service call:", err);
-      toast.error("Failed to save service call ticket");
+      console.error("Save error:", err);
+      toast.error(err?.message || "Failed to save service call");
     } finally {
       setSaving(false);
     }
   };
 
-  useTallyShortcuts({
-    onAltC: () => setShowCustomerModal(true),
-    onCtrlA: () => handleSubmit(),
-    onEsc: () => navigate("/admin/service-calls"),
-  });
+  // WhatsApp Message Sender (excludes internal DOP, Bill No, Internal Notes)
+  const handleSendWhatsApp = () => {
+    if (!customerPhone) {
+      toast.error("Customer phone number is missing");
+      return;
+    }
+    const cleanPhone = customerPhone.replace(/\D/g, "");
+    const waPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
+    const text = encodeURIComponent(
+      generateWhatsAppMessage({
+        ticketNo: ticketNo || "New Ticket",
+        dateTime,
+        customerName: toTitleCase(customerName),
+        customerPhone,
+        deviceCategory,
+        modelNumber,
+        issueDescription,
+        status,
+        grandTotal,
+        courierName: type === "company_service_center" ? courierName : undefined,
+        courierDocketNumber: type === "company_service_center" ? rmaNumber : undefined,
+      })
     );
-  }
 
-  const selectedSC = serviceCenters.find((sc) => sc.id === selectedServiceCenterId);
+    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank");
+  };
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5 text-xs">
-      {/* Sleek Dark Executive Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 text-white shadow-xl space-y-3">
-        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
-
-        {/* Row 1: Title, Ticket # Badge & Primary Action Buttons */}
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-3">
-          <div className="flex items-center gap-3">
-            <Link to="/admin/service-calls">
-              <Button variant="secondary" size="sm" className="gap-1.5 h-8.5 text-xs bg-white/10 hover:bg-white/20 text-white border-white/10 backdrop-blur-md">
-                <ArrowLeft className="h-4 w-4" /> Back to List
-              </Button>
-            </Link>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold backdrop-blur-md border border-white/10 text-amber-300">
-                  <Sparkles className="h-3 w-3" /> Service Intake Voucher
-                </div>
-                {ticketNo && (
-                  <span className="font-mono text-xs font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2.5 py-0.5 rounded-full">
-                    Ticket #{ticketNo}
-                  </span>
-                )}
-              </div>
-              <h1 className="text-lg md:text-xl font-extrabold font-display leading-tight text-white mt-0.5">
-                {isEditing ? "Edit Service Call Ticket" : "New Service Call Intake"}
-              </h1>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleSubmit(undefined, { autoPrint: false, navigateBack: true })}
-              disabled={saving}
-              className="gap-1.5 font-semibold h-9 text-xs border-slate-700 bg-slate-800/90 hover:bg-slate-700 text-slate-100 shadow-sm"
-            >
-              <Check className="h-4 w-4 text-emerald-400" />
-              Save & Exit
-            </Button>
-
-            <Button
-              type="button"
-              onClick={() => handleSubmit(undefined, { autoPrint: true, navigateBack: false })}
-              disabled={saving}
-              size="sm"
-              className="gap-1.5 font-extrabold h-9 bg-primary hover:bg-primary/90 text-primary-foreground text-xs px-4 shadow-md"
-            >
-              <Printer className="h-4 w-4 text-amber-300" />
-              {saving ? "Saving…" : "Save & Print"}
-            </Button>
-          </div>
+    <div className="space-y-6 max-w-[1440px] mx-auto pb-16">
+      {/* Top Breadcrumb & Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+          <span>Admin</span>
+          <span>/</span>
+          <Link to="/admin/service-calls" className="hover:text-slate-900 transition-colors">
+            Service Calls
+          </Link>
+          <span>/</span>
+          <span className="font-bold text-slate-900 dark:text-white">
+            {isEditing ? "Edit Ticket" : "New Service Call"}
+          </span>
         </div>
 
-        {/* Row 2: Dark Glassmorphism Settings Bar (Date, Status & Technician Selector) */}
-        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/5 p-2.5 rounded-xl border border-white/10 backdrop-blur-md">
-          <div
-            onClick={handleOpenDatePicker}
-            className="flex items-center gap-2 cursor-pointer bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-xl border border-white/10 transition-all select-none"
-            title="Click to select intake date"
-          >
-            <Calendar className="h-4 w-4 text-amber-300 shrink-0" />
-            <Label className="text-xs font-semibold shrink-0 text-white cursor-pointer">Date:</Label>
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={dateTime ? dateTime.slice(0, 10) : ""}
-              onChange={(e) => setDateTime(e.target.value)}
-              className="h-7 text-xs border-0 bg-transparent p-0 w-full text-white font-medium focus:outline-none cursor-pointer [color-scheme:dark]"
-              required
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold shrink-0 text-white">Status:</span>
-            <Select value={status} onValueChange={(val: ServiceCallStatus) => setStatus(val)}>
-              <SelectTrigger className="h-8 text-xs bg-white/10 text-white border-white/10 font-medium">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="received">Received / Logged</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="sent_to_service_center">Sent to Service Center</SelectItem>
-                <SelectItem value="waiting_for_parts">Waiting for Parts</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <UserCheck className="h-4 w-4 text-blue-400 shrink-0" />
-            <Label className="text-xs font-semibold shrink-0 text-white">Tech:</Label>
-            <Select value={selectedTechnicianId} onValueChange={handleSelectTechnician}>
-              <SelectTrigger className="h-8 text-xs bg-blue-500/20 text-blue-200 border-blue-400/30 font-semibold flex-1">
-                <SelectValue placeholder="Assign Tech…" />
-              </SelectTrigger>
-              <SelectContent>
-                {technicians.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    👤 {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center gap-2">
+          <Link to="/admin/service-calls">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 px-3.5 text-xs font-semibold rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs hover:bg-slate-50 text-slate-700 dark:text-slate-300 gap-1.5"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to List
+            </Button>
+          </Link>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Step 1: Service Call Type Selector Row */}
-        <div className="rounded-2xl border bg-card p-4 space-y-2.5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-extrabold text-xs text-foreground">
-              <Badge variant="secondary" className="bg-primary/10 text-primary font-mono text-[11px] px-2">1</Badge>
-              Service Call Type *
-            </div>
-            <span className="text-[11px] text-muted-foreground font-medium">Select intake workflow category</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-            {/* Type 1: Service Center */}
-            <div
-              onClick={() => setType("company_service_center")}
-              className={`cursor-pointer rounded-xl border p-3 transition-all flex items-center justify-between gap-2 ${
-                type === "company_service_center"
-                  ? "border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/30 shadow-sm"
-                  : "bg-card hover:bg-purple-500/5 hover:border-purple-300"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 font-bold text-xs text-purple-700 dark:text-purple-300">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 text-purple-600">
-                  <Building2 className="h-4 w-4" />
-                </div>
-                <span>Service Center Return</span>
-              </div>
-              <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${type === "company_service_center" ? "border-purple-600 bg-purple-600 text-white" : "border-muted"}`}>
-                {type === "company_service_center" && <Check className="h-3 w-3" />}
-              </div>
-            </div>
-
-            {/* Type 2: In-House Repair */}
-            <div
-              onClick={() => setType("in_house_repair")}
-              className={`cursor-pointer rounded-xl border p-3 transition-all flex items-center justify-between gap-2 ${
-                type === "in_house_repair"
-                  ? "border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 shadow-sm"
-                  : "bg-card hover:bg-blue-500/5 hover:border-blue-300"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 font-bold text-xs text-blue-700 dark:text-blue-300">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/20 text-blue-600">
-                  <Wrench className="h-4 w-4" />
-                </div>
-                <span>In-House Service / Refill</span>
-              </div>
-              <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${type === "in_house_repair" ? "border-blue-600 bg-blue-600 text-white" : "border-muted"}`}>
-                {type === "in_house_repair" && <Check className="h-3 w-3" />}
-              </div>
-            </div>
-
-            {/* Type 3: Onsite Visit */}
-            <div
-              onClick={() => setType("onsite_visit")}
-              className={`cursor-pointer rounded-xl border p-3 transition-all flex items-center justify-between gap-2 ${
-                type === "onsite_visit"
-                  ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/30 shadow-sm"
-                  : "bg-card hover:bg-emerald-500/5 hover:border-emerald-300"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 font-bold text-xs text-emerald-700 dark:text-emerald-300">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600">
-                  <MapPin className="h-4 w-4" />
-                </div>
-                <span>Onsite Visit & Install</span>
-              </div>
-              <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${type === "onsite_visit" ? "border-emerald-600 bg-emerald-600 text-white" : "border-muted"}`}>
-                {type === "onsite_visit" && <Check className="h-3 w-3" />}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Vertical Sequential Layout (One Section After Another) */}
-
-        {/* Step 2: Customer Details Section */}
-        <div className="rounded-2xl border bg-card p-4 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between border-b pb-2">
-            <div className="flex items-center gap-2 font-extrabold text-xs text-foreground">
-              <Badge variant="secondary" className="bg-primary/10 text-primary font-mono text-[11px] px-2">2</Badge>
-              <User className="h-4 w-4 text-primary" /> Customer Details
-            </div>
-            <div className="flex items-center gap-2">
-              {(selectedCustomerId || customerName) && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowEditCustomerModal(true)}
-                  className="h-7 text-[11px] gap-1 font-bold border-primary/30 text-primary hover:bg-primary/10"
-                >
-                  <Pencil className="h-3 w-3" /> Edit Customer Profile
-                </Button>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Section 0: Header & Meta Card (Date, Status, Handled Staff, Technician) */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white">
+                {isEditing ? "Edit Service Call Ticket" : "New Service Call Ticket"}
+              </h1>
+              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/50 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+                Service Intake Voucher
+              </Badge>
+              {ticketNo && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50 font-mono text-xs px-2.5 py-0.5 rounded-full font-bold">
+                  {ticketNo}
+                </Badge>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCustomerModal(true)}
-                className="h-7 text-[11px] gap-1 text-primary hover:bg-primary/10"
-              >
-                <UserPlus className="h-3.5 w-3.5" /> + New Customer
-              </Button>
+            </div>
+
+            {/* Quick Keyboard Hint Bar */}
+            <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+              <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 font-bold">Ctrl+A</span> Save
+              <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 font-bold">Esc</span> Cancel
+              <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 font-bold">F5-F9</span> Milestones
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+            {/* Date of Call */}
             <div>
-              <Label htmlFor="cust-select" className="text-[11px] font-semibold">Auto-fill Customer Profile</Label>
-              <Select value={selectedCustomerId} onValueChange={handleSelectCustomer}>
-                <SelectTrigger className="mt-1 h-9 text-xs rounded-xl">
-                  <SelectValue placeholder="Choose registered customer…" />
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span>Date of Call</span>
+                <span className="text-[10px] text-slate-400 font-mono font-normal">F2</span>
+              </Label>
+              <Input
+                ref={dateInputRef}
+                type="date"
+                value={dateTime}
+                onChange={(e) => setDateTime(e.target.value)}
+                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium"
+              />
+            </div>
+
+            {/* Overall Ticket Status */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Overall Ticket Status
+              </Label>
+              <Select value={status} onValueChange={(val: ServiceCallStatus) => setStatus(val)}>
+                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold">
+                  <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {customers.length === 0 ? (
-                    <SelectItem value="empty-cust-hint" disabled>
-                      No saved customers (Click + New Customer to add)
-                    </SelectItem>
-                  ) : (
-                    customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.phone})
-                      </SelectItem>
-                    ))
-                  )}
+                  <SelectItem value="received">● Received</SelectItem>
+                  <SelectItem value="sent_to_service_center">● Sent to Service Center</SelectItem>
+                  <SelectItem value="in_progress">● In Progress</SelectItem>
+                  <SelectItem value="waiting_for_parts">● Waiting for Parts</SelectItem>
+                  <SelectItem value="completed">● Completed</SelectItem>
+                  <SelectItem value="delivered">● Delivered</SelectItem>
+                  <SelectItem value="cancelled">● Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
+            {/* Mandatory Back-Office Staff (Handled By) */}
             <div>
-              <Label htmlFor="cust-name" className="text-[11px] font-semibold">Customer Name (LastName FirstName) *</Label>
-              <Input
-                id="cust-name"
-                placeholder="Selected Customer Name"
-                value={customerName}
-                readOnly
-                className="mt-1 h-9 text-xs rounded-xl bg-muted/40 cursor-not-allowed font-semibold text-foreground"
-                required
-              />
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <span>Handled By (Backoffice)</span>
+                <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={handledByStaffId}
+                onValueChange={(val) => {
+                  setHandledByStaffId(val);
+                  const found = staffList.find((s) => s.id === val);
+                  if (found) setHandledByStaffName(found.name);
+                }}
+              >
+                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold text-[#2563EB]">
+                  <SelectValue placeholder="Select Staff Member..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffList.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} {s.role ? `(${s.role})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* Assigned Technician */}
             <div>
-              <Label htmlFor="cust-phone" className="text-[11px] font-semibold">Contact Phone Number *</Label>
-              <div className="flex items-center gap-1.5 mt-1">
-                <Input
-                  id="cust-phone"
-                  placeholder="Selected Customer Phone"
-                  value={customerPhone}
-                  readOnly
-                  className="h-9 text-xs flex-1 font-mono rounded-xl bg-muted/40 cursor-not-allowed font-bold"
-                  required
-                />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Technical Assignee
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setShowTechModal(true)}
+                  className="text-[11px] font-semibold text-[#2563EB] hover:underline"
+                >
+                  + Add
+                </button>
               </div>
+              <Select
+                value={selectedTechnicianId}
+                onValueChange={(val) => {
+                  setSelectedTechnicianId(val);
+                  const found = technicians.find((t) => t.id === val);
+                  if (found) setTechnicianName(found.name);
+                }}
+              >
+                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                  <SelectValue placeholder="Assign Tech..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {technicians.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} {t.specialization ? `(${t.specialization})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
 
-        {/* Step 3: Device & Warranty Details Section */}
-        <div className="rounded-2xl border bg-card p-4 space-y-3.5 shadow-xs">
-          <div className="flex items-center justify-between border-b pb-2">
-            <div className="flex items-center gap-2 font-extrabold text-xs text-foreground">
-              <Badge variant="secondary" className="bg-primary/10 text-primary font-mono text-[11px] px-2">3</Badge>
-              <Package className="h-4 w-4 text-primary" /> Device & Warranty Details
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowCategoryModal(true)}
-              className="h-7 text-[11px] gap-1 text-primary hover:bg-primary/10"
-            >
-              <FolderPlus className="h-3.5 w-3.5" /> + Category
-            </Button>
+        {/* Section 1: Service Call Type */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+              1
+            </span>
+            <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+              Service Call Type
+            </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-            {/* Device Category (3 cols) */}
-            <div className="md:col-span-3">
-              <Label className="text-[11px] font-semibold">Device Category *</Label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            {/* Type 1: Service Center */}
+            <button
+              type="button"
+              onClick={() => setType("company_service_center")}
+              className={`relative flex items-center gap-3.5 p-4 rounded-xl text-left transition-all border ${
+                type === "company_service_center"
+                  ? "border-2 border-[#2563EB] bg-blue-50/25 dark:bg-blue-950/20 text-[#1E3A8A] dark:text-blue-200 shadow-xs"
+                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                type === "company_service_center"
+                  ? "bg-[#2563EB] text-white"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+              }`}>
+                <Building2 className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold truncate">Service Center</p>
+                <p className="text-[10px] text-slate-400 truncate">Parcel to Authorized OEM</p>
+              </div>
+              {type === "company_service_center" && (
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0" />
+              )}
+            </button>
+
+            {/* Type 2: In-House Service / Refill */}
+            <button
+              type="button"
+              onClick={() => setType("in_house_repair")}
+              className={`relative flex items-center gap-3.5 p-4 rounded-xl text-left transition-all border ${
+                type === "in_house_repair"
+                  ? "border-2 border-[#2563EB] bg-blue-50/25 dark:bg-blue-950/20 text-[#1E3A8A] dark:text-blue-200 shadow-xs"
+                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                type === "in_house_repair"
+                  ? "bg-[#2563EB] text-white"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+              }`}>
+                <Wrench className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold truncate">In-House Service / Refill</p>
+                <p className="text-[10px] text-slate-400 truncate">Bench Diagnostics & Repair</p>
+              </div>
+              {type === "in_house_repair" && (
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0" />
+              )}
+            </button>
+
+            {/* Type 3: Onsite Visit & Install */}
+            <button
+              type="button"
+              onClick={() => setType("onsite_visit")}
+              className={`relative flex items-center gap-3.5 p-4 rounded-xl text-left transition-all border ${
+                type === "onsite_visit"
+                  ? "border-2 border-[#2563EB] bg-blue-50/25 dark:bg-blue-950/20 text-[#1E3A8A] dark:text-blue-200 shadow-xs"
+                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                type === "onsite_visit"
+                  ? "bg-[#2563EB] text-white"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+              }`}>
+                <MapPin className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold truncate">Onsite Visit & Install</p>
+                <p className="text-[10px] text-slate-400 truncate">Field Tech At Customer Site</p>
+              </div>
+              {type === "onsite_visit" && (
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Section 2: Customer Details with Fast Server-Side Typeahead */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+                2
+              </span>
+              <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+                Customer Details
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs">
+              {selectedCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => setShowEditCustomerModal(true)}
+                  className="font-semibold text-[#2563EB] hover:underline"
+                >
+                  Edit Customer Profile
+                </button>
+              )}
+              <span className="text-slate-300">|</span>
+              <button
+                type="button"
+                onClick={() => setShowCustomerModal(true)}
+                className="font-semibold text-[#2563EB] hover:underline"
+              >
+                + New Customer (Alt+C)
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Auto-Fill Customer Profile (Typeahead autocomplete for 5000+ customers) */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Auto-Fill Customer (Typeahead Search)
+              </Label>
+              <CustomerTypeahead
+                selectedCustomerId={selectedCustomerId}
+                onSelectCustomer={handleSelectCustomer}
+                onAddNewCustomer={() => setShowCustomerModal(true)}
+                initialName={customerName ? `${customerName} (${customerPhone})` : ""}
+                className="mt-1.5"
+              />
+            </div>
+
+            {/* Customer Name */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Customer Name
+              </Label>
+              <Input
+                placeholder="e.g. Sharma Rajesh"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                required
+                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+              />
+            </div>
+
+            {/* Contact / Phone */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Contact / Phone
+              </Label>
+              <Input
+                placeholder="+91 9876543210"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                required
+                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Device Details, Internal Tracking & Hierarchical Catalog */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+              3
+            </span>
+            <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+              Device & Warranty Details
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+            {/* Device Category */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Device Category
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryModal(true)}
+                  className="text-[11px] font-semibold text-[#2563EB] hover:underline"
+                >
+                  + Add
+                </button>
+              </div>
               <Select value={deviceCategory} onValueChange={setDeviceCategory}>
-                <SelectTrigger className="mt-1 h-9 text-xs rounded-xl">
+                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -727,118 +836,175 @@ export default function AdminServiceCallForm() {
               </Select>
             </div>
 
-            {/* Warranty Status (3 cols) */}
-            <div className="md:col-span-3">
-              <Label htmlFor="warranty" className="text-[11px] font-semibold">Warranty Status *</Label>
+            {/* Warranty Status */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Warranty Status
+              </Label>
               <Select value={warrantyStatus} onValueChange={(val: WarrantyStatus) => setWarrantyStatus(val)}>
-                <SelectTrigger className="mt-1 h-9 text-xs font-bold rounded-xl border-amber-300 dark:border-amber-700 bg-amber-500/5">
-                  <SelectValue />
+                <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                  <SelectValue placeholder="Warranty" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="in_warranty">In Warranty</SelectItem>
+                  <SelectItem value="not_applicable">N/A General Service</SelectItem>
+                  <SelectItem value="in_warranty">In Warranty (OEM)</SelectItem>
                   <SelectItem value="out_of_warranty">Out of Warranty</SelectItem>
-                  <SelectItem value="not_applicable">N/A (General Service)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Model Number (3 cols) */}
-            <div className="md:col-span-3">
-              <Label htmlFor="model" className="text-[11px] font-semibold">Model Number</Label>
-              <Input
-                id="model"
-                placeholder="e.g. HP LaserJet M404dn"
+            {/* Model Number / Name (Hierarchical typeahead auto-fill) */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Model Number / Name
+              </Label>
+              <ModelTypeahead
+                categoryName={deviceCategory}
                 value={modelNumber}
-                onChange={(e) => setModelNumber(e.target.value)}
-                className="mt-1 h-9 text-xs rounded-xl"
+                onChange={setModelNumber}
+                className="mt-1.5"
               />
             </div>
 
-            {/* Serial Number (2 cols) */}
-            <div className="md:col-span-2">
-              <Label htmlFor="serial" className="text-[11px] font-semibold">Serial Number</Label>
+            {/* Serial Number */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Serial Number
+              </Label>
               <Input
-                id="serial"
-                placeholder="e.g. S/N 98210"
+                placeholder="e.g. 15082026"
                 value={serialNumber}
                 onChange={(e) => setSerialNumber(e.target.value)}
-                className="mt-1 h-9 text-xs rounded-xl font-mono"
+                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
               />
             </div>
 
-            {/* Quantity (1 col - Max 4 digits) */}
-            <div className="md:col-span-1">
-              <Label htmlFor="quantity" className="text-[11px] font-semibold text-center block">Qty</Label>
+            {/* Qty */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Qty
+              </Label>
               <Input
-                id="quantity"
                 type="number"
                 min="1"
-                max="9999"
-                placeholder="1"
                 value={quantity}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val.length <= 4) {
-                    setQuantity(val === "" ? "" : Number(val));
-                  }
-                }}
-                className="mt-1 h-9 text-xs rounded-xl text-center font-bold px-1"
+                onChange={(e) => setQuantity(e.target.value)}
+                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
               />
             </div>
           </div>
 
-          {/* Issue Description & Quick Suggestions */}
+          {/* Internal Tracking Fields (Internal Only - Excluded from WhatsApp) */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Internal Tracking Details
+              </span>
+              <Badge variant="outline" className="text-[10px] bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-none font-semibold">
+                Internal Only • Excluded from WhatsApp
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div>
+                <Label className="text-xs text-slate-600 dark:text-slate-400">Date of Purchase (DOP)</Label>
+                <Input
+                  type="date"
+                  value={dateOfPurchase}
+                  onChange={(e) => setDateOfPurchase(e.target.value)}
+                  className="mt-1 h-9 text-xs rounded-lg bg-white dark:bg-slate-900"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs text-slate-600 dark:text-slate-400">Purchase Invoice / Bill Number</Label>
+                <Input
+                  placeholder="e.g. INV-2024-9981"
+                  value={billNumber}
+                  onChange={(e) => setBillNumber(e.target.value)}
+                  className="mt-1 h-9 text-xs rounded-lg bg-white dark:bg-slate-900 font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Issue / Service Task Description */}
           <div>
-            <Label htmlFor="issue" className="text-[11px] font-semibold">Issue / Service Task Description *</Label>
-            <Input
-              id="issue"
-              placeholder="e.g. Toner refill, roller cleaning, motherboard repair, antivirus setup…"
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Issue / Service Task Description
+            </Label>
+            <Textarea
+              placeholder="Describe symptoms, requested repair, or installation tasks..."
               value={issueDescription}
               onChange={(e) => setIssueDescription(e.target.value)}
-              className="mt-1 h-9 text-xs rounded-xl"
+              rows={3}
               required
+              className="mt-1.5 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
             />
-            <div className="flex flex-wrap gap-1 mt-2">
-              <span className="text-[10px] text-muted-foreground font-semibold mr-1">Quick Suggestions:</span>
-              {ISSUE_SUGGESTIONS.map((sug) => (
+
+            {/* Quick Suggestion Tags */}
+            <div className="flex flex-wrap gap-1.5 pt-2.5">
+              <span className="text-[11px] text-slate-400 font-medium self-center mr-1">Quick Suggestions:</span>
+              {QUICK_TAGS.map((tag) => (
                 <button
-                  key={sug}
+                  key={tag}
                   type="button"
-                  onClick={() => setIssueDescription(sug)}
-                  className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors font-medium"
+                  onClick={() => {
+                    setIssueDescription((prev) => (prev ? `${prev}, ${tag}` : tag));
+                  }}
+                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-colors"
                 >
-                  + {sug}
+                  {tag}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Step 4: Type-Specific Dispatch Section (If Applicable) */}
+        {/* Section 4: Company Service Center Parcel Dispatch (Conditional if Service Center) */}
         {type === "company_service_center" && (
-          <div className="rounded-2xl border border-purple-200 bg-purple-50/50 dark:bg-purple-950/20 p-4 space-y-3 shadow-xs">
-            <div className="flex items-center justify-between border-b border-purple-200/60 pb-2">
-              <div className="flex items-center gap-2 font-extrabold text-xs text-purple-700 dark:text-purple-300">
-                <Badge variant="secondary" className="bg-purple-600 text-white font-mono text-[11px] px-2">4</Badge>
-                <Building2 className="h-4 w-4" /> Company Service Center Parcel Dispatch
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+                  4
+                </span>
+                <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+                  Company Service Center Parcel Dispatch
+                </h2>
               </div>
-              <Button
+
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
                 onClick={() => setShowCenterModal(true)}
-                className="h-7 text-[11px] gap-1 text-purple-700 dark:text-purple-300 hover:bg-purple-100"
+                className="text-xs font-semibold text-[#2563EB] hover:underline"
               >
-                <Plus className="h-3.5 w-3.5" /> + New Service Center
-              </Button>
+                + Add Service Center
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Select Service Center */}
               <div>
-                <Label className="text-[11px] font-semibold text-purple-900 dark:text-purple-200">Select Service Center</Label>
-                <Select value={selectedServiceCenterId} onValueChange={handleSelectServiceCenter}>
-                  <SelectTrigger className="mt-1 h-9 text-xs bg-card rounded-xl">
-                    <SelectValue placeholder="Choose service center…" />
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Select Service Center
+                </Label>
+                <Select
+                  value={selectedServiceCenterId}
+                  onValueChange={(val) => {
+                    setSelectedServiceCenterId(val);
+                    const found = serviceCenters.find((sc) => sc.id === val);
+                    if (found) {
+                      setServiceCenterName(found.name);
+                      if (found.addresses.length > 0) {
+                        setSelectedAddressId(found.addresses[0].id);
+                        setServiceCenterAddress(found.addresses[0].address);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                    <SelectValue placeholder="Select Service Center" />
                   </SelectTrigger>
                   <SelectContent>
                     {serviceCenters.map((sc) => (
@@ -850,206 +1016,282 @@ export default function AdminServiceCallForm() {
                 </Select>
               </div>
 
-              {selectedSC && selectedSC.addresses.length > 0 && (
-                <div>
-                  <Label className="text-[11px] font-semibold text-purple-900 dark:text-purple-200">Dispatch Parcel Address</Label>
-                  <Select value={selectedAddressId} onValueChange={handleSelectCenterAddress}>
-                    <SelectTrigger className="mt-1 h-9 text-xs bg-card rounded-xl">
-                      <SelectValue placeholder="Select address…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedSC.addresses.map((a) => (
+              {/* Dispatch Parcel Address */}
+              <div>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Dispatch Parcel Address
+                </Label>
+                <Select
+                  value={selectedAddressId}
+                  onValueChange={(val) => {
+                    setSelectedAddressId(val);
+                    const currentCenter = serviceCenters.find((sc) => sc.id === selectedServiceCenterId);
+                    const addr = currentCenter?.addresses.find((a) => a.id === val);
+                    if (addr) setServiceCenterAddress(addr.address);
+                  }}
+                >
+                  <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                    <SelectValue placeholder="Dispatch Address" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serviceCenters
+                      .find((sc) => sc.id === selectedServiceCenterId)
+                      ?.addresses.map((a) => (
                         <SelectItem key={a.id} value={a.id}>
-                          {a.isDefault ? "⭐ [DEFAULT] " : ""}{a.address} {a.city ? `(${a.city})` : ""}
+                          {a.city}: {a.address}
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                  </SelectContent>
+                </Select>
+              </div>
 
+              {/* Courier Name & RMA / Ticket */}
               <div>
-                <Label className="text-[11px] font-semibold text-purple-900 dark:text-purple-200">RMA / Ticket Number</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Courier / Tracking RMA No.
+                </Label>
                 <Input
-                  placeholder="e.g. RMA-98210"
+                  placeholder="e.g. Trackon TRK-9981 / AUG-2026"
                   value={rmaNumber}
                   onChange={(e) => setRmaNumber(e.target.value)}
-                  className="mt-1 h-9 text-xs bg-card rounded-xl"
+                  className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
               </div>
 
+              {/* Courier & Transport Charges */}
               <div>
-                <Label className="text-[11px] font-semibold text-purple-900 dark:text-purple-200">Courier / Transport Charges (₹)</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Courier Charges (₹)
+                </Label>
                 <Input
-                  type="text"
-                  placeholder="e.g. 150"
+                  type="number"
+                  placeholder="0"
                   value={courierChargesInput}
                   onChange={(e) => setCourierChargesInput(e.target.value)}
-                  className="mt-1 h-9 text-xs font-bold bg-card rounded-xl border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-100"
+                  className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
               </div>
             </div>
           </div>
         )}
 
+        {/* Section 4 Alternative: Onsite Service Address (if Onsite Visit) */}
         {type === "onsite_visit" && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-3 shadow-xs">
-            <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
-              <div className="flex items-center gap-2 font-extrabold text-xs text-emerald-700 dark:text-emerald-300">
-                <Badge variant="secondary" className="bg-emerald-600 text-white font-mono text-[11px] px-2">4</Badge>
-                <MapPin className="h-4 w-4" /> Onsite Technician Visit Details
-              </div>
-              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-semibold">
-                Auto-filled from Customer Profile
-              </Badge>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+                4
+              </span>
+              <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+                Onsite Service Address
+              </h2>
             </div>
-
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <Label className="text-[11px] font-semibold text-emerald-900 dark:text-emerald-200">
-                  Onsite Service Address *
-                </Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditingOnsiteAddress(!isEditingOnsiteAddress)}
-                  className="h-6 text-[11px] gap-1 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 font-bold"
-                >
-                  <Pencil className="h-3 w-3" />
-                  {isEditingOnsiteAddress ? "Lock Address" : "Edit Address"}
-                </Button>
-              </div>
-
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Customer Site / Installation Address
+              </Label>
               <Input
-                placeholder="Full address for technician visit & troubleshooting"
+                placeholder="Enter complete onsite location..."
                 value={onsiteAddress}
-                readOnly={!isEditingOnsiteAddress}
                 onChange={(e) => setOnsiteAddress(e.target.value)}
-                className={`h-9 text-xs rounded-xl transition-all ${
-                  !isEditingOnsiteAddress
-                    ? "bg-card/70 font-medium cursor-default border-emerald-200"
-                    : "bg-card font-semibold ring-2 ring-emerald-500/40"
-                }`}
-                required
+                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
               />
-              <p className="text-[10px] text-emerald-800/70 dark:text-emerald-400 mt-1">
-                {isEditingOnsiteAddress
-                  ? "Editing custom address for this specific technician visit."
-                  : "Auto-synced with customer primary location. Click 'Edit Address' to modify for this call."}
-              </p>
             </div>
           </div>
         )}
 
-        {/* Step 5: Spare Parts & Service Charges Section */}
-        <div className="rounded-2xl border bg-card p-4 space-y-3.5 shadow-xs">
-          <div className="flex items-center justify-between border-b pb-2">
-            <div className="flex items-center gap-2 font-extrabold text-xs text-foreground">
-              <Badge variant="secondary" className="bg-primary/10 text-primary font-mono text-[11px] px-2">
-                {type === "in_house_repair" ? "4" : "5"}
-              </Badge>
-              <Receipt className="h-4 w-4 text-primary" /> Spare Parts & Service Charges
+        {/* Section 5: Spare Parts & Service Charges (Supports 0 parts without errors) */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-xs">
+                5
+              </span>
+              <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white">
+                Spare Parts & Service Charges
+              </h2>
             </div>
-            <Button
+
+            <button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAddPart}
-              className="h-7 text-[11px] gap-1 rounded-xl"
+              onClick={handleAddPartRow}
+              className="text-xs font-semibold text-[#2563EB] hover:underline"
             >
-              <Plus className="h-3.5 w-3.5" /> + Add Part
-            </Button>
+              + Add Item
+            </button>
           </div>
 
-          {/* Parts Purchased List */}
-          {parts.length > 0 && (
-            <div className="space-y-2">
-              <div className="grid grid-cols-12 gap-2 text-[10px] uppercase font-bold text-muted-foreground px-2">
-                <span className="col-span-6">Part / Item Name</span>
-                <span className="col-span-2 text-center">Qty</span>
-                <span className="col-span-3 text-right">Unit Price (₹)</span>
-                <span className="col-span-1"></span>
+          <div className="space-y-3">
+            {parts.length > 0 && (
+              <div className="grid grid-cols-12 gap-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+                <div className="col-span-7">PART / ITEM NAME (Auto-saved to Catalog)</div>
+                <div className="col-span-2">QTY</div>
+                <div className="col-span-2">UNIT PRICE (₹)</div>
+                <div className="col-span-1 text-right">TOTAL</div>
               </div>
-              {parts.map((part) => (
-                <div key={part.id} className="grid grid-cols-12 gap-2 items-center bg-muted/40 p-2 rounded-xl border">
-                  <div className="col-span-6">
-                    <Input
-                      placeholder="e.g. Laser Drum, 8GB DDR4 RAM, Cartridge Powder"
-                      value={part.name}
-                      onChange={(e) => handleUpdatePart(part.id, "name", e.target.value)}
-                      className="h-8 text-xs bg-card rounded-lg"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Input
-                      type="number"
-                      min="1"
-                      placeholder="Qty"
-                      value={part.quantity === 0 ? "" : part.quantity}
-                      onChange={(e) => handleUpdatePart(part.id, "quantity", e.target.value === "" ? 0 : Number(e.target.value))}
-                      className="h-8 text-xs text-center bg-card rounded-lg font-bold"
-                    />
-                  </div>
-                  <div className="col-span-3">
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="Price"
-                      value={part.unitPrice === 0 ? "" : part.unitPrice}
-                      onChange={(e) => handleUpdatePart(part.id, "unitPrice", e.target.value === "" ? 0 : Number(e.target.value))}
-                      className="h-8 text-xs text-right bg-card rounded-lg font-bold"
-                    />
-                  </div>
-                  <div className="col-span-1 flex justify-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemovePart(part.id)}
-                      className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 rounded-lg"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            )}
 
-          {/* Service Fee & Total Calculation Card */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+            {parts.map((p, idx) => (
+              <div key={p.id || idx} className="grid grid-cols-12 gap-3 items-center">
+                <div className="col-span-7">
+                  <SparePartTypeahead
+                    value={p.name}
+                    onChangeName={(name) => handleUpdatePart(idx, "name", name)}
+                    onSelectCatalogItem={(item) => {
+                      if (item.unitPrice > 0) {
+                        handleUpdatePart(idx, "unitPrice", item.unitPrice);
+                      }
+                    }}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={p.quantity}
+                    onChange={(e) => handleUpdatePart(idx, "quantity", e.target.value)}
+                    className="h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={p.unitPrice}
+                    onChange={(e) => handleUpdatePart(idx, "unitPrice", e.target.value)}
+                    className="h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  />
+                </div>
+                <div className="col-span-1 flex items-center justify-end gap-1.5">
+                  <span className="font-bold text-slate-900 dark:text-white text-xs font-display">
+                    ₹{(p.totalPrice || 0).toLocaleString("en-IN")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemovePartRow(idx)}
+                    className="text-slate-400 hover:text-destructive p-1 rounded-md"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {parts.length === 0 && (
+              <div className="text-xs text-slate-400 p-3 bg-slate-50/60 dark:bg-slate-950 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                No spare parts added (Intake without parts is supported). Click <button type="button" onClick={handleAddPartRow} className="text-[#2563EB] font-bold underline">+ Add Item</button> if needed.
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800 items-center">
             <div>
-              <Label htmlFor="service-charge" className="text-xs font-semibold">Service / Repair Charges (₹)</Label>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Service & Repair Charges (₹)
+              </Label>
               <Input
-                id="service-charge"
-                type="text"
-                placeholder="400"
+                type="number"
+                placeholder="0"
                 value={serviceChargesInput}
                 onChange={(e) => setServiceChargesInput(e.target.value)}
-                className="mt-1 h-9 text-xs font-bold rounded-xl"
+                className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 md:w-64"
               />
             </div>
 
-            {/* Glowing Executive Grand Total Box */}
-            <div className="rounded-2xl border bg-gradient-to-r from-slate-900 to-slate-800 p-4 text-right text-white shadow-md flex items-center justify-between">
+            {/* Billing Summary Box */}
+            <div className="bg-slate-50 dark:bg-slate-950/60 rounded-xl p-4 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Billing Breakdown</span>
-                <span className="text-xs text-slate-300 font-medium">
-                  Parts ₹{partsTotal} + Service ₹{serviceChargesNum} {courierChargesNum > 0 ? `+ Courier ₹${courierChargesNum}` : ""}
-                </span>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  BILLING BREAKDOWN
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">
+                  Parts ₹{partsTotal} + Service ₹{serviceChargesNum}
+                  {type === "company_service_center" && courierChargesNum > 0 ? ` + Courier ₹${courierChargesNum}` : ""}
+                </p>
               </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-amber-300 block tracking-wider">Grand Total</span>
-                <span className="text-2xl font-extrabold font-display text-white">₹{grandTotal.toLocaleString("en-IN")}</span>
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  GRAND TOTAL
+                </p>
+                <p className="text-2xl font-extrabold text-[#2563EB] font-display">
+                  ₹{grandTotal.toLocaleString("en-IN")}
+                </p>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Section 6: Miscellaneous Internal Comments */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-3">
+          <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <FileText className="h-4 w-4 text-[#2563EB]" /> Internal Miscellaneous Comments / Audit Notes
+          </Label>
+          <Textarea
+            placeholder="Enter any internal office notes, customer communication history, technician instructions..."
+            value={internalComments}
+            onChange={(e) => setInternalComments(e.target.value)}
+            rows={2}
+            className="text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+          />
+        </div>
+
+        {/* Section 7: Audit Timeline Component */}
+        <TimelineCard
+          timeline={timeline}
+          staffList={staffList}
+          currentStaffId={handledByStaffId}
+          onAddTimelineEvent={handleAddTimelineEvent}
+        />
+
+        {/* Section 8: Action Footer Bar (Save / WhatsApp / Cancel) */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xs border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 mt-6">
+          <div className="text-xs text-slate-400 hidden sm:block">
+            Press <kbd className="font-mono font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Ctrl+A</kbd> to Save
+          </div>
+
+          <div className="flex items-center gap-3 ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSendWhatsApp}
+              className="h-10 px-4 text-xs font-bold rounded-xl border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-2"
+            >
+              <MessageCircle className="h-4 w-4 text-emerald-500" /> Send via WhatsApp
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={saving}
+              className="h-10 px-6 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white shadow-sm shadow-blue-600/25 gap-2"
+            >
+              <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save / Accept (Ctrl+A)"}
+            </Button>
+          </div>
+        </div>
       </form>
 
+      {/* Quick Timeline Modal for Hotkeys F5, F6, F8, F9 */}
+      {quickTimelineStage && (
+        <AddTimelineEventModal
+          open={showQuickTimelineModal}
+          onOpenChange={setShowQuickTimelineModal}
+          staffList={staffList}
+          currentStaffId={handledByStaffId}
+          defaultStage={quickTimelineStage}
+          onAddEvent={handleAddTimelineEvent}
+        />
+      )}
+
       {/* Inline Modals */}
-      <CreateCustomerModal open={showCustomerModal} onOpenChange={setShowCustomerModal} />
+      <CreateCustomerModal
+        open={showCustomerModal}
+        onOpenChange={setShowCustomerModal}
+        onCreated={(newCust) => {
+          setCustomers((prev) => [newCust, ...prev]);
+          handleSelectCustomer(newCust);
+          toast.success(`Customer "${newCust.name}" created and loaded`);
+        }}
+      />
       <EditCustomerModal
         customer={
           customers.find((c) => c.id === selectedCustomerId) ||
@@ -1070,7 +1312,14 @@ export default function AdminServiceCallForm() {
           loadMasterData();
         }}
       />
-      <CreateDeviceCategoryModal open={showCategoryModal} onOpenChange={setShowCategoryModal} />
+      <CreateDeviceCategoryModal
+        open={showCategoryModal}
+        onOpenChange={setShowCategoryModal}
+        onCreated={(cat) => {
+          setCategories((prev) => [...prev, cat]);
+          setDeviceCategory(cat.name);
+        }}
+      />
       <CreateServiceCenterModal
         open={showCenterModal}
         onOpenChange={setShowCenterModal}
@@ -1096,9 +1345,9 @@ export default function AdminServiceCallForm() {
       <JobCardPrintModal
         serviceCall={{
           id: id || "preview",
-          ticketNo: ticketNo || "VOUCHER-PREVIEW",
-          dateTime,
+          ticketNo: ticketNo || "SC-PREVIEW",
           type,
+          dateTime,
           customerId: selectedCustomerId,
           customerName,
           customerPhone,
@@ -1113,17 +1362,17 @@ export default function AdminServiceCallForm() {
           status,
           serviceCenterId: selectedServiceCenterId,
           serviceCenterName,
-          serviceCenterAddressId: selectedAddressId,
           serviceCenterAddress,
           rmaNumber,
+          courierCharges: courierChargesNum,
           technicianId: selectedTechnicianId,
           technicianName,
           onsiteAddress,
-          parts,
+          parts: cleanParts,
           partsTotal,
           serviceCharges: serviceChargesNum,
           grandTotal,
-          notes,
+          notes: internalComments,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }}

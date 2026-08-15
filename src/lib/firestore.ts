@@ -12,10 +12,15 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
+import { toTitleCase, formatIndianPhoneNumber, generateSearchTokens } from "./utils";
 import type {
   Category,
   Product,
   DeviceCategory,
+  DeviceModel,
+  SparePartCatalogItem,
+  StaffMember,
+  TimelineEvent,
   Customer,
   ServiceCall,
   ServiceCenter,
@@ -293,9 +298,25 @@ export async function getCustomers(): Promise<Customer[]> {
 
 export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): Promise<Customer> {
   const docRef = doc(collection(db, "customers"));
+  const formattedName = toTitleCase(data.name);
+  const formattedPhone = formatIndianPhoneNumber(data.phone);
+  const formattedCompany = data.companyName ? toTitleCase(data.companyName) : undefined;
+  const searchTokens = generateSearchTokens({
+    name: formattedName,
+    phone: formattedPhone,
+    companyName: formattedCompany,
+    email: data.email,
+    id: docRef.id,
+  });
+
   const newCust: Customer = {
     id: docRef.id,
     ...data,
+    name: formattedName,
+    phone: formattedPhone,
+    additionalPhones: data.additionalPhones?.map(formatIndianPhoneNumber),
+    companyName: formattedCompany,
+    searchTokens,
     createdAt: Date.now(),
   };
   await setDoc(docRef, cleanFirestoreData(newCust));
@@ -303,7 +324,50 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
 }
 
 export async function updateCustomer(id: string, data: Partial<Customer>): Promise<void> {
-  await setDoc(doc(db, "customers", id), cleanFirestoreData(data), { merge: true });
+  const formattedName = data.name ? toTitleCase(data.name) : undefined;
+  const formattedPhone = data.phone ? formatIndianPhoneNumber(data.phone) : undefined;
+  const formattedCompany = data.companyName ? toTitleCase(data.companyName) : undefined;
+  const searchTokens = generateSearchTokens({
+    name: formattedName,
+    phone: formattedPhone,
+    companyName: formattedCompany,
+    email: data.email,
+    id,
+  });
+
+  const formattedData: Partial<Customer> = {
+    ...data,
+    ...(formattedName ? { name: formattedName } : {}),
+    ...(formattedPhone ? { phone: formattedPhone } : {}),
+    ...(data.additionalPhones ? { additionalPhones: data.additionalPhones.map(formatIndianPhoneNumber) } : {}),
+    ...(formattedCompany ? { companyName: formattedCompany } : {}),
+    searchTokens,
+  };
+  await setDoc(doc(db, "customers", id), cleanFirestoreData(formattedData), { merge: true });
+}
+
+export async function searchCustomers(queryText: string, limitCount = 30): Promise<Customer[]> {
+  const clean = queryText.trim().toLowerCase();
+  try {
+    const all = await getCustomers();
+    if (!clean) return all.slice(0, limitCount);
+    
+    const qDigits = clean.replace(/\D/g, "");
+    return all
+      .filter((c) => {
+        const nameMatch = c.name?.toLowerCase().includes(clean);
+        const phoneDigits = (c.phone || "").replace(/\D/g, "");
+        const phoneMatch = qDigits && (phoneDigits.includes(qDigits) || phoneDigits.endsWith(qDigits));
+        const companyMatch = c.companyName?.toLowerCase().includes(clean);
+        const emailMatch = c.email?.toLowerCase().includes(clean);
+        const idMatch = c.id?.toLowerCase().includes(clean);
+        return nameMatch || phoneMatch || companyMatch || emailMatch || idMatch;
+      })
+      .slice(0, limitCount);
+  } catch (err: any) {
+    console.error("searchCustomers error:", err);
+    return [];
+  }
 }
 
 export async function deleteCustomer(id: string): Promise<void> {
@@ -457,8 +521,31 @@ export async function deleteTechnician(id: string): Promise<void> {
 
 export async function getServiceCalls(): Promise<ServiceCall[]> {
   try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "service_calls")));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ServiceCall);
+    const [callsSnap, customersSnap] = await Promise.all([
+      fetchWithTimeout(getDocs(collection(db, "service_calls"))),
+      fetchWithTimeout(getDocs(collection(db, "customers"))).catch(() => null),
+    ]);
+
+    const customerMap = new Map<string, Customer>();
+    if (customersSnap) {
+      customersSnap.docs.forEach((d) => {
+        customerMap.set(d.id, { id: d.id, ...d.data() } as Customer);
+      });
+    }
+
+    return callsSnap.docs.map((d) => {
+      const callData = d.data() as ServiceCall;
+      const cust = callData.customerId ? customerMap.get(callData.customerId) : undefined;
+      return {
+        id: d.id,
+        ...callData,
+        customer: cust,
+        customerName: cust?.name || callData.customerName || "",
+        customerPhone: cust?.phone || callData.customerPhone || "",
+        customerEmail: cust?.email || callData.customerEmail || "",
+        customerAddress: cust?.address || callData.customerAddress || "",
+      } as ServiceCall;
+    });
   } catch (err: any) {
     console.error("getServiceCalls error:", err);
     throw new Error(formatFirebaseError(err));
@@ -469,7 +556,23 @@ export async function getServiceCall(id: string): Promise<ServiceCall | null> {
   try {
     const snap = await fetchWithTimeout(getDoc(doc(db, "service_calls", id)));
     if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() } as ServiceCall;
+    const callData = snap.data() as ServiceCall;
+    let cust: Customer | undefined;
+    if (callData.customerId) {
+      const custSnap = await getDoc(doc(db, "customers", callData.customerId)).catch(() => null);
+      if (custSnap && custSnap.exists()) {
+        cust = { id: custSnap.id, ...custSnap.data() } as Customer;
+      }
+    }
+    return {
+      id: snap.id,
+      ...callData,
+      customer: cust,
+      customerName: cust?.name || callData.customerName || "",
+      customerPhone: cust?.phone || callData.customerPhone || "",
+      customerEmail: cust?.email || callData.customerEmail || "",
+      customerAddress: cust?.address || callData.customerAddress || "",
+    } as ServiceCall;
   } catch (err: any) {
     console.error("getServiceCall error:", err);
     throw new Error(formatFirebaseError(err));
@@ -477,38 +580,370 @@ export async function getServiceCall(id: string): Promise<ServiceCall | null> {
 }
 
 export async function createServiceCall(
-  data: Omit<ServiceCall, "id" | "ticketNo" | "createdAt" | "updatedAt">
+  data: Omit<ServiceCall, "id" | "ticketNo" | "createdAt" | "updatedAt"> & { ticketNo?: string }
 ): Promise<ServiceCall> {
-  let existingCalls: ServiceCall[] = [];
-  try {
-    existingCalls = await getServiceCalls();
-  } catch {
-    existingCalls = [];
+  // Ensure customer document exists and get canonical customerId
+  let customerId = data.customerId;
+  if (!customerId || customerId.startsWith("cust-")) {
+    if (data.customerName && data.customerPhone) {
+      const createdCust = await createCustomer({
+        name: data.customerName,
+        phone: data.customerPhone,
+        email: data.customerEmail,
+        address: data.customerAddress,
+      });
+      customerId = createdCust.id;
+    }
+  } else if (customerId && (data.customerName || data.customerPhone)) {
+    // Keep customer record updated if modified
+    await updateCustomer(customerId, {
+      ...(data.customerName ? { name: data.customerName } : {}),
+      ...(data.customerPhone ? { phone: data.customerPhone } : {}),
+      ...(data.customerEmail ? { email: data.customerEmail } : {}),
+      ...(data.customerAddress ? { address: data.customerAddress } : {}),
+    }).catch(() => {});
   }
-  const nextNum = existingCalls.length + 1;
-  const ticketNo = `SC-${new Date().getFullYear()}-${String(nextNum).padStart(4, "0")}`;
-  const docRef = doc(collection(db, "service_calls"));
-  const newCall: ServiceCall = {
-    id: docRef.id,
+
+  let ticketNo = (data.ticketNo || "").trim();
+
+  if (!ticketNo) {
+    let existingCalls: ServiceCall[] = [];
+    try {
+      existingCalls = await getServiceCalls();
+    } catch {
+      existingCalls = [];
+    }
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const prefix = `SC-${currentYear}-${currentMonth}-`;
+
+    const numbers = existingCalls
+      .map((c) => {
+        const str = (c.ticketNo || c.id || "").trim();
+        const match = str.match(new RegExp(`^SC-${currentYear}-${currentMonth}-(\\d+)`));
+        if (match) return parseInt(match[1], 10);
+        return 0;
+      })
+      .filter((n) => !isNaN(n) && n > 0);
+
+    const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
+    const nextNum = maxNum + 1;
+    ticketNo = `${prefix}${String(nextNum).padStart(4, "0")}`;
+  }
+
+  const docRef = doc(db, "service_calls", ticketNo);
+  const now = Date.now();
+  const initialTimeline: TimelineEvent[] = [
+    {
+      id: `evt-${now}`,
+      timestamp: now,
+      stage: "intake_created",
+      title: "Service Call Intake Created",
+      staffId: data.handledByStaffId || "staff-default",
+      staffName: data.handledByStaffName || "Frontdesk Staff",
+      status: data.status,
+      comments: data.issueDescription,
+    },
+  ];
+
+  // Exclude embedded customer details from the service_calls firestore document
+  const {
+    customerName: _cName,
+    customerPhone: _cPhone,
+    customerEmail: _cEmail,
+    customerAddress: _cAddr,
+    customer: _cust,
+    ...cleanCallData
+  } = data;
+
+  const newCallDoc = {
+    id: ticketNo,
     ticketNo,
-    ...data,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    ...cleanCallData,
+    customerId: customerId || "cust-unknown",
+    timeline: data.timeline && data.timeline.length > 0 ? data.timeline : initialTimeline,
+    createdAt: now,
+    updatedAt: now,
   };
-  await setDoc(docRef, cleanFirestoreData(newCall));
-  return newCall;
+
+  await setDoc(docRef, cleanFirestoreData(newCallDoc));
+
+  // Save initial timeline in subcollection as well
+  try {
+    const subcolRef = doc(collection(db, "service_calls", ticketNo, "timeline"), `evt-${now}`);
+    await setDoc(subcolRef, cleanFirestoreData(initialTimeline[0]));
+  } catch (err) {
+    console.warn("Could not write subcollection timeline event:", err);
+  }
+
+  // Also auto-save model to catalog if entered
+  if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
+    saveDeviceModel(data.deviceCategory, data.modelNumber.trim()).catch(() => {});
+  }
+
+  // Also auto-save spare parts to catalog if entered
+  if (data.parts && data.parts.length > 0) {
+    for (const part of data.parts) {
+      if (part.name && part.name.trim()) {
+        saveSparePartToCatalog(part.name.trim(), part.unitPrice || 0, data.deviceCategory).catch(() => {});
+      }
+    }
+  }
+
+  return {
+    ...newCallDoc,
+    customerName: data.customerName || "",
+    customerPhone: data.customerPhone || "",
+    customerEmail: data.customerEmail || "",
+    customerAddress: data.customerAddress || "",
+  } as ServiceCall;
 }
 
 export async function updateServiceCall(
   id: string,
   data: Partial<ServiceCall>
 ): Promise<void> {
-  await updateDoc(doc(db, "service_calls", id), cleanFirestoreData({
-    ...data,
+  // If customer info is modified and customerId is present, update the customer document
+  if (data.customerId) {
+    if (data.customerName || data.customerPhone || data.customerEmail || data.customerAddress) {
+      await updateCustomer(data.customerId, {
+        ...(data.customerName ? { name: data.customerName } : {}),
+        ...(data.customerPhone ? { phone: data.customerPhone } : {}),
+        ...(data.customerEmail ? { email: data.customerEmail } : {}),
+        ...(data.customerAddress ? { address: data.customerAddress } : {}),
+      }).catch(() => {});
+    }
+  }
+
+  // Exclude embedded customer fields from service_calls doc payload
+  const {
+    customerName: _cName,
+    customerPhone: _cPhone,
+    customerEmail: _cEmail,
+    customerAddress: _cAddr,
+    customer: _cust,
+    ...cleanUpdateData
+  } = data;
+
+  const formattedData: Partial<ServiceCall> = {
+    ...cleanUpdateData,
     updatedAt: Date.now(),
-  }));
+  };
+  await updateDoc(doc(db, "service_calls", id), cleanFirestoreData(formattedData));
+
+  // Auto-save model to catalog
+  if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
+    saveDeviceModel(data.deviceCategory, data.modelNumber.trim()).catch(() => {});
+  }
+
+  // Auto-save spare parts to catalog
+  if (data.parts && data.parts.length > 0) {
+    for (const part of data.parts) {
+      if (part.name && part.name.trim()) {
+        saveSparePartToCatalog(part.name.trim(), part.unitPrice || 0, data.deviceCategory).catch(() => {});
+      }
+    }
+  }
 }
 
 export async function deleteServiceCall(id: string): Promise<void> {
   await deleteDoc(doc(db, "service_calls", id));
+}
+
+// ─── Device Models Catalog ───────────────────────────────────────────────────
+
+export async function getDeviceModels(categoryName?: string): Promise<DeviceModel[]> {
+  try {
+    const snap = await fetchWithTimeout(getDocs(collection(db, "device_models")));
+    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DeviceModel);
+    if (categoryName) {
+      return all.filter((m) => m.categoryName?.toLowerCase() === categoryName.toLowerCase());
+    }
+    return all;
+  } catch (err: any) {
+    console.error("getDeviceModels error:", err);
+    return [];
+  }
+}
+
+export async function saveDeviceModel(categoryName: string, modelName: string): Promise<DeviceModel> {
+  const cleanCat = categoryName.trim();
+  const cleanModel = modelName.trim();
+  if (!cleanCat || !cleanModel) throw new Error("Category and Model name required");
+
+  const existing = await getDeviceModels(cleanCat);
+  const found = existing.find((m) => m.modelName.toLowerCase() === cleanModel.toLowerCase());
+  if (found) return found;
+
+  const docRef = doc(collection(db, "device_models"));
+  const newModel: DeviceModel = {
+    id: docRef.id,
+    categoryName: cleanCat,
+    modelName: cleanModel,
+    createdAt: Date.now(),
+  };
+  await setDoc(docRef, cleanFirestoreData(newModel));
+  return newModel;
+}
+
+// ─── Spare Parts Catalog ─────────────────────────────────────────────────────
+
+export async function getSparePartsCatalog(): Promise<SparePartCatalogItem[]> {
+  try {
+    const snap = await fetchWithTimeout(getDocs(collection(db, "spare_parts_catalog")));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SparePartCatalogItem);
+  } catch (err: any) {
+    console.error("getSparePartsCatalog error:", err);
+    return [];
+  }
+}
+
+export async function saveSparePartToCatalog(
+  name: string,
+  unitPrice: number,
+  category?: string
+): Promise<SparePartCatalogItem> {
+  const cleanName = name.trim();
+  if (!cleanName) throw new Error("Part name required");
+
+  const existing = await getSparePartsCatalog();
+  const found = existing.find((p) => p.name.toLowerCase() === cleanName.toLowerCase());
+  if (found) {
+    if (unitPrice > 0 && found.unitPrice !== unitPrice) {
+      await updateDoc(doc(db, "spare_parts_catalog", found.id), { unitPrice });
+      return { ...found, unitPrice };
+    }
+    return found;
+  }
+
+  const docRef = doc(collection(db, "spare_parts_catalog"));
+  const newItem: SparePartCatalogItem = {
+    id: docRef.id,
+    name: cleanName,
+    unitPrice: Number(unitPrice) || 0,
+    category,
+    createdAt: Date.now(),
+  };
+  await setDoc(docRef, cleanFirestoreData(newItem));
+  return newItem;
+}
+
+// ─── Staff Members (Mandatory Handled By assignment) ──────────────────────────
+
+const DEFAULT_STAFF: Omit<StaffMember, "id" | "createdAt">[] = [
+  { name: "Maitreya Mulchandani", role: "Manager / Backoffice Operations", active: true },
+  { name: "Manish Mulchandani", role: "Director / Senior Staff", active: true },
+  { name: "Frontdesk Staff", role: "Service Coordinator", active: true },
+  { name: "Backoffice Staff", role: "Dispatch & Logistics", active: true },
+];
+
+export async function getStaffMembers(): Promise<StaffMember[]> {
+  try {
+    const snap = await fetchWithTimeout(getDocs(collection(db, "staff_members")));
+    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffMember);
+    if (items.length === 0) {
+      for (const s of DEFAULT_STAFF) {
+        await createStaffMember(s).catch(() => {});
+      }
+      const res = await getDocs(collection(db, "staff_members"));
+      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffMember);
+      if (seeded.length > 0) return seeded;
+    } else {
+      return items;
+    }
+  } catch (err: any) {
+    console.warn("getStaffMembers warning, using fallbacks:", err);
+  }
+  return DEFAULT_STAFF.map((s, i) => ({
+    id: `default-staff-${i}`,
+    ...s,
+    createdAt: Date.now(),
+  }));
+}
+
+export async function createStaffMember(
+  data: Omit<StaffMember, "id" | "createdAt">
+): Promise<StaffMember> {
+  const docRef = doc(collection(db, "staff_members"));
+  const newStaff: StaffMember = {
+    id: docRef.id,
+    ...data,
+    name: toTitleCase(data.name),
+    createdAt: Date.now(),
+  };
+  await setDoc(docRef, cleanFirestoreData(newStaff));
+  return newStaff;
+}
+
+export async function updateStaffMember(
+  id: string,
+  data: Partial<StaffMember>
+): Promise<void> {
+  const formattedData: Partial<StaffMember> = {
+    ...data,
+    ...(data.name ? { name: toTitleCase(data.name) } : {}),
+  };
+  await setDoc(doc(db, "staff_members", id), cleanFirestoreData(formattedData), { merge: true });
+}
+
+export async function deleteStaffMember(id: string): Promise<void> {
+  await deleteDoc(doc(db, "staff_members", id));
+}
+
+// ─── Timeline Events Subcollection ───────────────────────────────────────────
+
+export async function addTimelineEvent(
+  ticketId: string,
+  eventData: Omit<TimelineEvent, "id" | "timestamp">
+): Promise<TimelineEvent> {
+  const cleanTicket = ticketId.trim();
+  const now = Date.now();
+  const newEvent: TimelineEvent = {
+    id: `evt-${now}`,
+    timestamp: now,
+    ...eventData,
+  };
+
+  try {
+    const subcolDocRef = doc(collection(db, "service_calls", cleanTicket, "timeline"), newEvent.id);
+    await setDoc(subcolDocRef, cleanFirestoreData(newEvent));
+  } catch (err) {
+    console.warn("Failed to write subcollection event:", err);
+  }
+
+  // Update parent service call timeline & status
+  try {
+    const parentDoc = await getDoc(doc(db, "service_calls", cleanTicket));
+    if (parentDoc.exists()) {
+      const existingTimeline: TimelineEvent[] = parentDoc.data()?.timeline || [];
+      await updateDoc(doc(db, "service_calls", cleanTicket), {
+        timeline: [...existingTimeline, newEvent],
+        status: eventData.status,
+        updatedAt: now,
+      });
+    }
+  } catch (err) {
+    console.warn("Failed to update parent document timeline:", err);
+  }
+
+  return newEvent;
+}
+
+export async function getTimelineEvents(ticketId: string): Promise<TimelineEvent[]> {
+  try {
+    const subcolRef = collection(db, "service_calls", ticketId, "timeline");
+    const snap = await fetchWithTimeout(getDocs(query(subcolRef, orderBy("timestamp", "asc"))));
+    if (snap.docs.length > 0) {
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TimelineEvent);
+    }
+    const parent = await getDoc(doc(db, "service_calls", ticketId));
+    if (parent.exists() && parent.data()?.timeline) {
+      return parent.data().timeline as TimelineEvent[];
+    }
+    return [];
+  } catch (err: any) {
+    console.error("getTimelineEvents error:", err);
+    return [];
+  }
 }
