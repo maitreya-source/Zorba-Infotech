@@ -5,33 +5,17 @@ import {
   Building2,
   Wrench,
   MapPin,
-  Plus,
-  Trash2,
-  Save,
-  Truck,
-  FileText,
-  UserPlus,
   Send,
   Inbox,
   Clock,
   Package,
   CheckCircle2,
   XCircle,
-  MessageSquare,
-  Phone,
-  Mail,
-  ArrowRight,
-  ArrowUp,
-  ArrowDown,
-  RefreshCw,
-  Home,
-  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -85,10 +69,8 @@ import type {
   ServiceCallType,
   ServicePart,
   WarrantyStatus,
+  WhatsAppTargetModule,
 } from "@/lib/types";
-import CustomerTypeahead from "@/components/admin/CustomerTypeahead";
-import ModelTypeahead from "@/components/admin/ModelTypeahead";
-import SparePartTypeahead from "@/components/admin/SparePartTypeahead";
 import TimelineEventsListModal from "@/components/admin/TimelineEventsListModal";
 import AddTimelineEventModal from "@/components/admin/AddTimelineEventModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
@@ -99,6 +81,10 @@ import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryMo
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
+import ServiceCallCustomerCard from "@/components/admin/service-call/ServiceCallCustomerCard";
+import ServiceCallDeviceDetailsCard from "@/components/admin/service-call/ServiceCallDeviceDetailsCard";
+import ServiceCallBillingPartsCard from "@/components/admin/service-call/ServiceCallBillingPartsCard";
+import ServiceCallLifecycleRail from "@/components/admin/service-call/ServiceCallLifecycleRail";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
@@ -188,6 +174,8 @@ export default function AdminServiceCallForm() {
   const { activeProfile } = useStaffProfile();
   const isEditing = Boolean(id);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const initialSnapshotRef = useRef<string>("");
+  const [showEscQuitPrompt, setShowEscQuitPrompt] = useState(false);
 
   // Form State
   const [ticketNo, setTicketNo] = useState<string>("");
@@ -282,6 +270,8 @@ export default function AdminServiceCallForm() {
     recipientRole: string;
     defaultPhone: string;
     defaultMessage: string;
+    targetModule?: WhatsAppTargetModule;
+    templateName?: string;
   }>({
     open: false,
     title: "",
@@ -418,6 +408,35 @@ export default function AdminServiceCallForm() {
         setInternalComments(sc.internalComments || sc.notes || "");
         setTimeline(sc.timeline || []);
 
+        initialSnapshotRef.current = JSON.stringify({
+          type: sc.type,
+          dateTime: sc.dateTime,
+          selectedCustomerId: sc.customerId || "",
+          customerName: (sc.customerName || "").trim(),
+          customerPhone: (sc.customerPhone || "").trim(),
+          customerEmail: (sc.customerEmail || "").trim(),
+          customerAddress: (sc.customerAddress || "").trim(),
+          deviceCategory: sc.deviceCategory,
+          modelNumber: (sc.modelNumber || "").trim(),
+          serialNumber: (sc.serialNumber || "").trim(),
+          quantity: Number(sc.quantity) || 1,
+          issueDescription: (sc.issueDescription || "").trim(),
+          warrantyStatus: sc.warrantyStatus,
+          status: sc.status,
+          dateOfPurchase: (sc.dateOfPurchase || "").trim(),
+          billNumber: (sc.billNumber || "").trim(),
+          selectedServiceCenterId: sc.serviceCenterId || "",
+          selectedAddressId: sc.serviceCenterAddressId || "",
+          courierName: sc.courierName || "Trackon Courier",
+          courierChargesInput: String(sc.courierCharges || 0),
+          selectedTechnicianId: sc.technicianId || "",
+          onsiteAddress: (sc.onsiteAddress || "").trim(),
+          parts: sc.parts || [],
+          serviceChargesInput: String(sc.serviceCharges || 0),
+          discountInput: String(sc.discount || 0),
+          internalComments: (sc.internalComments || sc.notes || "").trim(),
+        });
+
         setLoading(false);
       });
     } else {
@@ -440,6 +459,70 @@ export default function AdminServiceCallForm() {
     }
   }, [isEditing, activeProfile, handledByStaffId]);
 
+  // Auto-reset unsaved Esc confirmation after 7 seconds
+  useEffect(() => {
+    if (!showEscQuitPrompt) return;
+    const timer = setTimeout(() => {
+      setShowEscQuitPrompt(false);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [showEscQuitPrompt]);
+
+  // Check if current form has unsaved modifications
+  const hasUnsavedChanges = (): boolean => {
+    if (saving) return false;
+    if (!isEditing) {
+      return Boolean(
+        customerName.trim() ||
+        customerPhone.trim() ||
+        customerEmail.trim() ||
+        customerAddress.trim() ||
+        modelNumber.trim() ||
+        serialNumber.trim() ||
+        issueDescription.trim() ||
+        billNumber.trim() ||
+        dateOfPurchase.trim() ||
+        selectedCustomerId ||
+        selectedServiceCenterId ||
+        selectedTechnicianId ||
+        parts.length > 0 ||
+        (serviceChargesInput && serviceChargesInput !== "0") ||
+        (discountInput && discountInput !== "0") ||
+        internalComments.trim()
+      );
+    }
+    if (!initialSnapshotRef.current) return false;
+    const currentSnapshot = JSON.stringify({
+      type,
+      dateTime,
+      selectedCustomerId,
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      customerEmail: customerEmail.trim(),
+      customerAddress: customerAddress.trim(),
+      deviceCategory,
+      modelNumber: modelNumber.trim(),
+      serialNumber: serialNumber.trim(),
+      quantity: Number(quantity) || 1,
+      issueDescription: issueDescription.trim(),
+      warrantyStatus,
+      status,
+      dateOfPurchase: dateOfPurchase.trim(),
+      billNumber: billNumber.trim(),
+      selectedServiceCenterId,
+      selectedAddressId,
+      courierName,
+      courierChargesInput,
+      selectedTechnicianId,
+      onsiteAddress: onsiteAddress.trim(),
+      parts,
+      serviceChargesInput,
+      discountInput,
+      internalComments: internalComments.trim(),
+    });
+    return currentSnapshot !== initialSnapshotRef.current;
+  };
+
   // Handle Customer Selection from Typeahead
   const handleSelectCustomer = (cust: Customer) => {
     setSelectedCustomerId(cust.id);
@@ -452,19 +535,66 @@ export default function AdminServiceCallForm() {
     }
   };
 
+  // Safe Escape handler: closes modals without exiting, warns on unsaved service call
+  const handleEsc = () => {
+    // 1. If any modal / popup is open in DOM or React state, close modal only and DO NOT exit service call
+    const hasOpenDialog = Boolean(document.querySelector('[role="dialog"], [role="alertdialog"]'));
+    const isAnyModalOpen =
+      showCustomerModal ||
+      showEditCustomerModal ||
+      showCategoryModal ||
+      showCenterModal ||
+      showCourierModal ||
+      showQuickTimelineModal ||
+      showEventsListModal ||
+      showPrintModal ||
+      showDeleteModal ||
+      whatsAppModal.open ||
+      emailModal.open ||
+      hasOpenDialog;
+
+    if (isAnyModalOpen) {
+      if (showCustomerModal) setShowCustomerModal(false);
+      if (showEditCustomerModal) setShowEditCustomerModal(false);
+      if (showCategoryModal) setShowCategoryModal(false);
+      if (showCenterModal) setShowCenterModal(false);
+      if (showCourierModal) setShowCourierModal(false);
+      if (showQuickTimelineModal) setShowQuickTimelineModal(false);
+      if (showEventsListModal) setShowEventsListModal(false);
+      if (showPrintModal) setShowPrintModal(false);
+      if (showDeleteModal) setShowDeleteModal(false);
+      if (whatsAppModal.open) setWhatsAppModal((prev) => ({ ...prev, open: false }));
+      if (emailModal.open) setEmailModal((prev) => ({ ...prev, open: false }));
+      setShowEscQuitPrompt(false);
+      return;
+    }
+
+    // 2. If unsaved prompt is already active, second Esc confirms exit
+    if (showEscQuitPrompt) {
+      setShowEscQuitPrompt(false);
+      navigate("/admin/service-calls");
+      return;
+    }
+
+    // 3. If service call has unsaved changes, warn and prompt
+    if (hasUnsavedChanges()) {
+      setShowEscQuitPrompt(true);
+      return;
+    }
+
+    // 4. No unsaved changes -> exit cleanly
+    navigate("/admin/service-calls");
+  };
+
   // Keyboard Shortcuts Hook
   useTallyShortcuts({
     onCtrlA: () => handleSubmit(),
-    onEsc: () => {
-      if (showCustomerModal) setShowCustomerModal(false);
-      else if (showEditCustomerModal) setShowEditCustomerModal(false);
-      else if (showCategoryModal) setShowCategoryModal(false);
-      else if (showCenterModal) setShowCenterModal(false);
-      else if (showCourierModal) setShowCourierModal(false);
-      else if (showQuickTimelineModal) setShowQuickTimelineModal(false);
-      else if (showPrintModal) setShowPrintModal(false);
-      else navigate("/admin/service-calls");
-    },
+    onEsc: handleEsc,
+    onC: showEscQuitPrompt
+      ? () => {
+          setShowEscQuitPrompt(false);
+        }
+      : undefined,
     onCtrlF2: () => {
       if (dateInputRef.current) {
         dateInputRef.current.focus();
@@ -653,6 +783,8 @@ export default function AdminServiceCallForm() {
       recipientRole: "Customer",
       defaultPhone: customerPhone || "",
       defaultMessage: compiled,
+      targetModule: "service_calls",
+      templateName: "zorba_customer_service_update",
     });
   };
 
@@ -690,6 +822,8 @@ export default function AdminServiceCallForm() {
       recipientRole: "Service Center",
       defaultPhone: phone,
       defaultMessage: compiled,
+      targetModule: "service_centers",
+      templateName: "zorba_service_center_followup",
     });
   };
 
@@ -712,6 +846,8 @@ export default function AdminServiceCallForm() {
       recipientRole: "Courier Partner",
       defaultPhone: phone,
       defaultMessage: compiled,
+      targetModule: "couriers",
+      templateName: "zorba_courier_pickup_request",
     });
   };
 
@@ -734,6 +870,8 @@ export default function AdminServiceCallForm() {
       recipientRole: "Courier Partner",
       defaultPhone: phone,
       defaultMessage: compiled,
+      targetModule: "couriers",
+      templateName: "zorba_courier_delivery_inquiry",
     });
   };
 
@@ -880,1119 +1018,119 @@ export default function AdminServiceCallForm() {
         </div>
 
         {/* Section 1: Customer Details */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
-                1
-              </span>
-              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Customer & Contact Details
-              </h2>
-            </div>
+        <ServiceCallCustomerCard
+          selectedCustomerId={selectedCustomerId}
+          customerName={customerName}
+          customerPhone={customerPhone}
+          customerEmail={customerEmail}
+          customerAddress={customerAddress}
+          onCustomerNameChange={setCustomerName}
+          onSelectCustomer={handleSelectCustomer}
+          onOpenNewCustomerModal={() => setShowCustomerModal(true)}
+          onOpenEditCustomerModal={() => setShowEditCustomerModal(true)}
+        />
 
-            <div className="flex items-center gap-2">
-              {selectedCustomerId && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowEditCustomerModal(true)}
-                  className="h-8 text-xs font-semibold text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/50"
-                >
-                  Edit Profile
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Unified Customer Name & Search */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Customer Name / Search <span className="text-red-500 font-bold">*</span>
-              </Label>
-            </div>
-            <CustomerTypeahead
-              selectedCustomerId={selectedCustomerId}
-              value={customerName}
-              onChange={setCustomerName}
-              onSelectCustomer={handleSelectCustomer}
-              onAddNewCustomer={() => setShowCustomerModal(true)}
-              placeholder="Type name or search existing customer..."
-            />
-          </div>
-
-          {/* Populated Read-Only Customer Info Display */}
-          {customerPhone || customerAddress || customerEmail || selectedCustomerId ? (
-            <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 p-3.5 space-y-2.5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {/* Phone */}
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 text-blue-500" />
-                    Phone:
-                  </span>
-                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                    {customerPhone ? formatIndianPhoneNumber(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
-                  </span>
-                </div>
-
-                {/* Email */}
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-blue-500" />
-                    Email:
-                  </span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
-                    {customerEmail || <span className="text-slate-400 font-normal italic">Not provided</span>}
-                  </span>
-                </div>
-              </div>
-
-              {/* Address */}
-              <div className="flex items-start gap-2 pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 text-xs">
-                <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 flex items-center gap-1.5 mt-0.5">
-                  <MapPin className="h-3.5 w-3.5 text-blue-500" />
-                  Address:
-                </span>
-                <span className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                  {customerAddress || <span className="text-slate-400 font-normal italic">No address on file</span>}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-3 bg-slate-50/40 dark:bg-slate-950/40 text-center">
-              <p className="text-xs text-slate-400">
-                Select a customer above to view contact details, or click <button type="button" onClick={() => setShowCustomerModal(true)} className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">New Customer</button> to create a profile.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Section 2: Device & Warranty Details */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
-              2
-            </span>
-            <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              Device & Issue Details
-            </h2>
-          </div>
-
-          {/* Primary Row: Category, Warranty, Model Name */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
-            {/* Device Category */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Device Category
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setShowCategoryModal(true)}
-                  className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
-                >
-                  + Add
-                </button>
-              </div>
-              <Select value={deviceCategory} onValueChange={setDeviceCategory}>
-                <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Warranty Status */}
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Warranty Status
-              </Label>
-              <Select value={warrantyStatus} onValueChange={(val: WarrantyStatus) => setWarrantyStatus(val)}>
-                <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                  <SelectValue placeholder="Warranty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="not_applicable">N/A General Service</SelectItem>
-                  <SelectItem value="in_warranty">In Warranty (OEM)</SelectItem>
-                  <SelectItem value="out_of_warranty">Out of Warranty</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Model Number / Name (Hierarchical typeahead auto-fill) */}
-            <div className="sm:col-span-2">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Model Number / Name
-              </Label>
-              <ModelTypeahead
-                categoryName={deviceCategory}
-                value={modelNumber}
-                onChange={setModelNumber}
-              />
-            </div>
-          </div>
-
-          {/* Secondary Metadata Sub-Grid (Serial, Qty, DOP, Bill No) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Serial Number / IMEI
-              </Label>
-              <Input
-                placeholder="e.g. 15082026"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Quantity
-              </Label>
-              <Input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Purchase Date (DOP)
-              </Label>
-              <Input
-                type="date"
-                value={dateOfPurchase}
-                onChange={(e) => setDateOfPurchase(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Invoice / Bill Number
-              </Label>
-              <Input
-                placeholder="e.g. INV-2024-9981"
-                value={billNumber}
-                onChange={(e) => setBillNumber(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Issue / Service Task Description with Horizontal Scrollable Chip Group */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-              Issue / Service Task Description <span className="text-red-500 font-bold">*</span>
-            </Label>
-            <Textarea
-              placeholder="Describe symptoms, requested repair, or installation tasks..."
-              value={issueDescription}
-              onChange={(e) => setIssueDescription(e.target.value)}
-              rows={2}
-              required
-              className="text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
-            />
-
-            {/* Sleek Horizontally Scrollable Chip Group */}
-            <div className="flex items-center gap-1.5 overflow-x-auto py-1.5 no-scrollbar text-xs">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">Suggestions:</span>
-              {QUICK_TAGS.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => {
-                    setIssueDescription((prev) => (prev ? `${prev}, ${tag}` : tag));
-                  }}
-                  className="shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Section 3: Company Service Center Parcel Dispatch (with Courier Selection & WhatsApp follow-ups) */}
-        {type === "company_service_center" && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
-                3
-              </span>
-              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Service Center & Courier Dispatch
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5">
-              {/* Select Service Center */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Service Center
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => setShowCenterModal(true)}
-                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
-                  >
-                    + Add
-                  </button>
-                </div>
-                <Select
-                  value={selectedServiceCenterId}
-                  onValueChange={(val) => {
-                    setSelectedServiceCenterId(val);
-                    const found = serviceCenters.find((sc) => sc.id === val);
-                    if (found) {
-                      setServiceCenterName(found.name);
-                      if (found.addresses.length > 0) {
-                        setSelectedAddressId(found.addresses[0].id);
-                        setServiceCenterAddress(found.addresses[0].address);
-                      }
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                    <SelectValue placeholder="Select Service Center" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {serviceCenters.map((sc) => (
-                      <SelectItem key={sc.id} value={sc.id}>
-                        {sc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Dispatch Parcel Address */}
-              <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Dispatch Address
-                </Label>
-                <Select
-                  value={selectedAddressId}
-                  onValueChange={(val) => {
-                    setSelectedAddressId(val);
-                    const currentCenter = serviceCenters.find((sc) => sc.id === selectedServiceCenterId);
-                    const addr = currentCenter?.addresses.find((a) => a.id === val);
-                    if (addr) setServiceCenterAddress(addr.address);
-                  }}
-                >
-                  <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                    <SelectValue placeholder="Dispatch Address" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {serviceCenters
-                      .find((sc) => sc.id === selectedServiceCenterId)
-                      ?.addresses.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.city}: {a.address}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Courier Partner Selection */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Courier Partner
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => setShowCourierModal(true)}
-                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
-                  >
-                    + Add
-                  </button>
-                </div>
-                <Select
-                  value={courierName}
-                  onValueChange={(val) => {
-                    setCourierName(val);
-                    const found = couriers.find((c) => c.name === val);
-                    if (found) setSelectedCourierId(found.id);
-                  }}
-                >
-                  <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                    <SelectValue placeholder="Select Courier Partner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {couriers.map((c) => (
-                      <SelectItem key={c.id} value={c.name}>
-                        {c.name} {c.phone ? `(${c.phone})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Courier Tracking RMA / Docket No */}
-              <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Docket / RMA Tracking No.
-                </Label>
-                <Input
-                  placeholder="e.g. TRK-9981 / AUG-2026"
-                  value={rmaNumber}
-                  onChange={(e) => setRmaNumber(e.target.value)}
-                  className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
-                />
-              </div>
-
-              {/* Courier Charges */}
-              <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Courier Charges (₹)
-                </Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={courierChargesInput}
-                  onChange={(e) => setCourierChargesInput(e.target.value)}
-                  className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section 3 Alternative: Onsite Service Address (if Onsite Visit) */}
-        {type === "onsite_visit" && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
-                3
-              </span>
-              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Onsite Service Address
-              </h2>
-            </div>
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Customer Site / Installation Address
-              </Label>
-              <Input
-                placeholder="Enter complete onsite location..."
-                value={onsiteAddress}
-                onChange={(e) => setOnsiteAddress(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
-              />
-            </div>
-          </div>
-        )}
+        {/* Section 2 & 3: Device Details & Logistics */}
+        <ServiceCallDeviceDetailsCard
+          deviceCategory={deviceCategory}
+          onDeviceCategoryChange={setDeviceCategory}
+          categories={categories}
+          onOpenAddCategoryModal={() => setShowCategoryModal(true)}
+          warrantyStatus={warrantyStatus}
+          onWarrantyStatusChange={setWarrantyStatus}
+          modelNumber={modelNumber}
+          onModelNumberChange={setModelNumber}
+          serialNumber={serialNumber}
+          onSerialNumberChange={setSerialNumber}
+          quantity={quantity}
+          onQuantityChange={setQuantity}
+          dateOfPurchase={dateOfPurchase}
+          onDateOfPurchaseChange={setDateOfPurchase}
+          billNumber={billNumber}
+          onBillNumberChange={setBillNumber}
+          issueDescription={issueDescription}
+          onIssueDescriptionChange={setIssueDescription}
+          type={type}
+          serviceCenters={serviceCenters}
+          selectedServiceCenterId={selectedServiceCenterId}
+          onSelectServiceCenter={(val) => {
+            setSelectedServiceCenterId(val);
+            const found = serviceCenters.find((sc) => sc.id === val);
+            if (found) {
+              setServiceCenterName(found.name);
+              if (found.addresses.length > 0) {
+                setSelectedAddressId(found.addresses[0].id);
+                setServiceCenterAddress(found.addresses[0].address);
+              }
+            }
+          }}
+          onOpenAddCenterModal={() => setShowCenterModal(true)}
+          selectedAddressId={selectedAddressId}
+          onSelectAddress={(val) => {
+            setSelectedAddressId(val);
+            const currentCenter = serviceCenters.find((sc) => sc.id === selectedServiceCenterId);
+            const addr = currentCenter?.addresses.find((a) => a.id === val);
+            if (addr) setServiceCenterAddress(addr.address);
+          }}
+          couriers={couriers}
+          courierName={courierName}
+          onSelectCourier={(val) => {
+            setCourierName(val);
+            const found = couriers.find((c) => c.name === val);
+            if (found) setSelectedCourierId(found.id);
+          }}
+          onOpenAddCourierModal={() => setShowCourierModal(true)}
+          rmaNumber={rmaNumber}
+          onRmaNumberChange={setRmaNumber}
+          courierChargesInput={courierChargesInput}
+          onCourierChargesInputChange={setCourierChargesInput}
+          onsiteAddress={onsiteAddress}
+          onOnsiteAddressChange={setOnsiteAddress}
+          quickTags={QUICK_TAGS}
+        />
 
         {/* Section 4: Spare Parts & Service Charges */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
-                4
-              </span>
-              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Spare Parts & Service Charges
-              </h2>
-            </div>
+        <ServiceCallBillingPartsCard
+          parts={parts}
+          onAddPartRow={handleAddPartRow}
+          onUpdatePart={handleUpdatePart}
+          onRemovePartRow={handleRemovePartRow}
+          serviceChargesInput={serviceChargesInput}
+          onServiceChargesInputChange={setServiceChargesInput}
+          discountInput={discountInput}
+          onDiscountInputChange={setDiscountInput}
+        />
 
-            <button
-              type="button"
-              onClick={handleAddPartRow}
-              className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
-            >
-              Add Item
-            </button>
-          </div>
-
-          <div className="space-y-2.5">
-            {parts.length > 0 && (
-              <div className="grid grid-cols-12 gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 px-1">
-                <div className="col-span-7">Part / Item Name (Auto-saved to Catalog)</div>
-                <div className="col-span-2">Qty</div>
-                <div className="col-span-2">Unit Price (₹)</div>
-                <div className="col-span-1 text-right">Total</div>
-              </div>
-            )}
-
-            {parts.map((p, idx) => (
-              <div key={p.id || idx} className="grid grid-cols-12 gap-3 items-center">
-                <div className="col-span-7">
-                  <SparePartTypeahead
-                    value={p.name}
-                    onChangeName={(name) => handleUpdatePart(idx, "name", name)}
-                    onSelectCatalogItem={(item) => {
-                      if (item.unitPrice > 0) {
-                        handleUpdatePart(idx, "unitPrice", item.unitPrice);
-                      }
-                    }}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    value={p.quantity}
-                    onChange={(e) => handleUpdatePart(idx, "quantity", e.target.value)}
-                    className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={p.unitPrice}
-                    onChange={(e) => handleUpdatePart(idx, "unitPrice", e.target.value)}
-                    className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white transition-colors"
-                  />
-                </div>
-                <div className="col-span-1 flex items-center justify-end gap-1.5">
-                  <span className="font-bold text-slate-900 dark:text-white text-xs font-display font-mono">
-                    ₹{(p.totalPrice || 0).toLocaleString("en-IN")}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePartRow(idx)}
-                    className="text-slate-400 hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {parts.length === 0 && (
-              <div className="text-xs text-slate-400 p-3 bg-slate-50/50 dark:bg-slate-950 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                No spare parts added. Click <button type="button" onClick={handleAddPartRow} className="text-[#2563EB] font-bold underline cursor-pointer">Add Item</button> if replacement hardware is required.
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Service & Repair Charges (₹)
-              </Label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={serviceChargesInput}
-                onChange={(e) => setServiceChargesInput(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white transition-colors"
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Discount (₹)
-              </Label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={discountInput}
-                onChange={(e) => setDiscountInput(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-rose-600 dark:text-rose-400 placeholder:text-slate-400 focus:bg-white transition-colors"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile-Only (< xl) Ticket Operations & Actions Card */}
-        <div className="xl:hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b pb-2.5">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Ticket Actions & Operations</h3>
-              <p className="text-[11px] text-slate-400">Audits, WhatsApp updates & milestone progression</p>
-            </div>
-            {isEditing && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPrintModal(true)}
-                className="h-8 text-xs font-semibold rounded-lg gap-1.5 cursor-pointer"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span>Print</span>
-              </Button>
-            )}
-          </div>
-
-          {/* 1. Audit & Events */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Audit & Timeline Events
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowEventsListModal(true)}
-                className="h-9 text-xs font-semibold rounded-xl gap-1.5 bg-slate-50 dark:bg-slate-800/60 cursor-pointer"
-              >
-                <Clock className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                <span>Events ({timeline.length})</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => triggerTimelineModal("comment_added")}
-                className="h-9 text-xs font-semibold rounded-xl gap-1.5 bg-slate-50 dark:bg-slate-800/60 cursor-pointer"
-              >
-                <FileText className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                <span>Add Note</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => triggerTimelineModal("status_change")}
-                className="h-9 text-xs font-semibold rounded-xl gap-1.5 bg-slate-50 dark:bg-slate-800/60 cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                <span>Add Event</span>
-              </Button>
-            </div>
-          </div>
-
-            {/* 2. Customer & Partner Communications */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Customer Notifications & Dispatch
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleOpenCustomerWhatsApp}
-                className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300"
-              >
-                <MessageSquare className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                <span>WhatsApp Customer</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleOpenCustomerEmail}
-                className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer border-blue-300 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300"
-              >
-                <Mail className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                <span>Email Customer</span>
-              </Button>
-
-              {type === "company_service_center" && serviceCenterName && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenServiceCenterWhatsApp}
-                  className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer"
-                >
-                  <RefreshCw className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                  <span>Follow-up Center</span>
-                </Button>
-              )}
-
-              {selectedCourierId && (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenCourierPickupWhatsApp}
-                    className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer"
-                  >
-                    <ArrowUp className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                    <span>Courier Pickup</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenCourierDeliveryWhatsApp}
-                    className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer"
-                  >
-                    <ArrowDown className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                    <span>Courier Delivery</span>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* 3. Milestone Progression */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Milestone Progression
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { index: 1, stage: "replacement_received_customer" as const, label: "1. Recv from Customer" },
-                { index: 2, stage: "replacement_sent_service_center" as const, label: "2. Sent to Center" },
-                { index: 3, stage: "replacement_received_service_center" as const, label: "3. Recv from Center" },
-                { index: 4, stage: "replacement_given_customer" as const, label: "4. Given to Customer" },
-              ].map((m) => {
-                let activeIndex = 1;
-                if (timeline && timeline.length > 0) {
-                  for (let i = timeline.length - 1; i >= 0; i--) {
-                    const s = timeline[i]?.stage;
-                    if (s === "replacement_given_customer") { activeIndex = 4; break; }
-                    if (s === "replacement_received_service_center") { activeIndex = 3; break; }
-                    if (s === "replacement_sent_service_center") { activeIndex = 2; break; }
-                    if (s === "replacement_received_customer" || s === "intake_created") { activeIndex = 1; break; }
-                  }
-                } else {
-                  if (status === "delivered" || status === "completed") activeIndex = 4;
-                  else if (status === "sent_to_service_center") activeIndex = 2;
-                  else if (status === "received" || status === "in_progress") activeIndex = 1;
-                }
-                const isActive = activeIndex === m.index;
-
-                return (
-                  <button
-                    key={m.stage}
-                    type="button"
-                    onClick={() => triggerTimelineModal(m.stage)}
-                    className={`flex items-center justify-between rounded-xl py-2 px-2.5 text-xs transition-all cursor-pointer border ${
-                      isActive
-                        ? "bg-blue-50 dark:bg-blue-950/60 border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-300 font-bold shadow-2xs"
-                        : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 font-medium"
-                    }`}
-                  >
-                    <span className="truncate">{m.label}</span>
-                    {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0 ml-1" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 4. Quick Master Records */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Quick Master Records
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCustomerModal(true)}
-                className="h-8.5 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer"
-              >
-                <UserPlus className="h-3.5 w-3.5 text-slate-400" />
-                <span>Customer</span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCenterModal(true)}
-                className="h-8.5 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer"
-              >
-                <Home className="h-3.5 w-3.5 text-slate-400" />
-                <span>Center</span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCourierModal(true)}
-                className="h-8.5 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer"
-              >
-                <Truck className="h-3.5 w-3.5 text-slate-400" />
-                <span>Courier</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Delete Button on Mobile */}
-          {isEditing && (
-            <div className="pt-2 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDeleteModal(true)}
-                className="w-full h-9 text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl gap-2 cursor-pointer"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>Delete Ticket</span>
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Sticky Bottom Action Bar (< xl) */}
-        <div className="xl:hidden sticky bottom-0 z-30 -mx-2 sm:-mx-4 -mb-2 sm:-mb-4 p-3 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 shadow-lg backdrop-blur-md flex items-center justify-between gap-3">
-          <div>
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Grand Total</span>
-            <span className="font-mono text-base font-extrabold text-slate-900 dark:text-white">
-              ₹{grandTotal.toLocaleString("en-IN")}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link to="/admin/service-calls">
-              <Button type="button" variant="outline" size="sm" className="h-10 text-xs rounded-xl cursor-pointer">
-                Cancel
-              </Button>
-            </Link>
-
-            <Button
-              type="submit"
-              disabled={saving}
-              className="h-10 px-5 text-xs font-bold bg-[#2563EB] hover:bg-blue-600 text-white rounded-xl shadow-glow-sm cursor-pointer"
-            >
-              {saving ? "Saving..." : isEditing ? "Update Ticket" : "Save Ticket"}
-            </Button>
-          </div>
-        </div>
       </form>
 
-      {/* Attached Right Action Sidebar (Portal Target: #admin-right-rail) */}
-      {rightRailEl &&
-        createPortal(
-          <aside className="w-72 h-screen flex flex-col justify-between bg-[#0F172A] border-l border-slate-800/90 text-slate-300 select-none overflow-hidden print:hidden">
-            {/* Header (Aligned with top bar) */}
-            <div className="shrink-0 px-4 pt-4 pb-3 border-b border-slate-800/80 bg-[#0F172A]">
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-white">
-                TICKET ACTIONS
-              </h3>
-              <p className="text-xs text-slate-400 font-normal mt-0.5">Operations & Lifecycle Controls</p>
-            </div>
-
-            {/* Scrollable Action Groups */}
-            <div className="flex-1 p-3.5 space-y-4 overflow-y-auto min-h-0">
-              {/* Audit History & Quick Note / Event */}
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  AUDIT & EVENTS
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowEventsListModal(true)}
-                  className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Clock className="h-4 w-4 text-indigo-400 shrink-0" />
-                    <span>Show Events</span>
-                  </div>
-                  <span className="text-xs font-bold bg-[#4F46E5] text-white h-5 w-5 rounded-full flex items-center justify-center">
-                    {timeline.length}
-                  </span>
-                </button>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => triggerTimelineModal("comment_added")}
-                    className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
-                  >
-                    <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>Add Note</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => triggerTimelineModal("status_change")}
-                    className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>Add Event</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* WhatsApp Communications & Follow-ups */}
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  WHATSAPP UPDATES
-                </div>
-
-                <div className="space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={handleOpenCustomerWhatsApp}
-                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <MessageSquare className="h-4 w-4 shrink-0 text-emerald-400" />
-                      <span>WhatsApp Customer</span>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenCustomerEmail}
-                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Mail className="h-4 w-4 shrink-0 text-blue-400" />
-                      <span>Email Customer</span>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenServiceCenterWhatsApp}
-                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <RefreshCw className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span>Follow-up Service Center</span>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenCourierPickupWhatsApp}
-                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <ArrowUp className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span>Ask Courier for Pickup</span>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenCourierDeliveryWhatsApp}
-                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <ArrowDown className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span>Ask Courier for Delivery</span>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Milestone Progression */}
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  MILESTONE PROGRESSION
-                </div>
-
-                <div className="space-y-1">
-                  {[
-                    {
-                      index: 1,
-                      stage: "replacement_received_customer" as const,
-                      label: "Recv from Customer",
-                      hotkey: "F5",
-                    },
-                    {
-                      index: 2,
-                      stage: "replacement_sent_service_center" as const,
-                      label: "Sent to Service Center",
-                      hotkey: "F6",
-                    },
-                    {
-                      index: 3,
-                      stage: "replacement_received_service_center" as const,
-                      label: "Recv from Service Cent...",
-                      hotkey: "F8",
-                    },
-                    {
-                      index: 4,
-                      stage: "replacement_given_customer" as const,
-                      label: "Given to Customer",
-                      hotkey: "F9",
-                    },
-                  ].map((m) => {
-                    // Determine if this milestone is the current active milestone
-                    let activeIndex = 1;
-                    if (timeline && timeline.length > 0) {
-                      for (let i = timeline.length - 1; i >= 0; i--) {
-                        const s = timeline[i]?.stage;
-                        if (s === "replacement_given_customer") { activeIndex = 4; break; }
-                        if (s === "replacement_received_service_center") { activeIndex = 3; break; }
-                        if (s === "replacement_sent_service_center") { activeIndex = 2; break; }
-                        if (s === "replacement_received_customer" || s === "intake_created") { activeIndex = 1; break; }
-                      }
-                    } else {
-                      if (status === "delivered" || status === "completed") activeIndex = 4;
-                      else if (status === "sent_to_service_center") activeIndex = 2;
-                      else if (status === "received" || status === "in_progress") activeIndex = 1;
-                    }
-
-                    const isActive = activeIndex === m.index;
-
-                    return (
-                      <button
-                        key={m.stage}
-                        type="button"
-                        onClick={() => triggerTimelineModal(m.stage)}
-                        className={`w-full flex items-center justify-between rounded-xl py-2 px-2.5 text-xs transition-all cursor-pointer group ${
-                          isActive
-                            ? "font-semibold text-white bg-[#141e30] border border-slate-700/80 shadow-xs"
-                            : "font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white border border-transparent"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span
-                            className={`h-5 w-5 rounded-full font-bold flex items-center justify-center text-[10px] shrink-0 ${
-                              isActive
-                                ? "bg-[#4F46E5] text-white"
-                                : "bg-slate-800 border border-slate-700 text-slate-300"
-                            }`}
-                          >
-                            {m.index}
-                          </span>
-                          <span className="truncate">{m.label}</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-slate-400 font-bold shrink-0">{m.hotkey}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Ticket Controls / Operations (Print & Delete) */}
-              {isEditing && (
-                <div className="space-y-2">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    TICKET CONTROLS
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowPrintModal(true)}
-                      className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Printer className="h-4 w-4 shrink-0 text-indigo-400" />
-                        <span>Print Job Card</span>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowDeleteModal(true)}
-                      className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Trash2 className="h-4 w-4 shrink-0 text-slate-400" />
-                        <span>Delete Ticket</span>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Master Record Quick Adds */}
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  QUICK MASTER RECORDS
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomerModal(true)}
-                    className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
-                  >
-                    <UserPlus className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>Customer</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCenterModal(true)}
-                    className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
-                  >
-                    <Home className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>Center</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCourierModal(true)}
-                    className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
-                  >
-                    <Truck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>Courier</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Pinned Sticky Bottom Action Bar: Financial Summary + Primary Save CTA */}
-            <div className="shrink-0 p-3.5 border-t border-slate-800/80 bg-slate-900/95 space-y-3">
-              {/* Financial Breakdown */}
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between items-center text-[11px] text-slate-300">
-                  <span>Spare Parts</span>
-                  <span className="font-mono text-slate-200 font-semibold">₹{partsTotal.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="flex justify-between items-center text-[11px] text-slate-300">
-                  <span>Service Charge</span>
-                  <span className="font-mono text-slate-200 font-semibold">₹{serviceChargesNum.toLocaleString("en-IN")}</span>
-                </div>
-                {type === "company_service_center" && courierChargesNum > 0 && (
-                  <div className="flex justify-between items-center text-[11px] text-slate-300">
-                    <span>Courier Charge</span>
-                    <span className="font-mono text-slate-200 font-semibold">₹{courierChargesNum.toLocaleString("en-IN")}</span>
-                  </div>
-                )}
-                {discountNum > 0 && (
-                  <div className="flex justify-between items-center text-[11px] text-rose-400 font-medium">
-                    <span>Discount</span>
-                    <span className="font-mono text-rose-400 font-semibold">-₹{discountNum.toLocaleString("en-IN")}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center pt-2 border-t border-slate-800 font-bold text-white">
-                  <span>Grand Total</span>
-                  <span className="font-mono text-sm text-blue-400">₹{grandTotal.toLocaleString("en-IN")}</span>
-                </div>
-              </div>
-
-              {/* Primary Save & Accept Button pinned in sticky footer */}
-              <Button
-                type="submit"
-                form="service-call-form"
-                disabled={saving}
-                className="w-full h-10 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white shadow-md shadow-blue-600/30 gap-2 transition-all justify-center cursor-pointer"
-              >
-                <Save className="h-4 w-4" />
-                <span>{saving ? "Saving Ticket..." : "Save & Accept (Ctrl+A)"}</span>
-              </Button>
-            </div>
-          </aside>,
-          rightRailEl
-        )}
+      {/* Lifecycle Actions Rail (Both Mobile Card & Desktop Portal) */}
+      <ServiceCallLifecycleRail
+        rightRailEl={rightRailEl}
+        isEditing={isEditing}
+        saving={saving}
+        timeline={timeline}
+        status={status}
+        type={type}
+        serviceCenterName={serviceCenterName}
+        selectedCourierId={selectedCourierId}
+        partsTotal={partsTotal}
+        serviceChargesNum={serviceChargesNum}
+        courierChargesNum={courierChargesNum}
+        discountNum={discountNum}
+        grandTotal={grandTotal}
+        onShowEventsListModal={() => setShowEventsListModal(true)}
+        onTriggerTimelineModal={triggerTimelineModal}
+        onOpenCustomerWhatsApp={handleOpenCustomerWhatsApp}
+        onOpenCustomerEmail={handleOpenCustomerEmail}
+        onOpenServiceCenterWhatsApp={handleOpenServiceCenterWhatsApp}
+        onOpenCourierPickupWhatsApp={handleOpenCourierPickupWhatsApp}
+        onOpenCourierDeliveryWhatsApp={handleOpenCourierDeliveryWhatsApp}
+        onOpenPrintModal={() => setShowPrintModal(true)}
+        onOpenDeleteModal={() => setShowDeleteModal(true)}
+        onOpenCustomerModal={() => setShowCustomerModal(true)}
+        onOpenCenterModal={() => setShowCenterModal(true)}
+        onOpenCourierModal={() => setShowCourierModal(true)}
+      />
 
       {/* WhatsApp Message Preview & Dispatch Modal */}
       <WhatsAppPreviewModal
@@ -2004,6 +1142,31 @@ export default function AdminServiceCallForm() {
         defaultPhone={whatsAppModal.defaultPhone}
         defaultMessage={whatsAppModal.defaultMessage}
         ticketId={ticketNo}
+        targetModule={whatsAppModal.targetModule}
+        templateName={whatsAppModal.templateName}
+        serviceCall={{
+          id: id || "NEW",
+          ticketNo: ticketNo || "SC-INTAKE",
+          customerName,
+          customerPhone,
+          customerEmail,
+          deviceCategory,
+          modelNumber,
+          serialNumber,
+          issueDescription,
+          status,
+          grandTotal,
+          dateTime,
+          warrantyStatus,
+          type,
+          serviceCenterName,
+          serviceCenterAddress,
+          courierName,
+          rmaNumber,
+          timeline,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        } as ServiceCall}
       />
 
       {/* Email Message Preview & Dispatch Modal */}
@@ -2195,6 +1358,39 @@ export default function AdminServiceCallForm() {
           </div>,
           breadcrumbTicketEl
         )}
+
+      {/* Unsaved Changes Esc Confirmation Floating Bar */}
+      {showEscQuitPrompt && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-150">
+          <div className="flex items-center gap-3.5 bg-slate-900/95 text-slate-100 border border-amber-500/60 shadow-2xl shadow-black/60 rounded-2xl px-5 py-3 backdrop-blur-md">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+              <span className="text-xs font-semibold tracking-wide text-slate-200">
+                Unsaved changes! Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[11px] text-amber-400 font-bold">Esc</kbd> again to exit, or press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[11px] text-amber-400 font-bold">C</kbd> to continue
+              </span>
+            </div>
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowEscQuitPrompt(false)}
+                className="px-3 py-1 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all cursor-pointer shadow-sm"
+              >
+                Continue (C)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEscQuitPrompt(false);
+                  navigate("/admin/service-calls");
+                }}
+                className="px-3 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer"
+              >
+                Discard & Exit (Esc)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

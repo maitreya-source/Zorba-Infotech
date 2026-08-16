@@ -140,17 +140,19 @@ export interface StaffMember {
   createdAt: number;
 }
 
+export type TimelineStage =
+  | "intake_created"
+  | "replacement_sent_service_center"
+  | "replacement_received_service_center"
+  | "replacement_given_customer"
+  | "replacement_received_customer"
+  | "status_change"
+  | "comment_added";
+
 export interface TimelineEvent {
   id: string;
   timestamp: number;
-  stage:
-    | "intake_created"
-    | "replacement_sent_service_center"
-    | "replacement_received_service_center"
-    | "replacement_given_customer"
-    | "replacement_received_customer"
-    | "status_change"
-    | "comment_added";
+  stage: TimelineStage;
   title: string;
   staffId: string;
   staffName: string;

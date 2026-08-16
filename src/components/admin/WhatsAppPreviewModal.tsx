@@ -97,7 +97,7 @@ export default function WhatsAppPreviewModal({
   const [customFreeformMessage, setCustomFreeformMessage] = useState(defaultMessage || "");
   const [copied, setCopied] = useState(false);
   const [sending, setSending] = useState(false);
-  const [showVariableEditor, setShowVariableEditor] = useState(true);
+  const [showVariableEditor, setShowVariableEditor] = useState(false);
 
   // Load registered WhatsApp templates from Firestore
   useEffect(() => {
@@ -136,16 +136,44 @@ export default function WhatsAppPreviewModal({
     if (!open) return;
     setPhoneNumber(defaultPhone || "");
 
-    const available = targetModule
-      ? templates.filter((t) => t.targetModule === targetModule)
+    const effectiveTargetModule =
+      targetModule ||
+      (recipientRole === "Courier Partner"
+        ? "couriers"
+        : recipientRole === "Service Center"
+        ? "service_centers"
+        : "service_calls");
+
+    const available = effectiveTargetModule
+      ? templates.filter((t) => t.targetModule === effectiveTargetModule)
       : templates;
 
     let match: WhatsAppTemplateDoc | undefined;
     if (initialTemplateName) {
-      match = templates.find((t) => t.name === initialTemplateName);
-    } else if (available.length > 0) {
-      // Default to customer service update if recipient is customer
-      match = available.find((t) => t.id === "zorba_customer_service_update") || available[0];
+      match = templates.find((t) => t.name === initialTemplateName || t.id === initialTemplateName);
+    }
+
+    if (!match && (recipientRole === "Courier Partner" || effectiveTargetModule === "couriers")) {
+      const lowerTitle = (title || "").toLowerCase();
+      if (lowerTitle.includes("pickup")) {
+        match = templates.find((t) => t.id === "zorba_courier_pickup_request" || t.name === "zorba_courier_pickup_request");
+      } else if (lowerTitle.includes("delivery")) {
+        match = templates.find((t) => t.id === "zorba_courier_delivery_inquiry" || t.name === "zorba_courier_delivery_inquiry");
+      } else {
+        match = available.find((t) => t.targetModule === "couriers");
+      }
+    }
+
+    if (!match && (recipientRole === "Service Center" || effectiveTargetModule === "service_centers")) {
+      match = templates.find((t) => t.id === "zorba_service_center_followup" || t.targetModule === "service_centers");
+    }
+
+    if (!match && (recipientRole === "Customer" || effectiveTargetModule === "service_calls")) {
+      match = available.find((t) => t.id === "zorba_customer_service_update") || available.find((t) => t.targetModule === "service_calls");
+    }
+
+    if (!match && available.length > 0) {
+      match = available[0];
     }
 
     if (match) {
@@ -156,7 +184,7 @@ export default function WhatsAppPreviewModal({
       setCustomFreeformMessage(defaultMessage || "");
     }
     setCopied(false);
-  }, [open, templates, initialTemplateName, defaultPhone, defaultMessage, targetModule]);
+  }, [open, templates, initialTemplateName, defaultPhone, defaultMessage, targetModule, recipientRole, title, currentServiceCall]);
 
   // Populate variables from ticket details
   const populateVariablesForTemplate = (
@@ -175,13 +203,23 @@ export default function WhatsAppPreviewModal({
           ? "SERVICE COMPLETED - READY FOR PICKUP"
           : "SERVICE STATUS UPDATE";
       } else if (v.erpKey === "customer.name") {
-        val = recipientName || call?.customerName || "Valued Customer";
+        val = (recipientRole === "Customer" ? recipientName : "") || call?.customerName || "Valued Customer";
+      } else if (v.erpKey === "courierName") {
+        val = (recipientRole === "Courier Partner" ? recipientName : "") || call?.courierName || "Courier Partner";
+      } else if (v.erpKey === "serviceCenterName") {
+        val = (recipientRole === "Service Center" ? recipientName : "") || call?.serviceCenterName || "Authorized Service Center";
+      } else if (v.erpKey === "destinationAddress") {
+        val = call?.serviceCenterAddress || "Destination City";
+      } else if (v.erpKey === "rmaNumber") {
+        val = call?.rmaNumber || "N/A";
       } else if (v.erpKey === "ticketNo") {
         val = call?.ticketNo || ticketId || "SC-XXXX";
       } else if (v.erpKey === "dateTime") {
         val = call?.dateTime || new Date().toISOString().split("T")[0];
       } else if (v.erpKey === "deviceCategory") {
         val = call?.deviceCategory ? `${call.deviceCategory}${call.modelNumber ? ` - ${call.modelNumber}` : ""}` : "Hardware Unit";
+      } else if (v.erpKey === "serialNumber") {
+        val = call?.serialNumber || "N/A";
       } else if (v.erpKey === "issueDescription") {
         val = call?.issueDescription || "Service Request";
       } else if (v.erpKey === "status") {

@@ -1,11 +1,25 @@
 import { useEffect, useRef } from "react";
 
+function isTextField(el: EventTarget | null): boolean {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName.toUpperCase();
+  if (tag === "TEXTAREA") return true;
+  if (tag === "INPUT") {
+    const input = el as HTMLInputElement;
+    const nonTextTypes = ["checkbox", "radio", "button", "submit", "reset", "file", "image", "color", "range"];
+    return !nonTextTypes.includes((input.type || "").toLowerCase());
+  }
+  return false;
+}
+
 interface TallyShortcutOptions {
   onAltC?: () => void;  // Create New Customer / Category
   onAltA?: () => void;  // Add Service Call / Add Row
   onAltD?: () => void;  // Delete Selected Row / Entry
   onCtrlA?: () => void; // Accept / Save current screen (Ctrl + A / Cmd + A)
   onEsc?: () => void;   // Close current screen / modal
+  onC?: () => void;     // Press C to continue / dismiss prompt
   onCtrlF2?: () => void;// Change Date (Ctrl + F2 or F2)
   onF2?: () => void;    // Focus Date field
   onF5?: () => void;    // Replacement Sent to Service Center
@@ -22,12 +36,23 @@ export function useTallyShortcuts(options: TallyShortcutOptions) {
     const handleKeyDown = (e: KeyboardEvent) => {
       const opts = optionsRef.current;
       // Ctrl + A (or Cmd + A) -> Accept / Save current screen
+      // If inside a text field, let standard text selection happen normally!
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "a" || e.code === "KeyA")) {
+        if (isTextField(e.target)) {
+          return;
+        }
         if (opts.onCtrlA) {
           e.preventDefault();
           opts.onCtrlA();
           return;
         }
+      }
+
+      // C key -> Continue editing if onC is provided (e.g. when Esc warning is active)
+      if (opts.onC && !e.ctrlKey && !e.altKey && !e.metaKey && (e.key.toLowerCase() === "c" || e.code === "KeyC")) {
+        e.preventDefault();
+        opts.onC();
+        return;
       }
 
       // Ctrl + F2 -> Change Date
@@ -47,6 +72,13 @@ export function useTallyShortcuts(options: TallyShortcutOptions) {
 
       // Esc -> Close current screen / modal
       if (e.key === "Escape") {
+        const target = e.target as HTMLElement | null;
+        const insideDialog = target?.closest?.('[role="dialog"], [role="alertdialog"]');
+        const openDialogInDom = document.querySelector('[role="dialog"], [role="alertdialog"]');
+        if (insideDialog || openDialogInDom) {
+          // Allow the modal / dialog itself to handle its own close event without triggering screen-level onEsc
+          return;
+        }
         opts.onEsc?.();
         return;
       }
