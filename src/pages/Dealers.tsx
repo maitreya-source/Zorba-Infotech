@@ -40,14 +40,14 @@ const Dealers = () => {
       />
       <BreadcrumbSchema items={[{ name: "Home", url: "/" }, { name: "Dealer Portal", url: "/dealers" }]} />
       {/* Hero */}
-      <section className="bg-gradient-dealer py-16 text-primary-foreground">
+      <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 py-14 md:py-16 text-white shadow-inner">
         <div className="container mx-auto max-w-3xl text-center">
-          <span className="inline-block rounded-full bg-zorba-orange/20 px-4 py-1 text-sm font-semibold text-zorba-orange mb-4">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-400/30 px-3.5 py-1 text-xs font-bold text-amber-300 tracking-wide uppercase mb-3.5 shadow-xs">
             B2B Distribution
           </span>
-          <h1 className="text-3xl font-bold font-display md:text-4xl">Dealer & Bulk Buyer Portal</h1>
-          <p className="mt-3 text-primary-foreground/80">
-            Partner with Zorba Infotech for the best wholesale pricing on IT hardware across Neemuch, MP & Rajasthan.
+          <h1 className="text-3xl font-extrabold font-display md:text-4xl text-white tracking-tight leading-tight">Dealer &amp; Bulk Buyer Portal</h1>
+          <p className="mt-3.5 text-sm md:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
+            Partner with Zorba Infotech for the best wholesale pricing on IT hardware across Neemuch, MP &amp; Rajasthan.
           </p>
         </div>
       </section>
