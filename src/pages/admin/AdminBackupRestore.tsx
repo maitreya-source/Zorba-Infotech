@@ -75,6 +75,7 @@ import {
   deleteCloudSnapshot,
   restoreDatabaseFromBackup,
   isBackupDownloadAuthorized,
+  isDriveSyncAuthorized,
   type FullDatabaseBackup,
   type CloudSnapshot,
   type RestoreProgress,
@@ -95,7 +96,9 @@ import type { FinancialYearDoc } from "@/lib/types";
 
 export default function AdminBackupRestore() {
   const { user } = useAuth();
-  const isAuthorized = isBackupDownloadAuthorized(user?.email);
+  const canDownloadAndRestore = isBackupDownloadAuthorized(user?.email);
+  const canSyncToDrive = isDriveSyncAuthorized(user?.email);
+  const isAuthorized = canDownloadAndRestore; // Alias for general restore/snapshot access
   const [snapshots, setSnapshots] = useState<CloudSnapshot[]>([]);
   const [financialYears, setFinancialYears] = useState<FinancialYearDoc[]>([]);
   const [loadingSnapshots, setLoadingSnapshots] = useState(true);
@@ -212,8 +215,8 @@ export default function AdminBackupRestore() {
 
   // 3. Sync Backup to Google Drive
   const handleSyncToGoogleDrive = async () => {
-    if (!isAuthorized) {
-      toast.error("Unauthorized: Google Drive backup sync is restricted to executive administrators.");
+    if (!canSyncToDrive) {
+      toast.error("Unauthorized: Google Drive backup sync is restricted to authorized administrators.");
       return;
     }
     setSyncingDrive(true);
@@ -409,8 +412,8 @@ export default function AdminBackupRestore() {
         </div>
       </div>
 
-      {/* Access Restriction Notice if Unauthorized */}
-      {!isAuthorized && (
+      {/* Access Restriction Notice */}
+      {!canDownloadAndRestore && !canSyncToDrive && (
         <div className="rounded-2xl border border-amber-300 dark:border-amber-800/60 bg-amber-50/80 dark:bg-amber-950/40 p-4 flex items-start gap-3 text-amber-900 dark:text-amber-200 shadow-xs">
           <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
@@ -421,7 +424,24 @@ export default function AdminBackupRestore() {
               </Badge>
             </p>
             <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-              Database JSON exports and cloud disaster recovery restores are reserved for executive administrators. Your account has read-only access and does not have export or restore permissions. Please contact system management for database operations.
+              Database JSON exports, Google Drive sync, and disaster recovery restores are reserved for authorized administrators. Your account has read-only access.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!canDownloadAndRestore && canSyncToDrive && (
+        <div className="rounded-2xl border border-emerald-300 dark:border-emerald-800/60 bg-emerald-50/80 dark:bg-emerald-950/40 p-4 flex items-start gap-3 text-emerald-900 dark:text-emerald-200 shadow-xs">
+          <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold text-xs flex items-center gap-2">
+              <span>Google Drive Backup Sync Mode Active</span>
+              <Badge variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 border-emerald-300 text-[10px]">
+                Drive Sync Authorized
+              </Badge>
+            </p>
+            <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+              Your account is authorized to trigger automated multi-partition backups to Google Drive. Local JSON file downloads and database restores are restricted to executive owners.
             </p>
           </div>
         </div>
@@ -509,7 +529,7 @@ export default function AdminBackupRestore() {
           <div className="pt-2 space-y-2">
             <Button
               onClick={handleSyncToGoogleDrive}
-              disabled={!isAuthorized || syncingDrive || exporting || restoring}
+              disabled={!canSyncToDrive || syncingDrive || exporting || restoring}
               className="w-full gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9.5 rounded-xl disabled:opacity-50 cursor-pointer shadow-xs"
             >
               {syncingDrive ? (
@@ -530,7 +550,7 @@ export default function AdminBackupRestore() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button
                 onClick={handleExportDownload}
-                disabled={!isAuthorized || exporting || restoring || syncingDrive}
+                disabled={!canDownloadAndRestore || exporting || restoring || syncingDrive}
                 variant="outline"
                 className="gap-1.5 h-9 rounded-xl font-semibold border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer truncate"
               >
@@ -544,7 +564,7 @@ export default function AdminBackupRestore() {
 
               <Button
                 onClick={handleSaveCloudSnapshot}
-                disabled={!isAuthorized || savingCloud || restoring || syncingDrive}
+                disabled={!canDownloadAndRestore || savingCloud || restoring || syncingDrive}
                 variant="outline"
                 className="gap-1.5 h-9 rounded-xl font-semibold border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer truncate"
               >
@@ -553,7 +573,7 @@ export default function AdminBackupRestore() {
                 ) : (
                   <Cloud className="h-3.5 w-3.5 text-blue-500 shrink-0" />
                 )}
-                <span className="truncate">{savingCloud ? "Saving..." : "Save Cloud Snapshot"}</span>
+                <span className="truncate">{savingCloud ? "Saving..." : "Save Snapshot"}</span>
               </Button>
             </div>
           </div>

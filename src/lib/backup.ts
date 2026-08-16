@@ -17,9 +17,13 @@ import { db } from "./firebase";
 import { cleanFirestoreData, formatFirebaseError } from "./firestore";
 import { validateBackupPayload, type PreFlightValidationReport } from "./backupValidation";
 
-// ─── Authorization Constants & Checkers ───────────────────────────────────────
+export const BACKUP_DOWNLOAD_AUTHORIZED_EMAILS = [
+  "maitreya.mul@gmail.com",
+  "manishm9730@gmail.com",
+  "zorbainfotech@gmail.com",
+];
 
-export const BACKUP_AUTHORIZED_EMAILS = [
+export const DRIVE_SYNC_AUTHORIZED_EMAILS = [
   "maitreya.mul@gmail.com",
   "manishm9730@gmail.com",
   "zorbainfotech@gmail.com",
@@ -30,7 +34,17 @@ export const BACKUP_AUTHORIZED_EMAILS = [
 export function isBackupDownloadAuthorized(email?: string | null): boolean {
   if (!email) return false;
   const clean = email.toLowerCase().trim();
-  return BACKUP_AUTHORIZED_EMAILS.includes(clean);
+  return BACKUP_DOWNLOAD_AUTHORIZED_EMAILS.includes(clean);
+}
+
+export function isDriveSyncAuthorized(email?: string | null): boolean {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  return DRIVE_SYNC_AUTHORIZED_EMAILS.includes(clean);
+}
+
+export function isDatabaseRestoreAuthorized(email?: string | null): boolean {
+  return isBackupDownloadAuthorized(email);
 }
 
 export interface BackupScopeOptions {
