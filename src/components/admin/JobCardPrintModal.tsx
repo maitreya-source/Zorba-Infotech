@@ -443,6 +443,12 @@ export default function JobCardPrintModal({
                       <span>₹{serviceCall.courierCharges?.toLocaleString("en-IN")}</span>
                     </div>
                   )}
+                  {Boolean(serviceCall.discount && serviceCall.discount > 0) && (
+                    <div className="flex justify-between text-black font-semibold">
+                      <span>Discount:</span>
+                      <span>-₹{serviceCall.discount?.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t border-black pt-0.5 text-xs font-extrabold text-black">
                     <span>Grand Total:</span>
                     <span className="font-mono">₹{serviceCall.grandTotal.toLocaleString("en-IN")}</span>
@@ -459,7 +465,7 @@ export default function JobCardPrintModal({
                 <p className="font-bold text-black mb-0.5 text-[10px]">Terms & Conditions (Zorba Declaration):</p>
                 <ol className="list-decimal pl-3 space-y-0.5 text-[8.5px] text-black leading-tight">
                   <li>Goods once sold or serviced will not be taken back or exchanged.</li>
-                  <li>Courier/transport charges during warranty period are payable by customer/dealer.</li>
+                  <li>Courier charges will be borne by the customer along with any charges levied by the authorized service center.</li>
                   <li>No warranty for physical damage, broken seal, burning, or water exposure (पानी लगने/गीला होने पर वारंटी नहीं मिलती).</li>
                   <li>Zorba Infotech is not responsible for data loss or pirated software; backup is owner's risk.</li>
                   <li>Devices not claimed within 30 days of service completion may incur storage charges.</li>

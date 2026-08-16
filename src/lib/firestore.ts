@@ -601,12 +601,12 @@ export async function deleteCourier(id: string): Promise<void> {
 // ─── Team Members (Unified Personnel: Backoffice, Technician, Manager) ───────
 
 const DEFAULT_TEAM_MEMBERS: Omit<TeamMember, "id" | "createdAt">[] = [
-  { name: "Rajesh Sharma", role: "backoffice", phone: "+91 98230 11223", email: "rajesh@zorba.in", active: true },
-  { name: "Amit Patel", role: "manager", phone: "+91 94220 44556", email: "amit@zorba.in", active: true },
-  { name: "Sunita Verma", role: "backoffice", phone: "+91 98900 77889", email: "sunita@zorba.in", active: true },
-  { name: "Manoj Kumar", role: "technician", phone: "+91 98230 55441", email: "manoj@zorba.in", specialization: "CCTV & Security", active: true },
-  { name: "Vikas Sharma", role: "technician", phone: "+91 94220 88776", email: "vikas@zorba.in", specialization: "Printers & Toners", active: true },
-  { name: "Deepak Soni", role: "technician", phone: "+91 98900 33221", email: "deepak@zorba.in", specialization: "Laptops & Networking", active: true },
+  { name: "Rajesh Sharma", role: "backoffice", phone: "+91 98230 11223", email: "rajesh@zorba.in", avatar: "penguin", active: true },
+  { name: "Sunita Verma", role: "backoffice", phone: "+91 98900 77889", email: "sunita@zorba.in", avatar: "watermelon", active: true },
+  { name: "Amit Patel", role: "manager", phone: "+91 94220 44556", email: "amit@zorba.in", avatar: "lion", active: true },
+  { name: "Manoj Kumar", role: "technician", phone: "+91 98230 55441", email: "manoj@zorba.in", specialization: "CCTV & Security", avatar: "fox", active: true },
+  { name: "Vikas Sharma", role: "technician", phone: "+91 94220 88776", email: "vikas@zorba.in", specialization: "Printers & Toners", avatar: "rocket", active: true },
+  { name: "Deepak Soni", role: "technician", phone: "+91 98900 33221", email: "deepak@zorba.in", specialization: "Laptops & Networking", avatar: "coffee", active: true },
 ];
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
@@ -669,12 +669,20 @@ export async function deleteTeamMember(id: string): Promise<void> {
 export async function getStaff(): Promise<StaffMember[]> {
   const team = await getTeamMembers();
   return team
-    .filter((m) => m.role === "backoffice" || m.role === "manager")
+    .filter((m) => m.role !== "technician")
     .map((m) => ({
       id: m.id,
       name: m.name,
-      role: m.role === "manager" ? "Service Operations Manager" : "Frontdesk / Backoffice Coordinator",
+      role:
+        m.role === "proprietor"
+          ? "Proprietor"
+          : m.role === "developer"
+          ? "Lead Developer"
+          : m.role === "manager"
+          ? "Service Operations Manager"
+          : "Frontdesk / Backoffice Coordinator",
       phone: m.phone,
+      avatar: m.avatar || "penguin",
       active: m.active,
       createdAt: m.createdAt,
     }));
@@ -1043,6 +1051,41 @@ export async function getServiceCall(id: string): Promise<ServiceCall | null> {
   } catch (err: any) {
     console.error("getServiceCall error:", err);
     throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function peekNextTicketNumber(fyId: string, monthKey: string): Promise<string> {
+  const [cYear, cMonth] = monthKey.split("-");
+  const prefix = `SC-${cYear}-${cMonth}-`;
+  const counterRef = doc(db, "counters", `service_calls_${monthKey}`);
+
+  try {
+    const counterDoc = await getDoc(counterRef);
+    let current = 0;
+    if (counterDoc.exists()) {
+      current = counterDoc.data().current || 0;
+    } else {
+      try {
+        const q = query(collection(db, "financial_years", fyId, "months", monthKey, "service_calls"));
+        const snap = await getDocs(q);
+        const existingNums = snap.docs
+          .map((d) => {
+            const ticket = d.data().ticketNo || d.id || "";
+            const match = ticket.match(new RegExp(`^SC-${cYear}-${cMonth}-(\\d+)`));
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter((n) => !isNaN(n) && n > 0);
+        if (existingNums.length > 0) {
+          current = Math.max(...existingNums);
+        }
+      } catch {
+        // Ignore fallback query failure
+      }
+    }
+    const next = current + 1;
+    return `${prefix}${String(next).padStart(4, "0")}`;
+  } catch (err) {
+    return `${prefix}0001`;
   }
 }
 

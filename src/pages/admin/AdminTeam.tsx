@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle } from "lucide-react";
+import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle, Crown, Code } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getTeamMembers, createTeamMember, updateTeamMember, deleteTeamMember } from "@/lib/firestore";
 import type { TeamMember, TeamRole } from "@/lib/types";
+import AvatarGraphic from "@/components/admin/AvatarGraphic";
+import { AVATAR_CATALOG, getAvatarById } from "@/lib/avatars";
 
 export default function AdminTeam() {
   const [team, setTeam] = useState<TeamMember[]>([]);
@@ -49,6 +51,7 @@ export default function AdminTeam() {
   const [formPhone, setFormPhone] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formSpecialization, setFormSpecialization] = useState("");
+  const [formAvatar, setFormAvatar] = useState("penguin");
   const [formActive, setFormActive] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -77,6 +80,7 @@ export default function AdminTeam() {
     setFormPhone("");
     setFormEmail("");
     setFormSpecialization("");
+    setFormAvatar("penguin");
     setFormActive(true);
     setShowModal(true);
   };
@@ -88,6 +92,7 @@ export default function AdminTeam() {
     setFormPhone(member.phone || "");
     setFormEmail(member.email || "");
     setFormSpecialization(member.specialization || "");
+    setFormAvatar(member.avatar || "penguin");
     setFormActive(member.active !== false);
     setShowModal(true);
   };
@@ -112,6 +117,7 @@ export default function AdminTeam() {
           phone: formPhone.trim(),
           email: formEmail.trim() || undefined,
           specialization: formSpecialization.trim() || undefined,
+          avatar: formAvatar,
           active: formActive,
         });
         toast.success("Team member profile updated");
@@ -122,6 +128,7 @@ export default function AdminTeam() {
           phone: formPhone.trim(),
           email: formEmail.trim() || undefined,
           specialization: formSpecialization.trim() || undefined,
+          avatar: formAvatar,
           active: formActive,
         });
         toast.success("Team member added successfully");
@@ -139,7 +146,7 @@ export default function AdminTeam() {
     if (!deleteId) return;
     try {
       await deleteTeamMember(deleteId);
-      toast.success("Team member removed");
+      toast.success("Team member deleted");
       setDeleteId(null);
       loadData();
     } catch {
@@ -149,22 +156,35 @@ export default function AdminTeam() {
 
   const getRoleBadge = (role: TeamRole) => {
     switch (role) {
-      case "backoffice":
+      case "proprietor":
         return (
-          <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-            <ShieldCheck className="h-3 w-3" /> Back Office
+          <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+            <Crown className="h-3 w-3" /> Proprietor
           </Badge>
         );
-      case "technician":
+      case "developer":
         return (
-          <Badge className="bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-            <Wrench className="h-3 w-3" /> Technician
+          <Badge className="bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+            <Code className="h-3 w-3" /> Developer
           </Badge>
         );
       case "manager":
         return (
-          <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+          <Badge className="bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
             <Briefcase className="h-3 w-3" /> Manager
+          </Badge>
+        );
+      case "technician":
+        return (
+          <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+            <Wrench className="h-3 w-3" /> Technician
+          </Badge>
+        );
+      case "backoffice":
+      default:
+        return (
+          <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+            <ShieldCheck className="h-3 w-3" /> Back Office
           </Badge>
         );
     }
@@ -229,9 +249,11 @@ export default function AdminTeam() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="proprietor">Proprietor (Owner)</SelectItem>
+              <SelectItem value="developer">Developer (Tech)</SelectItem>
+              <SelectItem value="manager">Managers</SelectItem>
               <SelectItem value="backoffice">Back Office</SelectItem>
               <SelectItem value="technician">Technicians</SelectItem>
-              <SelectItem value="manager">Managers</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -283,14 +305,19 @@ export default function AdminTeam() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filtered.map((member) => (
                   <tr key={member.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
-                    {/* Name */}
+                    {/* Name with Avatar */}
                     <td className="px-4 py-3">
-                      <div className="font-bold text-slate-900 dark:text-white text-xs">{member.name}</div>
-                      {member.email && (
-                        <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          <Mail className="h-3 w-3" /> {member.email}
+                      <div className="flex items-center gap-2.5">
+                        <AvatarGraphic avatarId={member.avatar || "penguin"} size="sm" />
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white text-xs">{member.name}</div>
+                          {member.email && (
+                            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                              <Mail className="h-3 w-3" /> {member.email}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </td>
 
                     {/* Role */}
@@ -383,9 +410,11 @@ export default function AdminTeam() {
                     <SelectValue placeholder="Select Role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="backoffice">Back Office</SelectItem>
-                    <SelectItem value="technician">Technician</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="proprietor">Proprietor (Owner)</SelectItem>
+                    <SelectItem value="developer">Developer (Tech / ERP)</SelectItem>
+                    <SelectItem value="manager">Manager (Store Operations)</SelectItem>
+                    <SelectItem value="backoffice">Back Office (Frontdesk / Intake)</SelectItem>
+                    <SelectItem value="technician">Technician (Hardware Repair)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -427,6 +456,40 @@ export default function AdminTeam() {
                 onChange={(e) => setFormSpecialization(e.target.value)}
                 className="mt-1 h-9 text-xs rounded-xl"
               />
+            </div>
+
+            {/* Avatar Persona Selection */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Avatar Persona ({AVATAR_CATALOG.length} High-Fidelity Avatars)
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <AvatarGraphic avatarId={formAvatar} size="xs" />
+                  <span className="text-[11px] font-semibold text-[#2563EB]">
+                    {getAvatarById(formAvatar).name}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-5 gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                {AVATAR_CATALOG.map((av) => (
+                  <div
+                    key={av.id}
+                    onClick={() => setFormAvatar(av.id)}
+                    className={`cursor-pointer rounded-xl p-1.5 flex flex-col items-center justify-center transition-all ${
+                      formAvatar === av.id
+                        ? "bg-blue-500/20 ring-2 ring-blue-500 scale-105"
+                        : "hover:bg-slate-200 dark:hover:bg-slate-800"
+                    }`}
+                    title={`${av.name} - ${av.description}`}
+                  >
+                    <AvatarGraphic avatarId={av.id} size="md" />
+                    <span className="text-[10px] text-slate-700 dark:text-slate-300 font-medium mt-1 truncate max-w-full text-center">
+                      {av.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border">

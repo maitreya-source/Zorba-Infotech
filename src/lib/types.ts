@@ -116,7 +116,7 @@ export interface SparePartCatalogItem {
   createdAt: number;
 }
 
-export type TeamRole = "backoffice" | "technician" | "manager";
+export type TeamRole = "backoffice" | "technician" | "manager" | "proprietor" | "developer";
 
 export interface TeamMember {
   id: string;
@@ -125,6 +125,7 @@ export interface TeamMember {
   phone: string;
   email?: string;
   specialization?: string; // e.g. "CCTV & Security", "Printers", "Laptops & Networking"
+  avatar?: string; // Avatar ID from AVATAR_CATALOG (e.g. "penguin", "watermelon")
   active: boolean;
   createdAt: number;
 }
@@ -134,6 +135,7 @@ export interface StaffMember {
   name: string;
   role?: string;
   phone?: string;
+  avatar?: string;
   active: boolean;
   createdAt: number;
 }
@@ -259,6 +261,7 @@ export interface ServiceCall {
   parts: ServicePart[];
   partsTotal: number;
   serviceCharges: number;
+  discount?: number;
   grandTotal: number;
   
   // Internal notes / miscellaneous comments

@@ -128,8 +128,6 @@ export function generateWhatsAppMessage(options: {
   issueDescription: string;
   status: string;
   grandTotal?: number;
-  courierName?: string;
-  courierDocketNumber?: string;
   stageTitle?: string;
 }): string {
   const statusUpper = (options.status || "RECEIVED").replace(/_/g, " ").toUpperCase();
@@ -145,11 +143,6 @@ export function generateWhatsAppMessage(options: {
     headerNotice = "SERVICE CALL DELIVERED";
   }
 
-  let parcelDetails = "";
-  if (options.courierName || options.courierDocketNumber) {
-    parcelDetails = `\n📦 *Courier / Dispatch:* ${options.courierName || "Courier"} (Docket: ${options.courierDocketNumber || "N/A"})`;
-  }
-
   const message =
     `*ZORBA INFOTECH - ${headerNotice}*\n\n` +
     `Dear *${options.customerName}*,\n` +
@@ -158,18 +151,68 @@ export function generateWhatsAppMessage(options: {
     `📅 *Date:* ${options.dateTime}\n` +
     `💻 *Device:* ${options.deviceCategory}${options.modelNumber ? ` - ${options.modelNumber}` : ""}\n` +
     `🔍 *Reported Issue:* ${options.issueDescription}\n` +
-    `⚡ *Current Status:* ${statusUpper}` +
-    parcelDetails +
-    `\n💰 *Estimated Total:* ₹${(options.grandTotal || 0).toLocaleString("en-IN")}\n\n` +
+    `⚡ *Current Status:* ${statusUpper}\n` +
+    `💰 *Estimated Total:* ₹${(options.grandTotal || 0).toLocaleString("en-IN")}\n\n` +
     `*Terms & Conditions:*\n` +
-    `1. *Collection Policy:* Please collect your device within 30 days of completion notification.\n` +
-    `2. *Data Responsibility:* Zorba Infotech is not liable for data loss. Customers are advised to maintain prior backups.\n` +
-    `3. *Logistics & Transit:* Devices forwarded to authorized OEM service centers are subject to carrier terms.\n` +
-    `4. *Inspection Charges:* Minimum diagnostic charges apply if repair estimate is declined.\n\n` +
+    `1. *Courier & Service Charges:* Courier charges will be borne by the customer along with any charges levied by the authorized service center.\n` +
+    `2. *Collection Policy:* Please collect your device within 30 days of completion notification.\n` +
+    `3. *Data Responsibility:* Zorba Infotech is not liable for data loss. Customers are advised to maintain prior backups.\n` +
+    `4. *Warranty & Inspection:* Physical/liquid damage is not covered under warranty. Diagnostic charges apply if estimate is declined.\n\n` +
     `*Thank you for choosing Zorba Infotech!*\n` +
-    `📞 Support Helpline: +91 95891 99738 | 🌐 www.zorbainfotech.in`;
+    `📞 Support: +91 93021 99730 | Main: +91 99935 99730 | 🌐 www.zorbainfotech.in`;
 
   return message;
+}
+
+/**
+ * WhatsApp message generator: Ask Courier for Parcel Pickup.
+ */
+export function generateCourierPickupRequestMessage(options: {
+  courierName: string;
+  ticketNo: string;
+  serviceCenterName?: string;
+  destinationAddress?: string;
+  dateTime?: string;
+  rmaNumber?: string;
+}): string {
+  return (
+    `*ZORBA INFOTECH - PARCEL PICKUP REQUEST*\n\n` +
+    `Hello *${options.courierName}* Team,\n` +
+    `Kindly arrange a parcel pickup from our shop/office for the following shipment:\n\n` +
+    `🎫 *Ticket / Ref No:* ${options.ticketNo || "Zorba Shipment"}\n` +
+    (options.serviceCenterName ? `🏢 *Consignee / Service Center:* ${options.serviceCenterName}\n` : "") +
+    (options.destinationAddress ? `📍 *Delivery Address:* ${options.destinationAddress}\n` : "") +
+    (options.rmaNumber ? `🏷️ *RMA / Ref Number:* ${options.rmaNumber}\n` : "") +
+    (options.dateTime ? `📅 *Request Date:* ${options.dateTime}\n` : "") +
+    `📦 *Shop Pickup Location:* Zorba Infotech, Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch - 458441 (M.P.)\n\n` +
+    `Please assign a pickup executive at the earliest.\n\n` +
+    `Thank you,\n*Zorba Infotech Logistics Desk*\n📞 Support: +91 93021 99730 / +91 99935 99730`
+  );
+}
+
+/**
+ * WhatsApp message generator: Ask Courier for Parcel Delivery / Status Inquiry.
+ */
+export function generateCourierDeliveryInquiryMessage(options: {
+  courierName: string;
+  courierDocketNumber?: string;
+  ticketNo: string;
+  serviceCenterName?: string;
+  destinationAddress?: string;
+  dateTime?: string;
+}): string {
+  return (
+    `*ZORBA INFOTECH - SHIPMENT DELIVERY INQUIRY*\n\n` +
+    `Hello *${options.courierName}* Team,\n` +
+    `We would like to check the delivery status for our dispatched shipment:\n\n` +
+    `📦 *Docket / AWB No:* ${options.courierDocketNumber || "Pending Docket"}\n` +
+    `🎫 *Internal Ticket Ref:* ${options.ticketNo || "N/A"}\n` +
+    (options.serviceCenterName ? `🏢 *Consignee:* ${options.serviceCenterName}\n` : "") +
+    (options.destinationAddress ? `📍 *Destination:* ${options.destinationAddress}\n` : "") +
+    (options.dateTime ? `📅 *Dispatch Date:* ${options.dateTime}\n` : "") +
+    `\nKindly confirm if this parcel has reached the destination or provide the expected delivery timestamp.\n\n` +
+    `Thank you,\n*Zorba Infotech Logistics Desk*\n📞 Support: +91 93021 99730 / +91 99935 99730`
+  );
 }
 
 /**
@@ -192,7 +235,7 @@ export function generateCourierFollowUpMessage(options: {
     (options.dateTime ? `📅 *Dispatch Date:* ${options.dateTime}\n` : "") +
     (options.destination ? `📍 *Destination / Consignee:* ${options.destination}\n` : "") +
     `\nPlease provide the current transit location and expected delivery timestamp.\n\n` +
-    `Thank you,\n*Zorba Infotech Logistics Desk*\n📞 +91 95891 99738`
+    `Thank you,\n*Zorba Infotech Logistics Desk*\n📞 Support: +91 93021 99730 / +91 99935 99730`
   );
 }
 
@@ -220,7 +263,7 @@ export function generateServiceCenterFollowUpMessage(options: {
     (options.serialNumber ? `🔢 *Serial / IMEI:* ${options.serialNumber}\n` : "") +
     `🔍 *Reported Defect:* ${options.issueDescription}\n\n` +
     `Kindly let us know if the unit is diagnosed / under repair / replaced / ready for dispatch.\n\n` +
-    `Thank you,\n*Zorba Infotech Service Desk*\n📞 +91 95891 99738`
+    `Thank you,\n*Zorba Infotech Service Desk*\n📞 Support: +91 93021 99730 / +91 99935 99730`
   );
 }
 

@@ -13,6 +13,13 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Inbox,
+  Building2,
+  Clock,
+  Package,
+  CheckCircle2,
+  Send,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -87,6 +94,64 @@ const statusPriority: Record<ServiceCallStatus, number> = {
   delivered: 6,
   cancelled: 7,
 };
+
+const STATUS_OPTIONS: {
+  value: ServiceCallStatus;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  bgClass: string;
+}[] = [
+  {
+    value: "received",
+    label: "Received",
+    icon: Inbox,
+    iconColor: "text-blue-600 dark:text-blue-400",
+    bgClass: "bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60",
+  },
+  {
+    value: "sent_to_service_center",
+    label: "Sent to Service Center",
+    icon: Building2,
+    iconColor: "text-indigo-600 dark:text-indigo-400",
+    bgClass: "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60",
+  },
+  {
+    value: "in_progress",
+    label: "In Progress",
+    icon: Clock,
+    iconColor: "text-purple-600 dark:text-purple-400",
+    bgClass: "bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/60",
+  },
+  {
+    value: "waiting_for_parts",
+    label: "Waiting for Parts",
+    icon: Package,
+    iconColor: "text-amber-600 dark:text-amber-400",
+    bgClass: "bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60",
+  },
+  {
+    value: "completed",
+    label: "Completed",
+    icon: CheckCircle2,
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+    bgClass: "bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60",
+  },
+  {
+    value: "delivered",
+    label: "Delivered",
+    icon: Send,
+    iconColor: "text-teal-600 dark:text-teal-400",
+    bgClass: "bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60",
+  },
+  {
+    value: "cancelled",
+    label: "Cancelled",
+    icon: XCircle,
+    iconColor: "text-rose-600 dark:text-rose-400",
+    bgClass: "bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60",
+  },
+];
 
 export default function AdminServiceCalls() {
   const navigate = useNavigate();
@@ -627,13 +692,19 @@ export default function AdminServiceCalls() {
                             <SelectValue>{getStatusDotBadge(item.status)}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="received">Received</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="sent_to_service_center">Sent to Service Center</SelectItem>
-                            <SelectItem value="waiting_for_parts">Waiting for Parts</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="delivered">Delivered</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                            {STATUS_OPTIONS.map((opt) => {
+                              const Icon = opt.icon;
+                              return (
+                                <SelectItem key={opt.value} value={opt.value} className="text-xs py-2 cursor-pointer">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className={`h-6 w-6 rounded-lg ${opt.bgClass} flex items-center justify-center shrink-0`}>
+                                      <Icon className={`h-3.5 w-3.5 ${opt.iconColor}`} />
+                                    </div>
+                                    <span className="font-semibold text-slate-800 dark:text-slate-200">{opt.label}</span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </td>

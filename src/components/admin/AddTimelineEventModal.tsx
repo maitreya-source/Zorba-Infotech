@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { History, Send, Truck, UserCheck, CheckCircle2 } from "lucide-react";
+import {
+  History,
+  Send,
+  Truck,
+  Package,
+  Inbox,
+  Activity,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -19,82 +26,110 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import AvatarGraphic from "@/components/admin/AvatarGraphic";
+import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import type { TimelineEvent, StaffMember, ServiceCallStatus } from "@/lib/types";
 
 interface AddTimelineEventModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  staffList: StaffMember[];
+  staffList?: StaffMember[];
   currentStaffId?: string;
   defaultStage?: TimelineEvent["stage"];
+  defaultCourierName?: string;
+  defaultDocketNumber?: string;
   onAddEvent: (event: Omit<TimelineEvent, "id" | "timestamp">) => void;
 }
 
-const STAGE_OPTIONS: { stage: TimelineEvent["stage"]; title: string; defaultStatus: ServiceCallStatus; icon: string }[] = [
-  { stage: "replacement_sent_service_center", title: "Replacement Sent to Service Center (F5)", defaultStatus: "sent_to_service_center", icon: "🚚" },
-  { stage: "replacement_received_service_center", title: "Replacement Received from Service Center (F6)", defaultStatus: "received", icon: "📦" },
-  { stage: "replacement_given_customer", title: "Replacement Product Given to Customer (F8)", defaultStatus: "delivered", icon: "🤝" },
-  { stage: "replacement_received_customer", title: "Replacement Product Received from Customer (F9)", defaultStatus: "in_progress", icon: "📥" },
-  { stage: "status_change", title: "General Status / Milestone Update", defaultStatus: "in_progress", icon: "⚡" },
-  { stage: "comment_added", title: "Internal Audit Log / Comment", defaultStatus: "in_progress", icon: "📝" },
-];
-
-const COURIER_PRESETS = [
-  "Reliance Logistics",
-  "Trackon Courier",
-  "Blue Dart Express",
-  "DTDC Express",
-  "Speed Post (India Post)",
-  "Delhivery",
-  "Self / Hand Delivered",
+const STAGE_OPTIONS: {
+  stage: TimelineEvent["stage"];
+  title: string;
+  defaultStatus: ServiceCallStatus;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+}[] = [
+  {
+    stage: "replacement_sent_service_center",
+    title: "Replacement Sent to Service Center (F5)",
+    defaultStatus: "sent_to_service_center",
+    icon: Truck,
+    iconColor: "text-amber-500",
+  },
+  {
+    stage: "replacement_received_service_center",
+    title: "Replacement Received from Service Center (F6)",
+    defaultStatus: "received",
+    icon: Package,
+    iconColor: "text-purple-500",
+  },
+  {
+    stage: "replacement_given_customer",
+    title: "Replacement Product Given to Customer (F8)",
+    defaultStatus: "delivered",
+    icon: Send,
+    iconColor: "text-emerald-500",
+  },
+  {
+    stage: "replacement_received_customer",
+    title: "Replacement Product Received from Customer (F9)",
+    defaultStatus: "in_progress",
+    icon: Inbox,
+    iconColor: "text-blue-500",
+  },
+  {
+    stage: "status_change",
+    title: "General Status / Milestone Update",
+    defaultStatus: "in_progress",
+    icon: Activity,
+    iconColor: "text-indigo-500",
+  },
+  {
+    stage: "comment_added",
+    title: "Internal Audit Log / Comment",
+    defaultStatus: "in_progress",
+    icon: FileText,
+    iconColor: "text-slate-500",
+  },
 ];
 
 export default function AddTimelineEventModal({
   open,
   onOpenChange,
-  staffList,
   currentStaffId,
   defaultStage = "replacement_sent_service_center",
+  defaultCourierName,
+  defaultDocketNumber,
   onAddEvent,
 }: AddTimelineEventModalProps) {
+  const { activeProfile } = useStaffProfile();
   const [stage, setStage] = useState<TimelineEvent["stage"]>(defaultStage);
-  const [selectedStaffId, setSelectedStaffId] = useState<string>(currentStaffId || "");
-  const [courierName, setCourierName] = useState("");
-  const [courierDocketNumber, setCourierDocketNumber] = useState("");
   const [comments, setComments] = useState("");
 
   useEffect(() => {
     if (defaultStage) setStage(defaultStage);
-    if (currentStaffId && !selectedStaffId) setSelectedStaffId(currentStaffId);
-  }, [defaultStage, currentStaffId, open]);
+  }, [defaultStage, open]);
 
   const selectedStageOption = STAGE_OPTIONS.find((s) => s.stage === stage) || STAGE_OPTIONS[0];
+  const isSentToServiceCenterMilestone = stage === "replacement_sent_service_center";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStaffId) {
-      toast.error("Please select the Backoffice Staff Member handling this update");
-      return;
-    }
-
-    const foundStaff = staffList.find((s) => s.id === selectedStaffId);
-    const staffName = foundStaff ? foundStaff.name : "Staff Member";
+    const staffId = activeProfile?.id || currentStaffId || "staff-desk";
+    const staffName = activeProfile?.name || "Staff Member";
 
     onAddEvent({
       stage,
       title: selectedStageOption.title.split(" (")[0],
-      staffId: selectedStaffId,
+      staffId,
       staffName,
       status: selectedStageOption.defaultStatus,
-      courierName: courierName.trim() || undefined,
-      courierDocketNumber: courierDocketNumber.trim() || undefined,
+      courierName: isSentToServiceCenterMilestone ? (defaultCourierName || undefined) : undefined,
+      courierDocketNumber: isSentToServiceCenterMilestone ? (defaultDocketNumber || undefined) : undefined,
       comments: comments.trim() || undefined,
     });
 
     toast.success(`Milestone recorded: ${selectedStageOption.title.split(" (")[0]}`);
     onOpenChange(false);
-    setCourierName("");
-    setCourierDocketNumber("");
     setComments("");
   };
 
@@ -109,6 +144,15 @@ export default function AddTimelineEventModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          {/* Active Operator Banner */}
+          <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
+            <span className="text-slate-500 font-medium">Logged By Profile:</span>
+            <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+              <AvatarGraphic avatarId={activeProfile?.avatar || "penguin"} size="sm" />
+              <span>{activeProfile?.name || "Desk Operator"}</span>
+            </div>
+          </div>
+
           {/* Milestone Action Selection */}
           <div>
             <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -119,77 +163,31 @@ export default function AddTimelineEventModal({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STAGE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.stage} value={opt.stage}>
-                    {opt.icon} {opt.title}
-                  </SelectItem>
-                ))}
+                {STAGE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <SelectItem key={opt.stage} value={opt.stage} className="text-xs py-2">
+                      <div className="flex items-center gap-2">
+                        <Icon className={`h-4 w-4 ${opt.iconColor}`} />
+                        <span>{opt.title}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Mandatory Back-Office Staff */}
-          <div>
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-              Handled By / Staff Member <span className="text-red-500">*</span>
-            </Label>
-            <Select value={selectedStaffId} onValueChange={setSelectedStaffId} required>
-              <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-medium">
-                <SelectValue placeholder="Select Staff Member..." />
-              </SelectTrigger>
-              <SelectContent>
-                {staffList.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} {s.role ? `(${s.role})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Courier Details (for service center / customer dispatch) */}
-          {(stage === "replacement_sent_service_center" ||
-            stage === "replacement_received_service_center" ||
-            stage === "replacement_given_customer") && (
-            <div className="space-y-3 p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-800">
-              <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Truck className="h-3.5 w-3.5 text-[#2563EB]" /> Courier & Logistics Details
-              </p>
-
-              <div>
-                <Label className="text-[11px] text-slate-500 font-medium">Courier Service</Label>
-                <div className="flex gap-1.5 flex-wrap mt-1">
-                  {COURIER_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setCourierName(preset)}
-                      className={`text-[10px] px-2 py-0.5 rounded-md border font-medium transition-colors ${
-                        courierName === preset
-                          ? "bg-blue-50 border-blue-500 text-blue-700 font-bold"
-                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-                <Input
-                  placeholder="Or type courier name..."
-                  value={courierName}
-                  onChange={(e) => setCourierName(e.target.value)}
-                  className="mt-1.5 h-8 text-xs rounded-lg bg-white dark:bg-slate-950"
-                />
-              </div>
-
-              <div>
-                <Label className="text-[11px] text-slate-500 font-medium">Docket / Tracking Number</Label>
-                <Input
-                  placeholder="e.g. TRK-987654321 / REL-2026-X"
-                  value={courierDocketNumber}
-                  onChange={(e) => setCourierDocketNumber(e.target.value)}
-                  className="mt-1 h-8 text-xs rounded-lg bg-white dark:bg-slate-950 font-mono"
-                />
+          {/* Service Center Courier Info Indicator (Only attached when sending to SC) */}
+          {isSentToServiceCenterMilestone && (defaultCourierName || defaultDocketNumber) && (
+            <div className="flex items-center gap-2 p-2.5 bg-amber-50/70 dark:bg-amber-950/30 rounded-xl border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200">
+              <Truck className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="flex-1 truncate">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Dispatch Courier: </span>
+                <span className="font-medium">{defaultCourierName}</span>
+                {defaultDocketNumber && (
+                  <span className="font-mono ml-1 text-slate-500 dark:text-slate-400">({defaultDocketNumber})</span>
+                )}
               </div>
             </div>
           )}
@@ -200,10 +198,10 @@ export default function AddTimelineEventModal({
               Comments / Audit Notes
             </Label>
             <Textarea
-              placeholder="e.g. Sent via Trackon. Awaiting RMA inspection report..."
+              placeholder="e.g. Dispatched to Bangalore SC / Checked physical condition..."
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              rows={2}
+              rows={3}
               className="mt-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
             />
           </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Activity,
   BarChart3,
@@ -13,13 +13,17 @@ import {
   Truck,
   Database,
   LogOut,
-  ExternalLink,
   ChevronRight,
   ChevronLeft,
   Menu,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import AvatarGraphic from "@/components/admin/AvatarGraphic";
+import StaffProfileSelectorModal from "@/components/admin/StaffProfileSelectorModal";
 
 const navItems = [
   { label: "Service Calls", to: "/admin/service-calls", icon: Activity },
@@ -35,6 +39,8 @@ const navItems = [
 
 export default function AdminLayout() {
   const { user, signOut } = useAuth();
+  const { activeProfile, showSelectorModal, setShowSelectorModal } = useStaffProfile();
+  const [selectorDismissed, setSelectorDismissed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -46,13 +52,9 @@ export default function AdminLayout() {
 
   const activeNav = navItems.find((n) => location.pathname.startsWith(n.to))?.label || "Service Calls";
 
-  const userInitial = user?.displayName
-    ? user.displayName.slice(0, 2).toUpperCase()
-    : user?.email
-    ? user.email.slice(0, 2).toUpperCase()
-    : "MA";
-
-  const userName = user?.displayName || (user?.email ? user.email.split("@")[0] : "Maitreya");
+  const isServiceCallForm =
+    location.pathname !== "/admin/service-calls" &&
+    location.pathname.startsWith("/admin/service-calls");
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
@@ -62,14 +64,14 @@ export default function AdminLayout() {
           collapsed ? "w-18" : "w-64"
         }`}
       >
-        {/* Brand Header (Fixed) */}
-        <div className="shrink-0 p-6 pb-4 border-b border-slate-800/80 flex items-center justify-between">
+        {/* Brand Header (Fixed - exact h-14 matching top bar and right rail) */}
+        <div className="shrink-0 h-14 px-5 border-b border-slate-800/80 flex items-center justify-between">
           {!collapsed ? (
             <div>
-              <h1 className="text-xl font-extrabold font-display tracking-tight text-white">
+              <h1 className="text-lg font-extrabold font-display tracking-tight text-white leading-tight">
                 ZORBA
               </h1>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">Service & Catalog ERP</p>
+              <p className="text-[10px] text-slate-400 font-medium">Service & Catalog ERP</p>
             </div>
           ) : (
             <div className="mx-auto text-white font-extrabold text-lg">Z</div>
@@ -117,76 +119,128 @@ export default function AdminLayout() {
           ))}
         </div>
 
-        {/* User Profile Footer (Fixed at bottom) */}
-        <div className="shrink-0 p-4 border-t border-slate-800/80 bg-slate-900/40 space-y-3">
-          {!collapsed ? (
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2563EB] text-white font-extrabold text-xs shadow-sm shrink-0">
-                {userInitial}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold truncate text-white leading-tight capitalize">
-                  {userName}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">{user?.email || "maitreya.mul@gmail.com"}</p>
-              </div>
-            </div>
-          ) : (
-            <div
-              className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB] text-white font-extrabold text-xs"
-              title={user?.email || "Admin User"}
-            >
-              {userInitial}
-            </div>
-          )}
+        {/* Unified Profile & Account Footer (Fixed at bottom) */}
+        <div className="shrink-0 p-3 border-t border-slate-800/80 bg-slate-900/60 space-y-2.5">
+          {/* Active Staff Profile Card (Click to Switch) */}
+          <div
+            onClick={() => {
+              setSelectorDismissed(false);
+              setShowSelectorModal(true);
+            }}
+            className={`group flex items-center gap-3 cursor-pointer rounded-2xl p-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/80 transition-all duration-200 shadow-sm ${
+              collapsed ? "justify-center p-1.5" : ""
+            }`}
+            title="Click to Switch Staff Profile"
+          >
+            <AvatarGraphic
+              avatarId={activeProfile?.avatar || "penguin"}
+              size={collapsed ? "sm" : "md"}
+              showGlow={Boolean(activeProfile)}
+            />
 
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-extrabold text-white truncate leading-tight group-hover:text-blue-300 transition-colors">
+                    {activeProfile?.name || "Select Profile"}
+                  </p>
+                </div>
+                <p className="text-[10px] text-slate-400 capitalize truncate mt-0.5">
+                  {activeProfile?.role ? `${activeProfile.role}` : "Who is working?"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Sign Out from Gmail Button */}
           <button
             onClick={handleSignOut}
-            className={`flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors w-full ${
-              collapsed ? "justify-center" : "px-1"
+            className={`flex items-center gap-2 text-xs text-slate-400 hover:text-red-400 transition-colors w-full ${
+              collapsed ? "justify-center" : "px-2 py-1"
             }`}
-            title="Sign Out"
+            title={`Sign out from Gmail (${user?.email || "Google Account"})`}
           >
-            <LogOut className="h-3.5 w-3.5" />
-            {!collapsed && <span>Sign Out</span>}
+            <LogOut className="h-3.5 w-3.5 shrink-0" />
+            {!collapsed && <span className="truncate">Sign out from Gmail</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Container Area with Fixed Top Navbar & Dedicated Scrollable Ticket Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Fixed Top Header Bar */}
-        <header className="shrink-0 h-14 flex items-center justify-between px-6 md:px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800 z-10 print:hidden">
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+        {/* Continuous Dark Navy Top Header Bar (h-14) */}
+        <header className="shrink-0 h-14 flex items-center justify-between px-4 md:px-6 bg-[#0F172A] border-b border-slate-800/80 text-slate-300 z-10 print:hidden gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium shrink-0">
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-1 rounded-md text-slate-600 hover:bg-slate-100 md:hidden mr-1"
+              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 md:hidden mr-1"
             >
               <Menu className="h-4 w-4" />
             </button>
-            <span>Admin</span>
-            <span>/</span>
-            <span className="font-bold text-slate-900 dark:text-white">{activeNav}</span>
+            <span className="text-slate-400">Admin</span>
+            <span className="text-slate-600">/</span>
+            {isServiceCallForm ? (
+              <>
+                <Link to="/admin/service-calls" className="text-slate-300 hover:text-white transition-colors">
+                  Service Calls
+                </Link>
+                <span className="text-slate-600">/</span>
+                <span className="font-bold text-white tracking-wide">
+                  {location.pathname.includes("/new") ? "New Service Call" : "Edit Ticket"}
+                </span>
+              </>
+            ) : (
+              <span className="font-bold text-white tracking-wide">{activeNav}</span>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <a
-              href="/"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-2xs transition-colors"
-            >
-              <span>View Main Website</span>
-              <ExternalLink className="h-3 w-3 text-slate-400" />
-            </a>
+          {/* Center: Dynamic Center Area for Service Call Type Chips */}
+          <div id="admin-header-center" className="flex items-center justify-center flex-1 min-w-0" />
+
+          {/* Right: Back to List on Service Call Form OR Back to Main Website on other pages */}
+          <div className="flex items-center gap-3 shrink-0">
+            {isServiceCallForm ? (
+              <Link
+                to="/admin/service-calls"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-3.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all"
+              >
+                <ArrowLeft className="h-3.5 w-3.5 text-slate-400 group-hover:text-white" />
+                <span>Back to List</span>
+              </Link>
+            ) : (
+              <a
+                href="/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-3.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all"
+              >
+                <ArrowLeft className="h-3.5 w-3.5 text-slate-400 group-hover:text-white" />
+                <span>Back to Main Website</span>
+              </a>
+            )}
           </div>
         </header>
 
         {/* Dedicated Independent Scrollable Ticket / Main Content Container */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 p-6 md:p-8 focus:outline-none">
+        <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 p-4 md:p-6 focus:outline-none">
           <Outlet />
         </main>
       </div>
+
+      {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-screen) */}
+      <div id="admin-right-rail" className="h-screen shrink-0 empty:hidden print:hidden z-20" />
+
+      {/* Netflix Profile Selector Modal */}
+      <StaffProfileSelectorModal
+        open={(!activeProfile && !selectorDismissed) || showSelectorModal}
+        onOpenChange={(next) => {
+          setShowSelectorModal(next);
+          if (!next) {
+            setSelectorDismissed(true);
+          }
+        }}
+        canDismiss={true}
+      />
     </div>
   );
 }

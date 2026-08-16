@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import ScrollToTop from "@/components/layout/ScrollToTop";
 import { LocalBusinessSchema } from "@/components/SEO";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { StaffProfileProvider } from "@/contexts/StaffProfileContext";
 import AdminRoute from "@/components/admin/AdminRoute";
 import Index from "./pages/Index";
 import Dealers from "./pages/Dealers";
@@ -44,53 +45,55 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <LocalBusinessSchema />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ScrollToTop />
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/catalog" element={<Catalog />} />
-              <Route path="/catalog/:id" element={<CatalogProduct />} />
-              <Route path="/dealers" element={<Dealers />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/payments" element={<Payments />} />
-              <Route path="/careers" element={<Careers />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
+          <StaffProfileProvider>
+            <LocalBusinessSchema />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <ScrollToTop />
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/catalog" element={<Catalog />} />
+                <Route path="/catalog/:id" element={<CatalogProduct />} />
+                <Route path="/dealers" element={<Dealers />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/payments" element={<Payments />} />
+                <Route path="/careers" element={<Careers />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-of-service" element={<TermsOfService />} />
 
-              {/* Admin login */}
-              <Route path="/admin" element={<AdminLogin />} />
+                {/* Admin login */}
+                <Route path="/admin" element={<AdminLogin />} />
 
-              {/* Protected admin routes */}
-              <Route element={<AdminRoute />}>
-                <Route element={<AdminLayout />}>
-                  <Route path="/admin/products" element={<AdminProducts />} />
-                  <Route path="/admin/products/new" element={<AdminProductForm />} />
-                  <Route path="/admin/products/:id/edit" element={<AdminProductForm />} />
-                  <Route path="/admin/categories" element={<AdminCategories />} />
-                  <Route path="/admin/service-calls" element={<AdminServiceCalls />} />
-                  <Route path="/admin/service-calls/new" element={<AdminServiceCallForm />} />
-                  <Route path="/admin/service-calls/:id/edit" element={<AdminServiceCallForm />} />
-                  <Route path="/admin/device-categories" element={<AdminDeviceCategories />} />
-                  <Route path="/admin/customers" element={<AdminCustomers />} />
-                  <Route path="/admin/customers/import" element={<AdminImportCustomers />} />
-                  <Route path="/admin/team" element={<AdminTeam />} />
-                  <Route path="/admin/technicians" element={<AdminTechnicians />} />
-                  <Route path="/admin/staff" element={<AdminStaff />} />
-                  <Route path="/admin/service-centers" element={<AdminServiceCenters />} />
-                  <Route path="/admin/couriers" element={<AdminCouriers />} />
-                  <Route path="/admin/reports" element={<AdminReports />} />
-                  <Route path="/admin/backup" element={<AdminBackupRestore />} />
+                {/* Protected admin routes */}
+                <Route element={<AdminRoute />}>
+                  <Route element={<AdminLayout />}>
+                    <Route path="/admin/products" element={<AdminProducts />} />
+                    <Route path="/admin/products/new" element={<AdminProductForm />} />
+                    <Route path="/admin/products/:id/edit" element={<AdminProductForm />} />
+                    <Route path="/admin/categories" element={<AdminCategories />} />
+                    <Route path="/admin/service-calls" element={<AdminServiceCalls />} />
+                    <Route path="/admin/service-calls/new" element={<AdminServiceCallForm />} />
+                    <Route path="/admin/service-calls/:id/edit" element={<AdminServiceCallForm />} />
+                    <Route path="/admin/device-categories" element={<AdminDeviceCategories />} />
+                    <Route path="/admin/customers" element={<AdminCustomers />} />
+                    <Route path="/admin/customers/import" element={<AdminImportCustomers />} />
+                    <Route path="/admin/team" element={<AdminTeam />} />
+                    <Route path="/admin/technicians" element={<AdminTechnicians />} />
+                    <Route path="/admin/staff" element={<AdminStaff />} />
+                    <Route path="/admin/service-centers" element={<AdminServiceCenters />} />
+                    <Route path="/admin/couriers" element={<AdminCouriers />} />
+                    <Route path="/admin/reports" element={<AdminReports />} />
+                    <Route path="/admin/backup" element={<AdminBackupRestore />} />
+                  </Route>
                 </Route>
-              </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </StaffProfileProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
