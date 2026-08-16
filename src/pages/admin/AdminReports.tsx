@@ -84,45 +84,45 @@ export default function AdminReports() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto print:p-0">
-      {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4 print:hidden">
-        <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary mb-1">
-            <BarChart3 className="h-3.5 w-3.5" /> Analytics & Reports
-          </div>
-          <h1 className="text-xl md:text-2xl font-extrabold font-display">
-            Daily & Monthly Service Call Reports
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Track daily revenue, completed service tickets, and service call breakdowns
-          </p>
-        </div>
+    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto print:p-0 text-xs">
+      {/* Integrated Hero Header (Black Box) */}
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 md:p-5 text-white shadow-md print:hidden">
+        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
 
-        <div className="flex items-center gap-2">
-          {/* Month Selector Wrapper with Full Container Click Trigger */}
-          <div
-            onClick={() => monthInputRef.current?.showPicker?.()}
-            className="relative flex items-center gap-2 bg-background border border-input rounded-xl px-3 h-9 w-48 min-w-[190px] cursor-pointer hover:border-primary transition-colors group"
-          >
-            <Calendar className="h-4 w-4 text-primary shrink-0 group-hover:scale-110 transition-transform" />
-            <input
-              ref={monthInputRef}
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent text-xs font-bold text-foreground w-full focus:outline-none cursor-pointer pr-1"
-            />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
+              Daily & Monthly Service Call Reports
+            </h1>
+            <p className="text-xs text-slate-300 max-w-2xl">
+              Track daily billing revenue, completed service tickets, parts consumption, and workshop throughput
+            </p>
           </div>
 
-          <Button
-            onClick={handlePrintReport}
-            variant="outline"
-            size="sm"
-            className="gap-1.5 text-xs font-semibold h-9 rounded-xl"
-          >
-            <Printer className="h-4 w-4" /> Print Report
-          </Button>
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+            {/* Month Selector Wrapper with Dark Container */}
+            <div
+              onClick={() => monthInputRef.current?.showPicker?.()}
+              className="relative flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-xl px-3 h-9 w-48 min-w-[190px] cursor-pointer transition-colors group shadow-inner"
+            >
+              <Calendar className="h-4 w-4 text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
+              <input
+                ref={monthInputRef}
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-transparent text-xs font-bold text-white w-full focus:outline-none cursor-pointer pr-1"
+              />
+            </div>
+
+            <Button
+              onClick={handlePrintReport}
+              size="sm"
+              className="gap-1.5 text-xs font-bold bg-[#2563EB] hover:bg-blue-600 text-white h-9 px-4 rounded-xl cursor-pointer shadow-sm shrink-0"
+            >
+              <Printer className="h-4 w-4" /> Print Report
+            </Button>
+          </div>
         </div>
       </div>
 

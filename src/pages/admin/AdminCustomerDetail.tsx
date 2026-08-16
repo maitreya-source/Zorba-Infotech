@@ -227,75 +227,79 @@ export default function AdminCustomerDetail() {
 
   return (
     <div className="p-2 sm:p-4 md:p-6 space-y-5 max-w-7xl mx-auto text-xs">
-      {/* 1. Header Navigation Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3.5">
-        <div className="flex items-center gap-2">
-          <Link
-            to="/admin/customers"
-            className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-            title="Back to Customer Directory"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-extrabold font-display text-slate-900 dark:text-white leading-tight">
-                {customer.name}
-              </h1>
-              {customer.companyName && (
-                <Badge variant="secondary" className="text-[10px] font-semibold">
-                  <Building className="h-3 w-3 mr-1" /> {customer.companyName}
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Customer ID: <span className="font-mono">{customer.id}</span>
-            </p>
-          </div>
-        </div>
+      {/* 1. Integrated Hero Header (Black Box) */}
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 md:p-5 text-white shadow-md">
+        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
 
-        {/* Action CTAs */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleOpenGeneralWhatsApp}
-            className="h-9 px-3 text-xs font-semibold rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <MessageSquare className="h-3.5 w-3.5 text-emerald-600" /> WhatsApp
-          </Button>
-
-          {customer.phone && (
-            <a href={`tel:${customer.phone}`}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 px-3 text-xs font-semibold rounded-xl border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <Phone className="h-3.5 w-3.5 text-slate-500" /> Call
-              </Button>
-            </a>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setEditCustomerOpen(true)}
-            className="h-9 px-3 text-xs font-semibold rounded-xl border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Pencil className="h-3.5 w-3.5 text-slate-500" /> Edit Profile
-          </Button>
-
-          <Link
-            to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}
-          >
-            <Button
-              size="sm"
-              className="h-9 px-4 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white gap-1.5 shadow-glow-sm cursor-pointer"
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link
+              to="/admin/customers"
+              className="p-2 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 text-white transition-colors cursor-pointer shrink-0"
+              title="Back to Customer Directory"
             >
-              <Plus className="h-4 w-4" /> New Service Call
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
+                  {customer.name}
+                </h1>
+                {customer.companyName && (
+                  <Badge variant="secondary" className="text-[10px] font-semibold bg-white/15 text-white border-white/20">
+                    <Building className="h-3 w-3 mr-1" /> {customer.companyName}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Client Profile & Complete Service Call History Lookup
+              </p>
+            </div>
+          </div>
+
+          {/* Action CTAs */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenGeneralWhatsApp}
+              className="h-9 px-3 text-xs font-semibold rounded-xl bg-emerald-500/20 border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30 gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <MessageSquare className="h-3.5 w-3.5 text-emerald-400" /> WhatsApp
             </Button>
-          </Link>
+
+            {customer.phone && (
+              <a href={`tel:${customer.phone}`}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3 text-xs font-semibold rounded-xl bg-white/10 border-white/20 text-white hover:bg-white/20 gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Phone className="h-3.5 w-3.5 text-slate-300" /> Call
+                </Button>
+              </a>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditCustomerOpen(true)}
+              className="h-9 px-3 text-xs font-semibold rounded-xl bg-white/10 border-white/20 text-white hover:bg-white/20 gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Pencil className="h-3.5 w-3.5 text-slate-300" /> Edit Profile
+            </Button>
+
+            <Link
+              to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}
+            >
+              <Button
+                size="sm"
+                className="h-9 px-4 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white gap-1.5 shadow-glow-sm cursor-pointer shrink-0"
+              >
+                <Plus className="h-4 w-4" /> New Service Call
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
