@@ -23,7 +23,6 @@ import {
   X,
   AlertCircle,
   ChevronDown,
-  Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -99,7 +98,6 @@ export default function AdminBackupRestore() {
   const [restoring, setRestoring] = useState(false);
   const [progress, setProgress] = useState<RestoreProgress | null>(null);
   const [deleteSnapshotId, setDeleteSnapshotId] = useState<string | null>(null);
-  const [showCliGuide, setShowCliGuide] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = async () => {
@@ -145,7 +143,7 @@ export default function AdminBackupRestore() {
   // 1. Export & Download JSON
   const handleExportDownload = async () => {
     if (!isAuthorized) {
-      toast.error("Unauthorized: Database export downloads are restricted to Executive Owners.");
+      toast.error("Unauthorized: Database export downloads are restricted to executive administrators.");
       return;
     }
     setExporting(true);
@@ -168,7 +166,7 @@ export default function AdminBackupRestore() {
   // 2. Save Cloud Snapshot
   const handleSaveCloudSnapshot = async () => {
     if (!isAuthorized) {
-      toast.error("Unauthorized: Cloud snapshot creation is restricted to Executive Owners.");
+      toast.error("Unauthorized: Cloud snapshot creation is restricted to executive administrators.");
       return;
     }
     setSavingCloud(true);
@@ -189,7 +187,7 @@ export default function AdminBackupRestore() {
   // 3. Handle File Upload & Run Pre-flight Validation
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!isAuthorized) {
-      toast.error("Unauthorized: Database restore operations are restricted to Executive Owners.");
+      toast.error("Unauthorized: Database restore operations are restricted to executive administrators.");
       return;
     }
     const file = e.target.files?.[0];
@@ -227,7 +225,7 @@ export default function AdminBackupRestore() {
   // 4. Restore from Cloud Snapshot
   const handleRestoreCloudSnapshot = (snapshot: CloudSnapshot) => {
     if (!isAuthorized) {
-      toast.error("Unauthorized: Database restore operations are restricted to Executive Owners.");
+      toast.error("Unauthorized: Database restore operations are restricted to executive administrators.");
       return;
     }
     if (!snapshot.backupData) {
@@ -243,7 +241,7 @@ export default function AdminBackupRestore() {
   // 5. Execute Restore with Safeguards
   const handleExecuteRestore = async () => {
     if (!isAuthorized) {
-      toast.error("Unauthorized: Database restore operations are restricted to Executive Owners.");
+      toast.error("Unauthorized: Database restore operations are restricted to executive administrators.");
       return;
     }
     if (!pendingBackup) return;
@@ -284,7 +282,7 @@ export default function AdminBackupRestore() {
   // 6. Delete Cloud Snapshot
   const handleDeleteSnapshot = async () => {
     if (!isAuthorized) {
-      toast.error("Unauthorized: Deleting recovery checkpoints is restricted to Executive Owners.");
+      toast.error("Unauthorized: Deleting recovery checkpoints is restricted to executive administrators.");
       return;
     }
     if (!deleteSnapshotId) return;
@@ -318,53 +316,8 @@ export default function AdminBackupRestore() {
               Partitioned Financial-Year backups, paginated dataset streams (10,000+ tickets), pre-flight schema validation, and instant rollback safety snapshots.
             </p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={() => setShowCliGuide(!showCliGuide)}
-              variant="outline"
-              size="sm"
-              className="gap-1.5 font-bold bg-slate-800/80 hover:bg-slate-700 text-white border-slate-700 rounded-xl"
-            >
-              <Terminal className="h-3.5 w-3.5 text-blue-400" />
-              GCP Native CLI Guide
-            </Button>
-          </div>
         </div>
       </div>
-
-      {/* GCP Native CLI Guide Accordion */}
-      {showCliGuide && (
-        <div className="rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 p-4 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-xs text-blue-900 dark:text-blue-200 flex items-center gap-2">
-              <Terminal className="h-4 w-4 text-blue-600" />
-              Google Cloud Managed Firestore Bucket Export (For 100k+ enterprise backups)
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowCliGuide(false)}
-              className="h-6 text-xs text-blue-700 dark:text-blue-300"
-            >
-              Close
-            </Button>
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
-            For multi-gigabyte databases, Google Cloud Firestore provides native asynchronous export jobs to Cloud Storage:
-          </p>
-          <div className="bg-slate-900 text-slate-100 p-3 rounded-xl font-mono text-[11px] space-y-1 overflow-x-auto">
-            <p className="text-slate-400"># Export entire Firestore database directly to GCS bucket:</p>
-            <p className="text-emerald-400">
-              gcloud firestore export gs://zorba-infotech-web.firebasestorage.app/firestore-backups/$(date +%Y-%m-%d)
-            </p>
-            <p className="text-slate-400 pt-1"># Export specific collection group (e.g. service calls):</p>
-            <p className="text-emerald-400">
-              gcloud firestore export gs://zorba-infotech-web.firebasestorage.app/backups --collection-ids=service_calls,customers
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Access Restriction Notice if Unauthorized */}
       {!isAuthorized && (
@@ -378,8 +331,7 @@ export default function AdminBackupRestore() {
               </Badge>
             </p>
             <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-              Database JSON exports and cloud disaster recovery restores are reserved for executive owners (<code>manishm9730@gmail.com</code>, <code>zorbainfotech@gmail.com</code>, <code>maitreya.mul@gmail.com</code>).
-              Your current account (<strong>{user?.email || "Staff"}</strong>) cannot download raw customer database files or execute database restores.
+              Database JSON exports and cloud disaster recovery restores are reserved for executive administrators. Your account has read-only access and does not have export or restore permissions. Please contact system management for database operations.
             </p>
           </div>
         </div>
