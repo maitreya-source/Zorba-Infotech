@@ -71,6 +71,19 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Legacy staff and technicians collections (backward-compatibility)
+    match /staff/{staffId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /staff_members/{staffId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /technicians/{techId} {
+      allow read, write: if isAdmin();
+    }
+
     match /service_centers/{centerId} {
       allow read, write: if isAdmin();
     }
