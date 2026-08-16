@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { User, Phone, Plus, Trash2, ChevronDown, ChevronUp, Building, AlertTriangle } from "lucide-react";
+import { User, Phone, Plus, Trash2, ChevronDown, ChevronUp, Building, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -174,12 +174,24 @@ export default function EditCustomerModal({
               }`}
             />
             {duplicateCustomer && (
-              <div className="mt-1.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-start gap-1.5 text-[11px] animate-in fade-in slide-in-from-top-1">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="leading-tight">
-                  <span className="font-bold">Duplicate Mobile Number: </span>
-                  <span>belongs to </span>
-                  <span className="underline font-medium">{duplicateCustomer.name}</span>
+              <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-start gap-2 text-[11px] animate-in fade-in slide-in-from-top-1 shadow-2xs">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="leading-tight flex-1">
+                  <span className="font-bold text-amber-900 dark:text-amber-100">Duplicate Mobile Number: </span>
+                  <span>already registered to </span>
+                  <a
+                    href={`/admin/customers/${duplicateCustomer.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                    title="Open customer profile in new tab"
+                  >
+                    <span>{duplicateCustomer.name}</span>
+                    <ExternalLink className="h-3 w-3 inline shrink-0" />
+                  </a>{" "}
+                  <span className="text-slate-600 dark:text-slate-400 font-mono text-[10px]">
+                    ({duplicateCustomer.phone})
+                  </span>
                 </div>
               </div>
             )}

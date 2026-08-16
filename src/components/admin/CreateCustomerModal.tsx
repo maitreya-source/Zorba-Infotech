@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { UserPlus, Phone, Plus, Trash2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { UserPlus, Phone, Plus, Trash2, ChevronDown, ChevronUp, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -176,12 +176,40 @@ export default function CreateCustomerModal({
             </div>
 
             {duplicateCustomer && (
-              <div className="mt-1.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-start gap-1.5 text-[11px] animate-in fade-in slide-in-from-top-1">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="leading-tight">
-                  <span className="font-bold">Customer Already Registered: </span>
-                  <span className="underline font-medium">{duplicateCustomer.name}</span> ({duplicateCustomer.phone})
-                  <p className="text-[10px] text-amber-700/90 dark:text-amber-300/80 mt-0.5">
+              <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-start gap-2 text-[11px] animate-in fade-in slide-in-from-top-1 shadow-2xs">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="leading-tight flex-1">
+                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                    <span className="font-bold text-amber-900 dark:text-amber-100">Customer Already Registered:</span>
+                    {onCreated && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onCreated(duplicateCustomer);
+                          onOpenChange(false);
+                        }}
+                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 underline cursor-pointer"
+                      >
+                        Select This Customer
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-1">
+                    <a
+                      href={`/admin/customers/${duplicateCustomer.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                      title="Open customer profile in new tab"
+                    >
+                      <span>{duplicateCustomer.name}</span>
+                      <ExternalLink className="h-3 w-3 inline shrink-0" />
+                    </a>{" "}
+                    <span className="text-slate-600 dark:text-slate-400 font-mono text-[10px]">
+                      ({duplicateCustomer.phone})
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-amber-700/90 dark:text-amber-300/80 mt-1">
                     Duplicate registration is disallowed. Please select or update the existing customer profile.
                   </p>
                 </div>
