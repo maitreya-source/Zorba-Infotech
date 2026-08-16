@@ -19,4 +19,25 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-firebase": ["firebase/app", "firebase/firestore", "firebase/auth", "firebase/storage", "firebase/functions"],
+          "vendor-ui": [
+            "@radix-ui/react-alert-dialog",
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-select",
+            "@radix-ui/react-toast",
+            "@radix-ui/react-tooltip",
+            "lucide-react",
+          ],
+          "vendor-query": ["@tanstack/react-query"],
+        },
+      },
+    },
+  },
 }));
