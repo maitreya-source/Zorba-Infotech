@@ -10,25 +10,19 @@ import {
   Pencil,
   Printer,
   Calendar,
-  DollarSign,
   Activity,
   Wrench,
   CheckCircle2,
   Clock,
   MessageSquare,
   Search,
-  RefreshCw,
-  ExternalLink,
-  ShieldCheck,
   Package,
   Layers,
   ChevronRight,
-  TrendingUp,
   Inbox,
   XCircle,
   Truck,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +32,6 @@ import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
 import EmailPreviewModal from "@/components/admin/EmailPreviewModal";
-import { formatIndianPhoneNumber } from "@/lib/utils";
 
 const STATUS_BADGES: Record<
   ServiceCallStatus,

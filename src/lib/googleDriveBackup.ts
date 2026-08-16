@@ -1,40 +1,13 @@
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from "./firebase";
 import type { FullDatabaseBackup } from "./backup";
+import { getGoogleServicesToken, DRIVE_FILE_SCOPE } from "./googleAuthService";
 
-const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const BACKUP_ROOT_FOLDER_NAME = "Zorba ERP Backups";
 
-let cachedAccessToken: string | null = null;
-let tokenExpiresAt = 0;
-
 /**
- * Request or reuse an OAuth access token with Google Drive scope
+ * Request or reuse an OAuth access token with Google Drive scope using the persistent 3-month permission engine
  */
 export async function getGoogleDriveAccessToken(forcePrompt = false): Promise<string> {
-  const now = Date.now();
-  if (!forcePrompt && cachedAccessToken && now < tokenExpiresAt - 60000) {
-    return cachedAccessToken;
-  }
-
-  const provider = new GoogleAuthProvider();
-  provider.addScope(DRIVE_FILE_SCOPE);
-  provider.setCustomParameters({
-    prompt: "consent",
-    access_type: "online",
-  });
-
-  const result = await signInWithPopup(auth, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  const token = credential?.accessToken;
-
-  if (!token) {
-    throw new Error("Unable to obtain Google Drive OAuth access token. Please grant permission.");
-  }
-
-  cachedAccessToken = token;
-  tokenExpiresAt = Date.now() + 3500 * 1000; // ~1 hour
-  return token;
+  return await getGoogleServicesToken([DRIVE_FILE_SCOPE], forcePrompt);
 }
 
 /**

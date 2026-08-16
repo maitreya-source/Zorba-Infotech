@@ -43,6 +43,7 @@ import {
   isEmailApiConfigured,
   generateMailtoLink,
 } from "@/lib/emailApi";
+import { getGooglePermissionStatus } from "@/lib/googleAuthService";
 
 interface EmailPreviewModalProps {
   open: boolean;
@@ -83,6 +84,8 @@ export default function EmailPreviewModal({
   const [copied, setCopied] = useState(false);
   const [sending, setSending] = useState(false);
   const [previewTab, setPreviewTab] = useState<"html" | "text">("html");
+
+  const permissionStatus = getGooglePermissionStatus();
 
   // Selected Service Call Object
   const currentServiceCall = useMemo(() => {
@@ -279,6 +282,25 @@ export default function EmailPreviewModal({
 
         {/* Modal Form Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs">
+          {/* Google / Gmail Sender Account Info */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1 py-1 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 text-[11px]">
+            <div className="flex items-center gap-1.5 px-2 py-0.5">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">From Gmail Account:</span>
+              <span className="font-mono text-blue-700 dark:text-blue-300 font-bold">
+                {permissionStatus.email || "Signed-in Google Account"}
+              </span>
+            </div>
+            {permissionStatus.isAuthorized ? (
+              <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-0 font-medium">
+                3-Month Permission Active ({permissionStatus.daysRemaining} days left)
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-[10px] w-fit bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-0 font-medium">
+                Direct Gmail API (3-Month Authorization)
+              </Badge>
+            )}
+          </div>
+
           {/* Customer & Email Destination */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
             <div className="flex items-center gap-2 min-w-0 flex-1">

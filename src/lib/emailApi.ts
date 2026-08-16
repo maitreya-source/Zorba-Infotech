@@ -5,6 +5,7 @@
 
 import type { ServiceCall } from "./types";
 import { toTitleCase } from "./utils";
+import { sendDirectGmailMessage } from "./googleAuthService";
 
 export interface EmailApiConfig {
   endpoint: string;
@@ -329,50 +330,53 @@ export async function sendCustomerEmail(params: {
     throw new Error("Invalid customer email address. Please provide a valid email.");
   }
 
-  // If custom API endpoint is configured (e.g. Resend / SendGrid / Firebase Cloud Function)
-  if (config.enabled && config.endpoint) {
-    try {
-      const response = await fetch(config.endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          to: params.to,
-          from: `${config.senderName} <${config.senderEmail}>`,
-          subject: params.subject,
-          html: params.htmlContent,
-          text: params.textContent,
-          customerName: params.customerName,
-          ticketNo: params.ticketNo,
-        }),
-      });
+  // 1. Direct Gmail API dispatch using the signed-in Gmail account & 3-month session
+  try {
+    const result = await sendDirectGmailMessage({
+      to: params.to,
+      subject: params.subject,
+      html: params.htmlContent,
+      text: params.textContent,
+      fromName: config.senderName || "Zorba Infotech Service Center",
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Email server response ${response.status}: ${errorText}`);
+    return {
+      success: true,
+      messageId: result.messageId,
+    };
+  } catch (gmailErr: any) {
+    console.warn("Direct Gmail API dispatch encountered error, checking fallback:", gmailErr);
+
+    // 2. If custom HTTP endpoint is configured, try as secondary fallback
+    if (config.enabled && config.endpoint) {
+      try {
+        const response = await fetch(config.endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            to: params.to,
+            from: `${config.senderName} <${config.senderEmail}>`,
+            subject: params.subject,
+            html: params.htmlContent,
+            text: params.textContent,
+            customerName: params.customerName,
+            ticketNo: params.ticketNo,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          return { success: true, messageId: data.id || data.messageId || "delivered" };
+        }
+      } catch (endpointErr) {
+        console.error("Secondary endpoint dispatch failed:", endpointErr);
       }
-
-      const data = await response.json().catch(() => ({}));
-      return { success: true, messageId: data.id || data.messageId || "delivered" };
-    } catch (err: any) {
-      console.error("Direct API email dispatch failed:", err);
-      throw new Error(`Email dispatch failed: ${err.message}`);
     }
+
+    // Re-throw the explicit Gmail error so user is informed
+    throw new Error(gmailErr?.message || "Failed to dispatch email via Gmail API.");
   }
-
-  // If no automated server endpoint configured, generate mailto fallback
-  const mailtoUrl = generateMailtoLink({
-    to: params.to,
-    subject: params.subject,
-    body: params.textContent,
-  });
-
-  window.open(mailtoUrl, "_blank");
-  return {
-    success: true,
-    usedFallback: true,
-    messageId: "client_mailto_triggered",
-  };
 }
