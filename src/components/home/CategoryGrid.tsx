@@ -41,8 +41,8 @@ const CategoryCard = ({ cat, index }: { cat: typeof categories[0]; index: number
 };
 
 const CategoryGrid = () => (
-  <section className="container py-16">
-    <div className="mb-10 text-center">
+  <section className="container py-12 md:py-14">
+    <div className="mb-8 text-center">
       <h2 className="text-3xl font-bold font-display">What We Offer</h2>
       <p className="mt-2 text-muted-foreground">
         Over 4,000 products across all major IT categories

@@ -29,9 +29,9 @@ const FeatureCard = ({ f, index }: { f: typeof features[0]; index: number }) => 
 };
 
 const ServicesSection = () => (
-  <section className="bg-zorba-surface py-16">
+  <section className="bg-zorba-surface/60 border-y py-12 md:py-14">
     <div className="container">
-      <div className="mb-10 text-center">
+      <div className="mb-8 text-center">
         <h2 className="text-3xl font-bold font-display">Why Choose Zorba?</h2>
         <p className="mt-2 text-muted-foreground">Trusted by hundreds of businesses across the region</p>
       </div>

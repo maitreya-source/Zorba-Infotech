@@ -7,7 +7,7 @@ const DealerBanner = () => {
   const { ref, isVisible } = useScrollAnimation();
 
   return (
-    <section className="bg-gradient-dealer py-16 text-primary-foreground">
+    <section className="bg-gradient-dealer py-12 md:py-14 text-primary-foreground">
       <div
         ref={ref}
         className={`container transition-all duration-700 ${

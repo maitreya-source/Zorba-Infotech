@@ -15,8 +15,8 @@ const Index = () => (
     />
     <HeroSection />
     <CategoryGrid />
-    <DealerBanner />
     <ServicesSection />
+    <DealerBanner />
     <LocalSEOSection />
   </Layout>
 );
