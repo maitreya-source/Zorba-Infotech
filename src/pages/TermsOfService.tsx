@@ -47,7 +47,7 @@ const TermsOfService = () => {
             <ul className="divide-y">
               {[
                 "Goods once sold will not be taken back or exchanged.",
-                "Payment should be made within 7 days; otherwise interest @ 24% per annum will be charged.",
+                "All credit amounts and overdue invoices will be charged with compound interest @ 2% per month after 15 days of the bill date.",
                 "Cheque bouncing charges: minimum ₹1,000 or 1% of the cheque amount — non-negotiable.",
                 "We are not responsible for any type of online scheme. Customers must directly claim their online scheme from the respective company.",
                 "Toll-free complaint registration and online product registration is the customer's responsibility.",
@@ -72,9 +72,10 @@ const TermsOfService = () => {
             </div>
             <ul className="divide-y">
               {[
-                "During the warranty period, all courier/transport charges will be paid by the Customer/Dealer.",
+                "During warranty / non-warranty repair, all courier/transport charges for parcels sent to company service centers will be paid by the Customer/Dealer, along with any repair or estimate charges quoted by the service center.",
+                "For parcels sent to external / company Authorized Service Centers (A.S.P.), the customer bears all two-way courier charges and any service center charges quoted.",
                 "No warranty support will be provided if your payment is outstanding.",
-                "We are not responsible for any software support.",
+                "We are not responsible for any software support or data loss.",
                 "All warranty terms will be as per the manufacturing company's warranty policy.",
                 "Always bring a copy of our invoice/challan for any type of warranty repair, if applicable.",
                 "Virus cleaning, data backup, hard disk reconfiguring, and repair work will be charged extra and carried out at owner's risk.",
@@ -114,14 +115,18 @@ const TermsOfService = () => {
             <div className="px-6 py-5 space-y-4 text-sm text-muted-foreground leading-relaxed">
               <p>
                 Goods once sold will not be taken back or exchanged. We are not responsible for any
-                breakage, theft, or damage of goods after leaving our premises. During the warranty period,
-                all courier/transport charges will be paid by the Customer/Dealer. All warranty terms will be
-                as per the manufacturing company's warranty policy. Always bring a copy of our
-                invoice/challan for any type of warranty repair, if applicable.
+                breakage, theft, or damage of goods after leaving our premises. For all parcels sent to
+                company authorized service centers, <strong className="text-foreground">the customer/dealer
+                bears all courier/transport charges and any charges quoted by the service center</strong>.
+                All warranty terms will be as per the manufacturing company's warranty policy. Always bring
+                a copy of our invoice/challan for any type of warranty repair.
               </p>
               <p>
-                All credit amounts will be charged with <strong className="text-foreground">compound
+                All credit amounts and overdue invoices will be charged with <strong className="text-foreground">compound
                 interest @ 2% per month</strong> after 15 days of bill date.
+              </p>
+              <p>
+                सर्विस सेंटर भेजे जाने वाले पार्सल का कूरियर खर्च एवं सर्विस सेंटर द्वारा निर्धारित समस्त शुल्क ग्राहक/डीलर द्वारा ही वहन किया जाएगा।
               </p>
               <p>
                 Warranty is not applicable due to water exposure, getting wet, or submersion in water.
@@ -130,8 +135,8 @@ const TermsOfService = () => {
                 पानी लगने या गीला होने की वजह, पानी में डूबने की वजह से वारंटी नहीं मिलती है।
               </p>
               <p className="border-t pt-4">
-                All terms & conditions are disclosed in both English and Hindi and are deemed accepted by the
-                customer/dealer upon purchase.
+                All terms &amp; conditions are disclosed in both English and Hindi and are deemed accepted by the
+                customer/dealer upon purchase and service booking.
               </p>
             </div>
 

@@ -64,11 +64,11 @@ const PrivacyPolicy = () => {
                 <ul className="list-disc pl-5 space-y-2 text-sm">
                   <li><strong>Goods once sold will not be taken back or exchanged.</strong></li>
                   <li>We are not responsible for any breakage, theft, or damage of goods after leaving our premises.</li>
-                  <li>In case of warranty period, all courier/transport charges will be paid by the Customer/Dealer.</li>
+                  <li>For parcels and materials sent to company Authorized Service Centers (A.S.P.), <strong>the customer/dealer bears all courier/transport charges and any charges quoted or levied by the service center</strong>.</li>
                   <li>All warranty terms will be as per the manufacturing company's warranty policy.</li>
                   <li>Always bring along a copy of our invoice/challan for any type of warranty repairs, if applicable.</li>
-                  <li>All credits will be charged with <strong>compound interest @ 2% per month</strong> after 15 days of bill date.</li>
-                  <li>All terms & conditions disclosed in Hindi language and accepted by the customer/dealer.</li>
+                  <li>All credits and overdue balances will be charged with <strong>compound interest @ 2% per month</strong> after 15 days of bill date.</li>
+                  <li>All terms &amp; conditions disclosed in Hindi and English languages and accepted by the customer/dealer.</li>
                 </ul>
               </div>
             </Section>
