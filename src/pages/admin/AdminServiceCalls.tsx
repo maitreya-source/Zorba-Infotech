@@ -726,9 +726,20 @@ export default function AdminServiceCalls() {
 
                       {/* Customer */}
                       <td className="px-4 py-4 align-middle">
-                        <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">
-                          {item.customerName}
-                        </div>
+                        {item.customerId ? (
+                          <Link
+                            to={`/admin/customers/${item.customerId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-bold text-slate-900 dark:text-slate-100 text-xs hover:text-blue-600 dark:hover:text-blue-400 hover:underline inline-flex items-center gap-1"
+                            title="View Customer Profile & Service History"
+                          >
+                            <span>{item.customerName}</span>
+                          </Link>
+                        ) : (
+                          <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                            {item.customerName}
+                          </div>
+                        )}
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
                           📞 {item.customerPhone}
                         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import {
   History,
   ArrowLeft,
@@ -187,6 +187,8 @@ const STATUS_LIST: {
 
 export default function AdminServiceCallForm() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const customerIdParam = searchParams.get("customerId");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeProfile } = useStaffProfile();
@@ -328,6 +330,18 @@ export default function AdminServiceCallForm() {
 
       if (!deviceCategory && fallbackCats.length > 0) {
         setDeviceCategory(fallbackCats[0].name);
+      }
+
+      // Prefill customer if opened with ?customerId=...
+      if (!id && customerIdParam && custs.length > 0) {
+        const targetCust = custs.find((c) => c.id === customerIdParam);
+        if (targetCust) {
+          setSelectedCustomerId(targetCust.id);
+          setCustomerName(targetCust.name);
+          setCustomerPhone(targetCust.phone);
+          setCustomerEmail(targetCust.email || "");
+          setCustomerAddress(targetCust.address || "");
+        }
       }
     } catch (err) {
       console.error("Error loading master data:", err);

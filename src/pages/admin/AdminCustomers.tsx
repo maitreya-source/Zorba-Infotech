@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { UserPlus, Users, Trash2, Search, Phone, Mail, MapPin, Building, RefreshCw, FileSpreadsheet, Pencil } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { UserPlus, Users, Trash2, Search, Phone, Mail, MapPin, Building, RefreshCw, FileSpreadsheet, Pencil, Activity, ChevronRight, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import ImportCustomersModal from "@/components/admin/ImportCustomersModal";
 
 export default function AdminCustomers() {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,10 +167,27 @@ export default function AdminCustomers() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filtered.map((cust) => (
-                  <tr key={cust.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors group">
+                  <tr
+                    key={cust.id}
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement;
+                      if (
+                        target.closest("button") ||
+                        target.closest("a") ||
+                        target.closest("[role='menuitem']")
+                      ) {
+                        return;
+                      }
+                      navigate(`/admin/customers/${cust.id}`);
+                    }}
+                    className="hover:bg-blue-50/40 dark:hover:bg-slate-900/50 transition-colors group cursor-pointer"
+                  >
                     {/* Name & Company */}
                     <td className="px-4 py-3">
-                      <div className="font-bold text-slate-900 dark:text-white text-xs">{cust.name}</div>
+                      <div className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                        <span>{cust.name}</span>
+                        <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+                      </div>
                       {cust.companyName && (
                         <div className="text-[11px] text-[#2563EB] font-semibold flex items-center gap-1 mt-0.5">
                           <Building className="h-3 w-3" /> {cust.companyName}
@@ -214,12 +233,24 @@ export default function AdminCustomers() {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Link to={`/admin/customers/${cust.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7.5 px-2.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 hover:text-blue-800 bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/80 rounded-lg gap-1.5 cursor-pointer shadow-2xs"
+                            title="View Service Calls & History"
+                          >
+                            <Activity className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                            <span>Service Calls</span>
+                          </Button>
+                        </Link>
+
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          className="h-7.5 w-7.5 text-muted-foreground hover:text-foreground cursor-pointer"
                           title="Edit Customer"
                           onClick={() => setEditCustomer(cust)}
                         >
@@ -228,7 +259,7 @@ export default function AdminCustomers() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          className="h-7.5 w-7.5 text-muted-foreground hover:text-destructive cursor-pointer"
                           title="Delete Customer"
                           onClick={() => setDeleteId(cust.id)}
                         >

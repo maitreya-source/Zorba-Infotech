@@ -29,6 +29,7 @@ import AdminServiceCalls from "./pages/admin/AdminServiceCalls";
 import AdminServiceCallForm from "./pages/admin/AdminServiceCallForm";
 import AdminDeviceCategories from "./pages/admin/AdminDeviceCategories";
 import AdminCustomers from "./pages/admin/AdminCustomers";
+import AdminCustomerDetail from "./pages/admin/AdminCustomerDetail";
 import AdminImportCustomers from "./pages/admin/AdminImportCustomers";
 import AdminTechnicians from "./pages/admin/AdminTechnicians";
 import AdminStaff from "./pages/admin/AdminStaff";
@@ -79,6 +80,7 @@ const App = () => (
                     <Route path="/admin/service-calls/:id/edit" element={<AdminServiceCallForm />} />
                     <Route path="/admin/device-categories" element={<AdminDeviceCategories />} />
                     <Route path="/admin/customers" element={<AdminCustomers />} />
+                    <Route path="/admin/customers/:id" element={<AdminCustomerDetail />} />
                     <Route path="/admin/customers/import" element={<AdminImportCustomers />} />
                     <Route path="/admin/team" element={<AdminTeam />} />
                     <Route path="/admin/technicians" element={<AdminTechnicians />} />

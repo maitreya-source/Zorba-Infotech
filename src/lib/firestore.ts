@@ -463,6 +463,17 @@ export async function searchCustomers(queryText: string, limitCount = 30): Promi
   }
 }
 
+export async function getCustomer(id: string): Promise<Customer | null> {
+  try {
+    const snap = await fetchWithTimeout(getDoc(doc(db, "customers", id)));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() } as Customer;
+  } catch (err: any) {
+    console.error("getCustomer error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
 export async function deleteCustomer(id: string): Promise<void> {
   await deleteDoc(doc(db, "customers", id));
 }
@@ -1050,6 +1061,35 @@ export async function getServiceCall(id: string): Promise<ServiceCall | null> {
     } as ServiceCall;
   } catch (err: any) {
     console.error("getServiceCall error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function getServiceCallsForCustomer(
+  customerId: string,
+  customerPhone?: string,
+  customerName?: string
+): Promise<ServiceCall[]> {
+  try {
+    const allCalls = await getServiceCalls();
+    const cleanPhone = (customerPhone || "").replace(/\D/g, "");
+    const cleanName = (customerName || "").trim().toLowerCase();
+
+    return allCalls.filter((c) => {
+      if (c.customerId && c.customerId === customerId) return true;
+      if (cleanPhone) {
+        const callPhone = (c.customerPhone || "").replace(/\D/g, "");
+        if (callPhone && (callPhone === cleanPhone || callPhone.endsWith(cleanPhone) || cleanPhone.endsWith(callPhone))) {
+          return true;
+        }
+      }
+      if (cleanName && c.customerName && c.customerName.trim().toLowerCase() === cleanName) {
+        return true;
+      }
+      return false;
+    });
+  } catch (err: any) {
+    console.error("getServiceCallsForCustomer error:", err);
     throw new Error(formatFirebaseError(err));
   }
 }
