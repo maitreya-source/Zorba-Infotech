@@ -112,19 +112,32 @@ export default function AdminImportCustomers() {
 
     setImporting(true);
     let successCount = 0;
+    let duplicateCount = 0;
     try {
       for (const item of validList) {
-        await createCustomer({
-          name: item.name,
-          phone: item.phone,
-          email: item.email,
-          companyName: item.companyName,
-          address: item.address,
-        });
-        successCount++;
-        setImportedCount(successCount);
+        try {
+          await createCustomer({
+            name: item.name,
+            phone: item.phone,
+            email: item.email,
+            companyName: item.companyName,
+            address: item.address,
+          });
+          successCount++;
+          setImportedCount(successCount);
+        } catch (itemErr: any) {
+          if (itemErr?.message?.includes("already exists")) {
+            duplicateCount++;
+          } else {
+            console.warn("Error importing row:", itemErr);
+          }
+        }
       }
-      toast.success(`Successfully imported ${successCount} contacts into database!`);
+      if (duplicateCount > 0) {
+        toast.success(`Imported ${successCount} contacts (${duplicateCount} existing duplicate phone numbers skipped).`);
+      } else {
+        toast.success(`Successfully imported ${successCount} contacts into database!`);
+      }
       navigate("/admin/customers");
     } catch (err: any) {
       toast.error(err?.message || "Failed to complete CSV import");

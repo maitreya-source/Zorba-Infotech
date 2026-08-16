@@ -363,7 +363,65 @@ export async function getCustomers(): Promise<Customer[]> {
   }
 }
 
+export function normalizePhone10(rawPhone?: string): string {
+  if (!rawPhone) return "";
+  const digits = rawPhone.replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+}
+
+export async function findCustomerByPhoneNumber(
+  rawPhone: string,
+  excludeCustomerId?: string
+): Promise<Customer | null> {
+  const target10 = normalizePhone10(rawPhone);
+  if (!target10 || target10.length < 10) return null;
+
+  try {
+    const all = await getCustomers();
+    for (const c of all) {
+      if (excludeCustomerId && c.id === excludeCustomerId) continue;
+
+      const primary10 = normalizePhone10(c.phone);
+      if (primary10 === target10) return c;
+
+      if (c.additionalPhones && c.additionalPhones.length > 0) {
+        for (const p of c.additionalPhones) {
+          if (normalizePhone10(p) === target10) return c;
+        }
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error("findCustomerByPhoneNumber error:", err);
+    return null;
+  }
+}
+
 export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): Promise<Customer> {
+  const target10 = normalizePhone10(data.phone);
+  if (!target10 || target10.length < 10) {
+    throw new Error("Please provide a valid 10-digit mobile number.");
+  }
+
+  // Check for duplicate mobile number
+  const duplicate = await findCustomerByPhoneNumber(data.phone);
+  if (duplicate) {
+    throw new Error(
+      `A customer already exists with this mobile number (${data.phone}): "${duplicate.name}" (ID: ${duplicate.id}). Duplicate registration is disallowed.`
+    );
+  }
+
+  if (data.additionalPhones && data.additionalPhones.length > 0) {
+    for (const extra of data.additionalPhones) {
+      const extraDup = await findCustomerByPhoneNumber(extra);
+      if (extraDup) {
+        throw new Error(
+          `A customer already exists with alternate mobile number (${extra}): "${extraDup.name}".`
+        );
+      }
+    }
+  }
+
   const docRef = doc(collection(db, "customers"));
   const formattedName = toTitleCase(data.name);
   const formattedPhone = formatIndianPhoneNumber(data.phone);
@@ -393,6 +451,26 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
 }
 
 export async function updateCustomer(id: string, data: Partial<Customer>): Promise<void> {
+  if (data.phone) {
+    const duplicate = await findCustomerByPhoneNumber(data.phone, id);
+    if (duplicate) {
+      throw new Error(
+        `Another customer already exists with this mobile number (${data.phone}): "${duplicate.name}".`
+      );
+    }
+  }
+
+  if (data.additionalPhones && data.additionalPhones.length > 0) {
+    for (const extra of data.additionalPhones) {
+      const extraDup = await findCustomerByPhoneNumber(extra, id);
+      if (extraDup) {
+        throw new Error(
+          `Another customer already exists with alternate mobile number (${extra}): "${extraDup.name}".`
+        );
+      }
+    }
+  }
+
   const existingSnap = await getDoc(doc(db, "customers", id)).catch(() => null);
   const existing = existingSnap?.exists() ? (existingSnap.data() as Customer) : null;
 

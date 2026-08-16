@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { UserPlus, Phone, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { UserPlus, Phone, Plus, Trash2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { createCustomer } from "@/lib/firestore";
+import { createCustomer, findCustomerByPhoneNumber, normalizePhone10 } from "@/lib/firestore";
 import { toTitleCase, formatIndianPhoneNumber } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 
@@ -35,6 +35,31 @@ export default function CreateCustomerModal({
   const [additionalPhones, setAdditionalPhones] = useState<string[]>([]);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [duplicateCustomer, setDuplicateCustomer] = useState<Customer | null>(null);
+  const [checkingPhone, setCheckingPhone] = useState(false);
+
+  useEffect(() => {
+    const raw = `${countryCode} ${phoneNumber}`;
+    const cleanDigits = normalizePhone10(raw);
+
+    if (cleanDigits.length >= 10) {
+      setCheckingPhone(true);
+      const timer = setTimeout(async () => {
+        try {
+          const match = await findCustomerByPhoneNumber(raw);
+          setDuplicateCustomer(match);
+        } catch {
+          setDuplicateCustomer(null);
+        } finally {
+          setCheckingPhone(false);
+        }
+      }, 250);
+      return () => clearTimeout(timer);
+    } else {
+      setDuplicateCustomer(null);
+      setCheckingPhone(false);
+    }
+  }, [countryCode, phoneNumber]);
 
   const handleAddPhone = () => {
     setAdditionalPhones((prev) => [...prev, "+91 "]);
@@ -60,6 +85,10 @@ export default function CreateCustomerModal({
     }
     if (!phoneNumber.trim()) {
       toast.error("Phone number is required");
+      return;
+    }
+    if (duplicateCustomer) {
+      toast.error(`A customer already exists with this phone number: ${duplicateCustomer.name} (${duplicateCustomer.phone})`);
       return;
     }
 
@@ -89,6 +118,7 @@ export default function CreateCustomerModal({
       setAddress("");
       setCompanyName("");
       setAdditionalPhones([]);
+      setDuplicateCustomer(null);
       setShowMoreDetails(false);
     } catch (err: any) {
       console.error("Error creating customer:", err);
@@ -139,9 +169,24 @@ export default function CreateCustomerModal({
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required
-                className="h-8 text-xs flex-1 font-mono"
+                className={`h-8 text-xs flex-1 font-mono ${
+                  duplicateCustomer ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200" : ""
+                }`}
               />
             </div>
+
+            {duplicateCustomer && (
+              <div className="mt-1.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-start gap-1.5 text-[11px] animate-in fade-in slide-in-from-top-1">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="leading-tight">
+                  <span className="font-bold">Customer Already Registered: </span>
+                  <span className="underline font-medium">{duplicateCustomer.name}</span> ({duplicateCustomer.phone})
+                  <p className="text-[10px] text-amber-700/90 dark:text-amber-300/80 mt-0.5">
+                    Duplicate registration is disallowed. Please select or update the existing customer profile.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { User, Phone, Plus, Trash2, ChevronDown, ChevronUp, Building } from "lucide-react";
+import { User, Phone, Plus, Trash2, ChevronDown, ChevronUp, Building, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { updateCustomer } from "@/lib/firestore";
+import { updateCustomer, findCustomerByPhoneNumber, normalizePhone10 } from "@/lib/firestore";
 import { toTitleCase, formatIndianPhoneNumber } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 
@@ -36,6 +36,7 @@ export default function EditCustomerModal({
   const [additionalPhones, setAdditionalPhones] = useState<string[]>([]);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [duplicateCustomer, setDuplicateCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
     if (customer) {
@@ -45,11 +46,31 @@ export default function EditCustomerModal({
       setAddress(customer.address || "");
       setCompanyName(customer.companyName || "");
       setAdditionalPhones(customer.additionalPhones || []);
+      setDuplicateCustomer(null);
       if (customer.additionalPhones && customer.additionalPhones.length > 0) {
         setShowMoreDetails(true);
       }
     }
   }, [customer]);
+
+  useEffect(() => {
+    if (!customer) return;
+    const cleanDigits = normalizePhone10(phone);
+
+    if (cleanDigits.length >= 10) {
+      const timer = setTimeout(async () => {
+        try {
+          const match = await findCustomerByPhoneNumber(phone, customer.id);
+          setDuplicateCustomer(match);
+        } catch {
+          setDuplicateCustomer(null);
+        }
+      }, 250);
+      return () => clearTimeout(timer);
+    } else {
+      setDuplicateCustomer(null);
+    }
+  }, [phone, customer]);
 
   const handleAddPhone = () => {
     setAdditionalPhones((prev) => [...prev, "+91 "]);
@@ -76,6 +97,10 @@ export default function EditCustomerModal({
     }
     if (!phone.trim()) {
       toast.error("Primary phone number is required");
+      return;
+    }
+    if (duplicateCustomer) {
+      toast.error(`Another customer already has this mobile number: ${duplicateCustomer.name} (${duplicateCustomer.phone})`);
       return;
     }
 
@@ -144,8 +169,20 @@ export default function EditCustomerModal({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              className="mt-1 h-8 text-xs font-mono"
+              className={`mt-1 h-8 text-xs font-mono ${
+                duplicateCustomer ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200" : ""
+              }`}
             />
+            {duplicateCustomer && (
+              <div className="mt-1.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-start gap-1.5 text-[11px] animate-in fade-in slide-in-from-top-1">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="leading-tight">
+                  <span className="font-bold">Duplicate Mobile Number: </span>
+                  <span>belongs to </span>
+                  <span className="underline font-medium">{duplicateCustomer.name}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

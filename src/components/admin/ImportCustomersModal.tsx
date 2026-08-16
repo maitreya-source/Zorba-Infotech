@@ -121,19 +121,32 @@ export default function ImportCustomersModal({
 
     setImporting(true);
     let successCount = 0;
+    let duplicateCount = 0;
     try {
       for (const item of validList) {
-        await createCustomer({
-          name: item.name,
-          phone: item.phone,
-          email: item.email,
-          companyName: item.companyName,
-          address: item.address,
-        });
-        successCount++;
-        setImportedCount(successCount);
+        try {
+          await createCustomer({
+            name: item.name,
+            phone: item.phone,
+            email: item.email,
+            companyName: item.companyName,
+            address: item.address,
+          });
+          successCount++;
+          setImportedCount(successCount);
+        } catch (itemErr: any) {
+          if (itemErr?.message?.includes("already exists")) {
+            duplicateCount++;
+          } else {
+            console.warn("Error importing customer row:", itemErr);
+          }
+        }
       }
-      toast.success(`Successfully imported ${successCount} customer contacts!`);
+      if (duplicateCount > 0) {
+        toast.success(`Imported ${successCount} contacts (${duplicateCount} existing duplicate phone numbers skipped).`);
+      } else {
+        toast.success(`Successfully imported ${successCount} customer contacts!`);
+      }
       if (onImportComplete) onImportComplete();
       onOpenChange(false);
       // Reset
