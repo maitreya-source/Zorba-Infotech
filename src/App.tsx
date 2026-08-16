@@ -27,12 +27,9 @@ import AdminProductForm from "./pages/admin/AdminProductForm";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminServiceCalls from "./pages/admin/AdminServiceCalls";
 import AdminServiceCallForm from "./pages/admin/AdminServiceCallForm";
-import AdminDeviceCategories from "./pages/admin/AdminDeviceCategories";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminCustomerDetail from "./pages/admin/AdminCustomerDetail";
 import AdminImportCustomers from "./pages/admin/AdminImportCustomers";
-import AdminTechnicians from "./pages/admin/AdminTechnicians";
-import AdminStaff from "./pages/admin/AdminStaff";
 import AdminTeam from "./pages/admin/AdminTeam";
 import AdminServiceCenters from "./pages/admin/AdminServiceCenters";
 import AdminCouriers from "./pages/admin/AdminCouriers";
@@ -79,13 +76,13 @@ const App = () => (
                     <Route path="/admin/service-calls" element={<AdminServiceCalls />} />
                     <Route path="/admin/service-calls/new" element={<AdminServiceCallForm />} />
                     <Route path="/admin/service-calls/:id/edit" element={<AdminServiceCallForm />} />
-                    <Route path="/admin/device-categories" element={<AdminDeviceCategories />} />
+                    <Route path="/admin/device-categories" element={<AdminCategories />} />
                     <Route path="/admin/customers" element={<AdminCustomers />} />
                     <Route path="/admin/customers/:id" element={<AdminCustomerDetail />} />
                     <Route path="/admin/customers/import" element={<AdminImportCustomers />} />
                     <Route path="/admin/team" element={<AdminTeam />} />
-                    <Route path="/admin/technicians" element={<AdminTechnicians />} />
-                    <Route path="/admin/staff" element={<AdminStaff />} />
+                    <Route path="/admin/technicians" element={<AdminTeam />} />
+                    <Route path="/admin/staff" element={<AdminTeam />} />
                     <Route path="/admin/service-centers" element={<AdminServiceCenters />} />
                     <Route path="/admin/couriers" element={<AdminCouriers />} />
                     <Route path="/admin/reports" element={<AdminReports />} />

@@ -227,7 +227,7 @@ export default function AdminProductForm() {
 
     setSaving(true);
     try {
-      const cleanModel = form.model.trim().replace(/[/\#?%]/g, "-").toUpperCase();
+      const cleanModel = form.model.trim().replace(/[/#?%]/g, "-").toUpperCase();
       const productId = isEdit ? id! : cleanModel;
 
       // Handle photo
