@@ -1,5 +1,5 @@
 import type { FullDatabaseBackup } from "./backup";
-import { getGoogleServicesToken, DRIVE_FILE_SCOPE } from "./googleAuthService";
+import { getGoogleServicesToken, DRIVE_FILE_SCOPE, GMAIL_SEND_SCOPE, clearGoogleSession } from "./googleAuthService";
 
 const BACKUP_ROOT_FOLDER_NAME = "Zorba ERP Backups";
 
@@ -7,7 +7,7 @@ const BACKUP_ROOT_FOLDER_NAME = "Zorba ERP Backups";
  * Request or reuse an OAuth access token with Google Drive scope using the persistent 3-month permission engine
  */
 export async function getGoogleDriveAccessToken(forcePrompt = false): Promise<string> {
-  return await getGoogleServicesToken([DRIVE_FILE_SCOPE], forcePrompt);
+  return await getGoogleServicesToken([DRIVE_FILE_SCOPE, GMAIL_SEND_SCOPE], forcePrompt);
 }
 
 /**
@@ -119,7 +119,26 @@ export async function uploadBackupToGoogleDrive(
   backup: FullDatabaseBackup,
   customFolderName?: string
 ): Promise<DriveUploadResult> {
-  const accessToken = await getGoogleDriveAccessToken();
+  try {
+    return await executeUpload(backup, false, customFolderName);
+  } catch (err: any) {
+    const msg = err?.message || "";
+    // If token expired, missing permission, or invalid auth, force re-authorization once
+    if (msg.includes("401") || msg.includes("403") || msg.includes("permission") || msg.includes("scope") || msg.includes("Invalid Credentials")) {
+      console.warn("Drive sync failed with auth error, retrying with force prompt:", err);
+      clearGoogleSession();
+      return await executeUpload(backup, true, customFolderName);
+    }
+    throw err;
+  }
+}
+
+async function executeUpload(
+  backup: FullDatabaseBackup,
+  forcePrompt: boolean,
+  customFolderName?: string
+): Promise<DriveUploadResult> {
+  const accessToken = await getGoogleDriveAccessToken(forcePrompt);
   const rootFolder = await getOrCreateRootBackupFolder(accessToken);
 
   // Format timestamp: e.g. "Backup_2026-08-16_15-30-00"
@@ -146,7 +165,7 @@ export async function uploadBackupToGoogleDrive(
 
   if (!folderRes.ok) {
     const err = await folderRes.json().catch(() => ({}));
-    throw new Error(err?.error?.message || "Failed to create backup session folder in Google Drive");
+    throw new Error(err?.error?.message || `Failed to create backup folder (HTTP ${folderRes.status})`);
   }
 
   const sessionFolder = await folderRes.json();
@@ -288,7 +307,20 @@ export async function listGoogleDriveBackups(): Promise<DriveBackupItem[]> {
  * Fetch and reassemble a FullDatabaseBackup directly from Google Drive (folder or single file)
  */
 export async function downloadBackupFromDriveItem(item: DriveBackupItem): Promise<FullDatabaseBackup> {
-  const accessToken = await getGoogleDriveAccessToken();
+  try {
+    return await executeDownloadFromDriveItem(item, false);
+  } catch (err: any) {
+    const msg = err?.message || "";
+    if (msg.includes("401") || msg.includes("403") || msg.includes("permission") || msg.includes("scope") || msg.includes("Invalid Credentials")) {
+      clearGoogleSession();
+      return await executeDownloadFromDriveItem(item, true);
+    }
+    throw err;
+  }
+}
+
+async function executeDownloadFromDriveItem(item: DriveBackupItem, forcePrompt: boolean): Promise<FullDatabaseBackup> {
+  const accessToken = await getGoogleDriveAccessToken(forcePrompt);
 
   if (!item.isFolder) {
     // Single JSON backup file
@@ -296,7 +328,7 @@ export async function downloadBackupFromDriveItem(item: DriveBackupItem): Promis
     const res = await fetch(downloadUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!res.ok) throw new Error("Failed to download backup file from Google Drive");
+    if (!res.ok) throw new Error(`Failed to download backup file from Google Drive (HTTP ${res.status})`);
     return await res.json();
   }
 

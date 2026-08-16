@@ -23,6 +23,8 @@ export const BACKUP_AUTHORIZED_EMAILS = [
   "maitreya.mul@gmail.com",
   "manishm9730@gmail.com",
   "zorbainfotech@gmail.com",
+  "zorbasquad@gmail.com",
+  "maitreyam@google.com",
 ];
 
 export function isBackupDownloadAuthorized(email?: string | null): boolean {

@@ -48,6 +48,17 @@ export function saveGoogleSession(data: GoogleSessionData): void {
 }
 
 /**
+ * Clears the persisted Google session from localStorage
+ */
+export function clearGoogleSession(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (err) {
+    console.error("Failed to clear Google session:", err);
+  }
+}
+
+/**
  * Gets permission validity information (e.g. days remaining on 3-month authorization)
  */
 export function getGooglePermissionStatus(): {
@@ -79,9 +90,9 @@ export function getGooglePermissionStatus(): {
 
 /**
  * Request or reuse a Google OAuth Access Token.
- * - Reuses existing token if unexpired (no prompt).
- * - If token expired but within 3-month authorization window, silently refreshes token without consent screen.
- * - Only asks for consent once every 3 months (90 days).
+ * - Reuses existing token if unexpired and contains ALL required scopes (no prompt).
+ * - If token expired or missing scopes but within 3-month authorization window, prompts with select_account.
+ * - If expired beyond 3-month authorization, prompts with full consent screen.
  */
 export async function getGoogleServicesToken(
   requiredScopes: string[] = [GMAIL_SEND_SCOPE, DRIVE_FILE_SCOPE],
@@ -90,11 +101,18 @@ export async function getGoogleServicesToken(
   const now = Date.now();
   const session = getStoredGoogleSession();
 
-  // 1. If valid in-memory/stored token exists and has > 2 min remaining
+  // Check if current stored session contains all requested scopes
+  const hasAllRequiredScopes =
+    session &&
+    Array.isArray(session.scopes) &&
+    requiredScopes.every((scope) => session.scopes.includes(scope));
+
+  // 1. If valid in-memory/stored token exists, has all required scopes, and has > 2 min remaining
   if (
     !forceConsentPrompt &&
     session &&
     session.accessToken &&
+    hasAllRequiredScopes &&
     now < session.tokenExpiresAt - 120000 &&
     now < session.permissionValidUntil
   ) {
@@ -102,10 +120,12 @@ export async function getGoogleServicesToken(
   }
 
   // 2. Check if we are still within the 3-month permission grant
-  const isWithin3MonthWindow = session && now < session.permissionValidUntil;
+  const isWithin3MonthWindow = session && now < session.permissionValidUntil && hasAllRequiredScopes;
 
   const provider = new GoogleAuthProvider();
-  requiredScopes.forEach((s) => provider.addScope(s));
+  // Always include standard unified scopes so token works for both Gmail and Drive
+  const unifiedScopes = Array.from(new Set([...requiredScopes, GMAIL_SEND_SCOPE, DRIVE_FILE_SCOPE]));
+  unifiedScopes.forEach((s) => provider.addScope(s));
 
   if (forceConsentPrompt || !isWithin3MonthWindow) {
     // Prompt for 3-month consent
@@ -143,7 +163,7 @@ export async function getGoogleServicesToken(
     permissionGrantedAt,
     permissionValidUntil,
     email: result.user?.email || auth.currentUser?.email || undefined,
-    scopes: requiredScopes,
+    scopes: unifiedScopes,
   };
 
   saveGoogleSession(newSession);
