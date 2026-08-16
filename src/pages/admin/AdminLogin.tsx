@@ -14,7 +14,6 @@ import {
   HardDrive,
   Lock,
   ArrowRight,
-  ShieldCheck,
 } from "lucide-react";
 
 export default function AdminLogin() {
@@ -107,11 +106,12 @@ export default function AdminLogin() {
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <ZorbaLogoIcon className="h-8 w-8 drop-shadow-md" />
-          <div>
+          <div className="flex items-center gap-2">
             <span className="font-extrabold font-display tracking-tight text-white text-base">
               ZORBA INFOTECH
             </span>
-            <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider ml-2 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+            <span className="text-slate-600 dark:text-slate-600 font-normal">|</span>
+            <span className="text-xs text-slate-400 font-medium">
               ERP Portal
             </span>
           </div>
@@ -132,11 +132,6 @@ export default function AdminLogin() {
         {/* Left Column: ERP Platform Purpose & Feature Highlights */}
         <div className="flex-1 max-w-2xl space-y-6 text-left">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <ShieldCheck className="h-3.5 w-3.5 text-blue-400" />
-              Internal Operations Platform
-            </div>
-
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-white leading-tight">
               Zorba Infotech <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-emerald-400">
