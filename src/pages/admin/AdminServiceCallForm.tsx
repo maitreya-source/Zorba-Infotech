@@ -2,19 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import {
-  History,
-  ArrowLeft,
   Building2,
   Wrench,
   MapPin,
   Plus,
   Trash2,
-  Calendar,
   Save,
-  MessageCircle,
   Truck,
   FileText,
-  UserCheck,
   UserPlus,
   Send,
   Inbox,
@@ -36,7 +31,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -74,7 +68,6 @@ import {
   toTitleCase,
   formatIndianPhoneNumber,
   generateWhatsAppMessage,
-  generateCourierFollowUpMessage,
   generateServiceCenterFollowUpMessage,
   generateCourierPickupRequestMessage,
   generateCourierDeliveryInquiryMessage,
@@ -87,6 +80,7 @@ import type {
   Technician,
   StaffMember,
   TimelineEvent,
+  ServiceCall,
   ServiceCallStatus,
   ServiceCallType,
   ServicePart,
@@ -98,13 +92,13 @@ import SparePartTypeahead from "@/components/admin/SparePartTypeahead";
 import TimelineEventsListModal from "@/components/admin/TimelineEventsListModal";
 import AddTimelineEventModal from "@/components/admin/AddTimelineEventModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
+import EmailPreviewModal from "@/components/admin/EmailPreviewModal";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
-import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
@@ -295,6 +289,21 @@ export default function AdminServiceCallForm() {
     recipientRole: "",
     defaultPhone: "",
     defaultMessage: "",
+  });
+  const [emailModal, setEmailModal] = useState<{
+    open: boolean;
+    title: string;
+    recipientName: string;
+    recipientRole: string;
+    defaultEmail: string;
+    ticketId?: string;
+  }>({
+    open: false,
+    title: "",
+    recipientName: "",
+    recipientRole: "Customer",
+    defaultEmail: "",
+    ticketId: undefined,
   });
 
   const loadMasterData = async () => {
@@ -644,6 +653,17 @@ export default function AdminServiceCallForm() {
       recipientRole: "Customer",
       defaultPhone: customerPhone || "",
       defaultMessage: compiled,
+    });
+  };
+
+  const handleOpenCustomerEmail = () => {
+    setEmailModal({
+      open: true,
+      title: `Email Update: ${ticketNo || "Service Intake"}`,
+      recipientName: customerName ? toTitleCase(customerName) : "Customer",
+      recipientRole: "Customer",
+      defaultEmail: customerEmail || "",
+      ticketId: ticketNo,
     });
   };
 
@@ -1454,12 +1474,12 @@ export default function AdminServiceCallForm() {
             </div>
           </div>
 
-          {/* 2. WhatsApp Communications */}
+            {/* 2. Customer & Partner Communications */}
           <div className="space-y-2">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              WhatsApp Communications
+              Customer Notifications & Dispatch
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -1468,7 +1488,18 @@ export default function AdminServiceCallForm() {
                 className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300"
               >
                 <MessageSquare className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                <span>Message Customer</span>
+                <span>WhatsApp Customer</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleOpenCustomerEmail}
+                className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer border-blue-300 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300"
+              >
+                <Mail className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                <span>Email Customer</span>
               </Button>
 
               {type === "company_service_center" && serviceCenterName && (
@@ -1709,8 +1740,20 @@ export default function AdminServiceCallForm() {
                     className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
                   >
                     <div className="flex items-center gap-2.5">
-                      <MessageSquare className="h-4 w-4 shrink-0 text-indigo-400" />
-                      <span>Message Customer</span>
+                      <MessageSquare className="h-4 w-4 shrink-0 text-emerald-400" />
+                      <span>WhatsApp Customer</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenCustomerEmail}
+                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Mail className="h-4 w-4 shrink-0 text-blue-400" />
+                      <span>Email Customer</span>
                     </div>
                     <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                   </button>
@@ -1961,6 +2004,36 @@ export default function AdminServiceCallForm() {
         defaultPhone={whatsAppModal.defaultPhone}
         defaultMessage={whatsAppModal.defaultMessage}
         ticketId={ticketNo}
+      />
+
+      {/* Email Message Preview & Dispatch Modal */}
+      <EmailPreviewModal
+        open={emailModal.open}
+        onOpenChange={(open) => setEmailModal((prev) => ({ ...prev, open }))}
+        title={emailModal.title}
+        recipientName={emailModal.recipientName}
+        recipientRole={emailModal.recipientRole}
+        defaultEmail={emailModal.defaultEmail}
+        ticketId={emailModal.ticketId}
+        serviceCall={{
+          id: id || "NEW",
+          ticketNo: ticketNo || "SC-INTAKE",
+          customerName,
+          customerPhone,
+          customerEmail,
+          deviceCategory,
+          modelNumber,
+          serialNumber,
+          issueDescription,
+          status,
+          grandTotal,
+          dateTime,
+          warrantyStatus,
+          type,
+          timeline,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        } as ServiceCall}
       />
 
       {/* Full Timeline Events List Modal */}

@@ -37,6 +37,7 @@ import type { Customer, ServiceCall, ServiceCallStatus } from "@/lib/types";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
+import EmailPreviewModal from "@/components/admin/EmailPreviewModal";
 import { formatIndianPhoneNumber } from "@/lib/utils";
 
 const STATUS_BADGES: Record<
@@ -109,6 +110,21 @@ export default function AdminCustomerDetail() {
     recipientRole: "",
     defaultPhone: "",
     defaultMessage: "",
+    ticketId: undefined,
+  });
+  const [emailModal, setEmailModal] = useState<{
+    open: boolean;
+    title: string;
+    recipientName: string;
+    recipientRole: string;
+    defaultEmail: string;
+    ticketId?: string;
+  }>({
+    open: false,
+    title: "",
+    recipientName: "",
+    recipientRole: "Customer",
+    defaultEmail: "",
     ticketId: undefined,
   });
 
@@ -190,6 +206,17 @@ export default function AdminCustomerDetail() {
     });
   };
 
+  const handleOpenGeneralEmail = () => {
+    setEmailModal({
+      open: true,
+      title: `Email: ${customer?.name}`,
+      recipientName: customer?.name || "Customer",
+      recipientRole: "Customer",
+      defaultEmail: customer?.email || "",
+      ticketId: calls.length > 0 ? calls[0].ticketNo : undefined,
+    });
+  };
+
   const handleOpenTicketWhatsApp = (call: ServiceCall) => {
     const cleanPhone = (customer?.phone || call.customerPhone || "").replace(/\D/g, "");
     setWhatsAppModal({
@@ -200,6 +227,17 @@ export default function AdminCustomerDetail() {
       defaultPhone: cleanPhone,
       ticketId: call.ticketNo,
       defaultMessage: `Dear ${customer?.name || call.customerName || "Customer"},\n\nUpdate for your ticket *${call.ticketNo}* (${call.deviceCategory}${call.modelNumber ? ` - ${call.modelNumber}` : ""}):\nStatus: *${call.status.replace(/_/g, " ").toUpperCase()}*\n\nThank you for choosing Zorba Infotech!`,
+    });
+  };
+
+  const handleOpenTicketEmail = (call: ServiceCall) => {
+    setEmailModal({
+      open: true,
+      title: `Email Update: ${call.ticketNo}`,
+      recipientName: customer?.name || call.customerName || "Customer",
+      recipientRole: "Customer",
+      defaultEmail: customer?.email || "",
+      ticketId: call.ticketNo,
     });
   };
 
@@ -270,6 +308,15 @@ export default function AdminCustomerDetail() {
               className="h-9 px-3 text-xs font-semibold rounded-xl bg-emerald-500/20 border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30 gap-1.5 cursor-pointer shadow-2xs"
             >
               <MessageSquare className="h-3.5 w-3.5 text-emerald-400" /> WhatsApp
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenGeneralEmail}
+              className="h-9 px-3 text-xs font-semibold rounded-xl bg-blue-500/20 border-blue-400/40 text-blue-300 hover:bg-blue-500/30 gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Mail className="h-3.5 w-3.5 text-blue-400" /> Email
             </Button>
 
             {customer.phone && (
@@ -620,6 +667,16 @@ export default function AdminCustomerDetail() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleOpenTicketEmail(item)}
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg cursor-pointer"
+                              title="Send Email Update"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => setPrintCall(item)}
                               className="h-8 w-8 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                               title="Print Job Card"
@@ -682,6 +739,18 @@ export default function AdminCustomerDetail() {
         ticketId={whatsAppModal.ticketId}
         serviceCallsList={calls}
         targetModule="service_calls"
+      />
+
+      {/* Email Message Composer Modal */}
+      <EmailPreviewModal
+        open={emailModal.open}
+        onOpenChange={(open) => setEmailModal((prev) => ({ ...prev, open }))}
+        title={emailModal.title}
+        recipientName={emailModal.recipientName}
+        recipientRole={emailModal.recipientRole}
+        defaultEmail={emailModal.defaultEmail}
+        ticketId={emailModal.ticketId}
+        serviceCallsList={calls}
       />
     </div>
   );
