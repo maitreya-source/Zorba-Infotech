@@ -174,7 +174,7 @@ export function createMimeMessage(params: {
   html: string;
   text?: string;
 }): string {
-  const senderEmail = params.fromEmail || auth.currentUser?.email || "service@zorbainfotech.com";
+  const senderEmail = params.fromEmail || auth.currentUser?.email || "zorbainfotech@gmail.com";
   const senderName = params.fromName || "Zorba Infotech";
   const fromHeader = `From: =?utf-8?B?${btoa(unescape(encodeURIComponent(senderName)))}?= <${senderEmail}>\r\n`;
   const toHeader = `To: <${params.to.trim()}>\r\n`;

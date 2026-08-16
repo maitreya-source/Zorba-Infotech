@@ -18,7 +18,7 @@ export interface EmailApiConfig {
 export function getEmailApiConfig(): EmailApiConfig {
   const endpoint = (import.meta.env.VITE_EMAIL_API_ENDPOINT || "").trim();
   const apiKey = (import.meta.env.VITE_EMAIL_API_KEY || import.meta.env.VITE_RESEND_API_KEY || "").trim();
-  const senderEmail = (import.meta.env.VITE_EMAIL_SENDER_ADDRESS || "service@zorbainfotech.com").trim();
+  const senderEmail = (import.meta.env.VITE_EMAIL_SENDER_ADDRESS || "zorbainfotech@gmail.com").trim();
   const senderName = (import.meta.env.VITE_EMAIL_SENDER_NAME || "Zorba Infotech Service Center").trim();
 
   return {
@@ -151,13 +151,13 @@ export function buildEmailHtml(params: GenerateEmailContentParams): string {
           <div style="padding: 32px;">
             <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-top: 0;">Dear <strong>${customer}</strong>,</p>
             <div style="font-size: 13px; line-height: 1.7; color: #334155; white-space: pre-wrap; margin: 20px 0; background: #f8fafc; padding: 18px; border-radius: 8px; border: 1px solid #e2e8f0;">${params.customBody}</div>
-            <p style="font-size: 13px; line-height: 1.6; color: #64748b; margin-bottom: 0;">If you have any questions, feel free to reply to this email or contact our support team at <strong>+91 95891 99738</strong>.</p>
+            <p style="font-size: 13px; line-height: 1.6; color: #64748b; margin-bottom: 0;">If you have any questions, feel free to reply to this email or contact our support team at <strong>+91 99935 99730</strong>.</p>
           </div>
           <!-- Footer -->
           <div style="background-color: #f8fafc; padding: 20px 32px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">
-            <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a;">Zorba Infotech Service Center</p>
-            <p style="margin: 0 0 4px 0;">Scheme No 74-C, Vijay Nagar, Indore, Madhya Pradesh - 452010</p>
-            <p style="margin: 0;">Phone: +91 95891 99738 / +91 98260 12345 &bull; Email: support@zorbainfotech.com</p>
+            <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a;">Zorba Infotech &bull; Service &amp; Support Center</p>
+            <p style="margin: 0 0 4px 0;">Shop No. 5 &amp; 6, U-Shape Market, Tagore Marg, Neemuch, Madhya Pradesh - 458441, India</p>
+            <p style="margin: 0;">Helpline: +91 99935 99730 / +91 93021 99730 &bull; Email: zorbainfotech@gmail.com</p>
           </div>
         </div>
       </body>
@@ -178,7 +178,7 @@ export function buildEmailHtml(params: GenerateEmailContentParams): string {
         <!-- Dark Navy Branding Header -->
         <div style="background-color: #0f172a; padding: 26px 32px; text-align: center; border-bottom: 3px solid #3b82f6;">
           <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">ZORBA INFOTECH</h1>
-          <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Authorized Service Hub & Hardware Solutions</p>
+          <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Authorized Service Hub &amp; Hardware Solutions</p>
         </div>
 
         <!-- Notification Banner -->
@@ -206,11 +206,11 @@ export function buildEmailHtml(params: GenerateEmailContentParams): string {
                   <td style="padding: 10px 14px; font-weight: 800; font-family: monospace; color: #0f172a; font-size: 13px;">${ticket}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #e2e8f0;">
-                  <td style="padding: 10px 14px; font-weight: 700; color: #64748b; background-color: #f1f5f9;">Date & Time</td>
+                  <td style="padding: 10px 14px; font-weight: 700; color: #64748b; background-color: #f1f5f9;">Date &amp; Time</td>
                   <td style="padding: 10px 14px; color: #1e293b;">${date}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #e2e8f0;">
-                  <td style="padding: 10px 14px; font-weight: 700; color: #64748b; background-color: #f1f5f9;">Device & Model</td>
+                  <td style="padding: 10px 14px; font-weight: 700; color: #64748b; background-color: #f1f5f9;">Device &amp; Model</td>
                   <td style="padding: 10px 14px; font-weight: 600; color: #0f172a;">${device}</td>
                 </tr>
                 ${params.serialNumber ? `
@@ -248,9 +248,9 @@ export function buildEmailHtml(params: GenerateEmailContentParams): string {
 
         <!-- Footer -->
         <div style="background-color: #f8fafc; padding: 20px 32px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">
-          <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a;">Zorba Infotech &bull; Service & Support Center</p>
-          <p style="margin: 0 0 4px 0;">Scheme No 74-C, Vijay Nagar, Indore, Madhya Pradesh - 452010</p>
-          <p style="margin: 0;">Helpline: +91 95891 99738 / +91 98260 12345 &bull; Email: support@zorbainfotech.com</p>
+          <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a;">Zorba Infotech &bull; Service &amp; Support Center</p>
+          <p style="margin: 0 0 4px 0;">Shop No. 5 &amp; 6, U-Shape Market, Tagore Marg, Neemuch, Madhya Pradesh - 458441, India</p>
+          <p style="margin: 0;">Helpline: +91 99935 99730 / +91 93021 99730 / +91 94248 99730 &bull; Email: zorbainfotech@gmail.com</p>
         </div>
       </div>
     </body>
@@ -270,7 +270,7 @@ export function buildEmailText(params: GenerateEmailContentParams): string {
   const total = params.grandTotal !== undefined ? `₹${params.grandTotal.toLocaleString("en-IN")}` : "Under Diagnosis";
 
   if (params.templateType === "freeform" && params.customBody) {
-    return `Dear ${customer},\n\n${params.customBody}\n\nWarm regards,\nZorba Infotech Service Center\nPhone: +91 95891 99738\nEmail: support@zorbainfotech.com`;
+    return `Dear ${customer},\n\n${params.customBody}\n\nWarm regards,\nZorba Infotech Service Center\nShop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch (M.P.) - 458441\nPhone: +91 99935 99730 / +91 93021 99730\nEmail: zorbainfotech@gmail.com`;
   }
 
   return `========================================
@@ -292,9 +292,9 @@ Here is the update regarding your service request:
 ${params.remarks ? `Remarks: ${params.remarks}\n\n` : ""}Thank you for choosing Zorba Infotech!
 
 Zorba Infotech Service Center
-Scheme No 74-C, Vijay Nagar, Indore (M.P.)
-Support: +91 95891 99738 / +91 98260 12345
-Email: support@zorbainfotech.com
+Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch (M.P.) - 458441
+Support: +91 99935 99730 / +91 93021 99730 / +91 94248 99730
+Email: zorbainfotech@gmail.com
 `;
 }
 
