@@ -280,3 +280,45 @@ export interface ServiceCall {
   createdAt: string | number;
   updatedAt: string | number;
 }
+
+export type WhatsAppCategory = "utility" | "marketing" | "authentication";
+export type WhatsAppHeaderType = "none" | "text" | "document_pdf" | "image";
+export type WhatsAppTargetModule =
+  | "service_calls"
+  | "service_centers"
+  | "couriers"
+  | "quotations"
+  | "marketing"
+  | "amc_reminders";
+
+export interface WhatsAppTemplateVariable {
+  index: number;
+  label: string;
+  fallbackValue: string;
+  erpKey?: string;
+}
+
+export interface WhatsAppTemplateButton {
+  type: "quick_reply" | "url" | "phone_number";
+  text: string;
+  urlOrPhone?: string;
+}
+
+export interface WhatsAppTemplateDoc {
+  id: string;
+  name: string;
+  displayName: string;
+  category: WhatsAppCategory;
+  targetModule: WhatsAppTargetModule;
+  language: string;
+  headerType: WhatsAppHeaderType;
+  headerContent?: string;
+  bodyText: string;
+  variables: WhatsAppTemplateVariable[];
+  buttons?: WhatsAppTemplateButton[];
+  active: boolean;
+  metaStatus?: "approved" | "pending" | "rejected";
+  createdAt: number;
+  updatedAt?: number;
+}
+

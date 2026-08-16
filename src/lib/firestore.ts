@@ -35,6 +35,7 @@ import type {
   TeamRole,
   FinancialYearDoc,
   FYMonthDoc,
+  WhatsAppTemplateDoc,
 } from "./types";
 
 const FIREBASE_TIMEOUT_MS = 10000;
@@ -1486,3 +1487,238 @@ export async function saveSparePartToCatalog(
   await setDoc(docRef, cleanFirestoreData(newPart));
   return newPart;
 }
+
+// ─── WhatsApp Message Templates ──────────────────────────────────────────────
+
+export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" | "updatedAt">[] = [
+  {
+    id: "zorba_customer_service_update",
+    name: "zorba_customer_service_update",
+    displayName: "Customer Service Call Update & Job Card Summary",
+    category: "utility",
+    targetModule: "service_calls",
+    language: "en_US",
+    headerType: "none",
+    bodyText:
+      "*ZORBA INFOTECH - {{1}}*\n\n" +
+      "Dear *{{2}}*,\n" +
+      "Your service request has been updated. Here are the ticket details:\n\n" +
+      "🎫 *Ticket No:* {{3}}\n" +
+      "📅 *Date:* {{4}}\n" +
+      "💻 *Device:* {{5}}\n" +
+      "🔍 *Reported Issue:* {{6}}\n" +
+      "⚡ *Current Status:* {{7}}\n" +
+      "💰 *Estimated Total:* ₹{{8}}\n\n" +
+      "*Terms & Conditions:*\n" +
+      "1. *Courier & Service Charges:* Courier charges will be borne by the customer along with any charges levied by the authorized service center.\n" +
+      "2. *Collection Policy:* Please collect your device within 30 days of completion notification.\n" +
+      "3. *Data Responsibility:* Zorba Infotech is not liable for data loss. Customers are advised to maintain prior backups.\n" +
+      "4. *Warranty & Inspection:* Physical/liquid damage is not covered under warranty. Diagnostic charges apply if estimate is declined.\n\n" +
+      "*Thank you for choosing Zorba Infotech!*\n" +
+      "📞 Support: +91 93021 99730 | Main: +91 99935 99730 | 🌐 www.zorbainfotech.in",
+    variables: [
+      { index: 1, label: "Notice Header", fallbackValue: "SERVICE INTAKE CONFIRMATION", erpKey: "noticeHeader" },
+      { index: 2, label: "Customer Name", fallbackValue: "Customer", erpKey: "customer.name" },
+      { index: 3, label: "Ticket No", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
+      { index: 4, label: "Date & Time", fallbackValue: "Today", erpKey: "dateTime" },
+      { index: 5, label: "Device & Model", fallbackValue: "Device Unit", erpKey: "deviceCategory" },
+      { index: 6, label: "Reported Issue", fallbackValue: "Service Intake", erpKey: "issueDescription" },
+      { index: 7, label: "Status Stage", fallbackValue: "RECEIVED", erpKey: "status" },
+      { index: 8, label: "Estimated Total", fallbackValue: "0", erpKey: "grandTotal" },
+    ],
+    buttons: [
+      { type: "url", text: "Visit Website", urlOrPhone: "https://www.zorbainfotech.in" },
+      { type: "phone_number", text: "Call Support", urlOrPhone: "+919302199730" },
+    ],
+    active: true,
+    metaStatus: "approved",
+  },
+  {
+    id: "zorba_service_center_followup",
+    name: "zorba_service_center_followup",
+    displayName: "OEM Service Center RMA & Repair Inquiry",
+    category: "utility",
+    targetModule: "service_centers",
+    language: "en_US",
+    headerType: "none",
+    bodyText:
+      "*ZORBA INFOTECH - SERVICE CENTER RMA / REPAIR STATUS INQUIRY*\n\n" +
+      "Dear *{{1}}* Support Team,\n" +
+      "We would like to request an update on the repair/replacement status for the following unit sent to your center:\n\n" +
+      "🎫 *Our Job Card / Ticket:* {{2}}\n" +
+      "🏷️ *Service Center RMA / Ref No:* {{3}}\n" +
+      "📅 *Dispatched On:* {{4}}\n" +
+      "💻 *Device:* {{5}}\n" +
+      "🔢 *Serial / IMEI:* {{6}}\n" +
+      "🔍 *Reported Defect:* {{7}}\n\n" +
+      "Kindly let us know if the unit is diagnosed / under repair / replaced / ready for dispatch.\n\n" +
+      "Thank you,\n" +
+      "*Zorba Infotech Service Desk*\n" +
+      "📞 Support: +91 93021 99730 / +91 99935 99730",
+    variables: [
+      { index: 1, label: "Service Center Name", fallbackValue: "Authorized Service Center", erpKey: "serviceCenterName" },
+      { index: 2, label: "Ticket Number", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
+      { index: 3, label: "RMA / Ref No", fallbackValue: "N/A", erpKey: "rmaNumber" },
+      { index: 4, label: "Dispatched Date", fallbackValue: "Recent", erpKey: "dateTime" },
+      { index: 5, label: "Device & Model", fallbackValue: "IT Hardware", erpKey: "deviceCategory" },
+      { index: 6, label: "Serial Number", fallbackValue: "N/A", erpKey: "serialNumber" },
+      { index: 7, label: "Reported Defect", fallbackValue: "Hardware Fault", erpKey: "issueDescription" },
+    ],
+    buttons: [
+      { type: "phone_number", text: "Call Service Desk", urlOrPhone: "+919302199730" },
+    ],
+    active: true,
+    metaStatus: "approved",
+  },
+  {
+    id: "zorba_courier_pickup_request",
+    name: "zorba_courier_pickup_request",
+    displayName: "Courier Parcel Pickup Request",
+    category: "utility",
+    targetModule: "couriers",
+    language: "en_US",
+    headerType: "none",
+    bodyText:
+      "*ZORBA INFOTECH - PARCEL PICKUP REQUEST*\n\n" +
+      "Hello *{{1}}* Team,\n" +
+      "Kindly arrange a parcel pickup from our shop/office for the following shipment:\n\n" +
+      "🎫 *Ticket / Ref No:* {{2}}\n" +
+      "🏢 *Consignee / Service Center:* {{3}}\n" +
+      "📍 *Delivery Address:* {{4}}\n" +
+      "🏷️ *RMA / Ref Number:* {{5}}\n" +
+      "📅 *Request Date:* {{6}}\n" +
+      "📦 *Shop Pickup Location:* Zorba Infotech, Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch - 458441 (M.P.)\n\n" +
+      "Please assign a pickup executive at the earliest.\n\n" +
+      "Thank you,\n" +
+      "*Zorba Infotech Logistics Desk*\n" +
+      "📞 Support: +91 93021 99730 / +91 99935 99730",
+    variables: [
+      { index: 1, label: "Courier Partner Name", fallbackValue: "Courier", erpKey: "courierName" },
+      { index: 2, label: "Ticket / Ref No", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
+      { index: 3, label: "Consignee Center", fallbackValue: "OEM Service Center", erpKey: "serviceCenterName" },
+      { index: 4, label: "Delivery Address", fallbackValue: "Destination City", erpKey: "destinationAddress" },
+      { index: 5, label: "RMA / Ref Number", fallbackValue: "N/A", erpKey: "rmaNumber" },
+      { index: 6, label: "Request Date", fallbackValue: "Today", erpKey: "dateTime" },
+    ],
+    buttons: [
+      { type: "phone_number", text: "Call Logistics Desk", urlOrPhone: "+919302199730" },
+    ],
+    active: true,
+    metaStatus: "approved",
+  },
+  {
+    id: "zorba_courier_delivery_inquiry",
+    name: "zorba_courier_delivery_inquiry",
+    displayName: "Courier Shipment Delivery Inquiry",
+    category: "utility",
+    targetModule: "couriers",
+    language: "en_US",
+    headerType: "none",
+    bodyText:
+      "*ZORBA INFOTECH - SHIPMENT DELIVERY INQUIRY*\n\n" +
+      "Hello *{{1}}* Team,\n" +
+      "We would like to check the delivery status for our dispatched shipment:\n\n" +
+      "📦 *Docket / AWB No:* {{2}}\n" +
+      "🎫 *Internal Ticket Ref:* {{3}}\n" +
+      "🏢 *Consignee:* {{4}}\n" +
+      "📍 *Destination:* {{5}}\n" +
+      "📅 *Dispatch Date:* {{6}}\n\n" +
+      "Kindly confirm if this parcel has reached the destination or provide the expected delivery timestamp.\n\n" +
+      "Thank you,\n" +
+      "*Zorba Infotech Logistics Desk*\n" +
+      "📞 Support: +91 93021 99730 / +91 99935 99730",
+    variables: [
+      { index: 1, label: "Courier Partner Name", fallbackValue: "Courier", erpKey: "courierName" },
+      { index: 2, label: "Docket / AWB No", fallbackValue: "Pending Docket", erpKey: "rmaNumber" },
+      { index: 3, label: "Ticket Number", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
+      { index: 4, label: "Consignee", fallbackValue: "OEM Service Center", erpKey: "serviceCenterName" },
+      { index: 5, label: "Destination", fallbackValue: "Destination City", erpKey: "destinationAddress" },
+      { index: 6, label: "Dispatch Date", fallbackValue: "Today", erpKey: "dateTime" },
+    ],
+    buttons: [
+      { type: "phone_number", text: "Call Logistics Desk", urlOrPhone: "+919302199730" },
+    ],
+    active: true,
+    metaStatus: "approved",
+  },
+];
+
+export async function getWhatsAppTemplates(moduleFilter?: string): Promise<WhatsAppTemplateDoc[]> {
+  try {
+    const snap = await fetchWithTimeout(getDocs(collection(db, "whatsapp_templates")));
+    let templates = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WhatsAppTemplateDoc);
+
+    if (templates.length === 0) {
+      await seedDefaultWhatsAppTemplates();
+      const refetch = await fetchWithTimeout(getDocs(collection(db, "whatsapp_templates")));
+      templates = refetch.docs.map((d) => ({ id: d.id, ...d.data() }) as WhatsAppTemplateDoc);
+    }
+
+    if (moduleFilter && moduleFilter !== "all") {
+      return templates.filter((t) => t.targetModule === moduleFilter);
+    }
+    return templates;
+  } catch (err: any) {
+    console.error("getWhatsAppTemplates error:", err);
+    return DEFAULT_WHATSAPP_TEMPLATES.map((t) => ({
+      ...t,
+      createdAt: Date.now(),
+    }));
+  }
+}
+
+export async function createWhatsAppTemplate(
+  data: Omit<WhatsAppTemplateDoc, "id" | "createdAt" | "updatedAt">
+): Promise<WhatsAppTemplateDoc> {
+  const docId = data.name.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_") || `tpl_${Date.now()}`;
+  const docRef = doc(db, "whatsapp_templates", docId);
+  const newTemplate: WhatsAppTemplateDoc = {
+    id: docId,
+    ...data,
+    name: docId,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  await setDoc(docRef, cleanFirestoreData(newTemplate), { merge: true });
+  return newTemplate;
+}
+
+export async function updateWhatsAppTemplate(
+  id: string,
+  data: Partial<WhatsAppTemplateDoc>
+): Promise<void> {
+  const docRef = doc(db, "whatsapp_templates", id);
+  await setDoc(docRef, cleanFirestoreData({ ...data, updatedAt: Date.now() }), { merge: true });
+}
+
+export async function deleteWhatsAppTemplate(id: string): Promise<void> {
+  await deleteDoc(doc(db, "whatsapp_templates", id));
+}
+
+export async function seedDefaultWhatsAppTemplates(force: boolean = false): Promise<void> {
+  try {
+    const existing = await getDocs(collection(db, "whatsapp_templates"));
+    
+    // If not forced and already has the correct number of updated templates with terms, return
+    if (!force && !existing.empty) {
+      const hasTerms = existing.docs.some((d) => d.data().bodyText?.includes("Terms & Conditions"));
+      if (hasTerms) return;
+    }
+
+    for (const tpl of DEFAULT_WHATSAPP_TEMPLATES) {
+      const docRef = doc(db, "whatsapp_templates", tpl.id);
+      await setDoc(
+        docRef,
+        cleanFirestoreData({
+          ...tpl,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }),
+        { merge: true }
+      );
+    }
+  } catch (err) {
+    console.warn("Could not seed default WhatsApp templates:", err);
+  }
+}
+

@@ -18,7 +18,7 @@ import {
   Menu,
   X,
   ArrowLeft,
-  MessageCircle,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
@@ -26,11 +26,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import StaffProfileSelectorModal from "@/components/admin/StaffProfileSelectorModal";
-import WhatsAppApiSettingsModal from "@/components/admin/WhatsAppApiSettingsModal";
 
 const navItems = [
   { label: "Service Calls", to: "/admin/service-calls", icon: Activity },
   { label: "Daily/Monthly Reports", to: "/admin/reports", icon: BarChart3 },
+  { label: "WhatsApp Templates", to: "/admin/whatsapp-templates", icon: MessageSquare },
   { label: "Team & Personnel", to: "/admin/team", icon: Users },
   { label: "Service Centers", to: "/admin/service-centers", icon: Building2 },
   { label: "Couriers & Logistics", to: "/admin/couriers", icon: Truck },
@@ -48,7 +48,6 @@ export default function AdminLayout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [showWhatsAppSettings, setShowWhatsAppSettings] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -227,17 +226,8 @@ export default function AdminLayout() {
           {/* Center: Dynamic Center Area for Service Call Type Chips */}
           <div id="admin-header-center" className="flex items-center justify-center flex-1 min-w-0 overflow-x-auto no-scrollbar" />
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-2 md:gap-2.5 shrink-0">
-            <button
-              onClick={() => setShowWhatsAppSettings(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all cursor-pointer"
-              title="Configure Meta WhatsApp Cloud API Credentials"
-            >
-              <MessageCircle className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="hidden lg:inline">WhatsApp API</span>
-            </button>
-
+          {/* Right: Back to List on Service Call Form OR Back to Main Website on other pages */}
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
             {isServiceCallForm ? (
               <Link
                 to="/admin/service-calls"
@@ -270,12 +260,6 @@ export default function AdminLayout() {
 
       {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-screen on Desktop) */}
       <div id="admin-right-rail" className="h-screen shrink-0 empty:hidden print:hidden z-20 hidden xl:block" />
-
-      {/* WhatsApp Cloud API Settings Modal */}
-      <WhatsAppApiSettingsModal
-        open={showWhatsAppSettings}
-        onOpenChange={setShowWhatsAppSettings}
-      />
 
       {/* Netflix Profile Selector Modal */}
       <StaffProfileSelectorModal

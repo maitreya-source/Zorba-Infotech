@@ -1960,6 +1960,7 @@ export default function AdminServiceCallForm() {
         recipientRole={whatsAppModal.recipientRole}
         defaultPhone={whatsAppModal.defaultPhone}
         defaultMessage={whatsAppModal.defaultMessage}
+        ticketId={ticketNo}
       />
 
       {/* Full Timeline Events List Modal */}

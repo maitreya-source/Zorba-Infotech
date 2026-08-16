@@ -1,73 +1,37 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "./firebase";
-import { fetchWithTimeout, formatFirebaseError } from "./firestore";
-import { formatIndianPhoneNumber } from "./utils";
+/**
+ * Meta WhatsApp Cloud API Service
+ * Powered strictly by environment variables (.env)
+ * Direct Meta API Delivery & Template Sync Engine
+ */
+
+import type { WhatsAppTemplateDoc } from "./types";
 
 export interface WhatsAppApiConfig {
   accessToken: string;
   phoneNumberId: string;
   wabaId?: string;
   enabled: boolean;
-  autoFallbackToWeb: boolean;
-  verifiedBusinessName?: string;
-  updatedAt?: number;
 }
 
-const DEFAULT_CONFIG: WhatsAppApiConfig = {
-  accessToken: import.meta.env.VITE_META_WHATSAPP_TOKEN || "",
-  phoneNumberId: import.meta.env.VITE_META_PHONE_NUMBER_ID || "",
-  wabaId: import.meta.env.VITE_META_WABA_ID || "",
-  enabled: true,
-  autoFallbackToWeb: true,
-  verifiedBusinessName: "Zorba Infotech",
-};
+export function getWhatsAppApiConfig(): WhatsAppApiConfig {
+  const token = (import.meta.env.VITE_META_WHATSAPP_TOKEN || "").trim();
+  const phoneId = (import.meta.env.VITE_META_PHONE_NUMBER_ID || "").trim();
+  const wabaId = (import.meta.env.VITE_META_WABA_ID || "").trim();
 
-/**
- * Retrieves the stored WhatsApp Cloud API configuration from Firestore
- * with fallback to local environment variables.
- */
-export async function getWhatsAppApiConfig(): Promise<WhatsAppApiConfig> {
-  try {
-    const docRef = doc(db, "settings", "whatsapp_api");
-    const snap = await fetchWithTimeout(getDoc(docRef)).catch(() => null);
-
-    if (snap && snap.exists()) {
-      const data = snap.data() as Partial<WhatsAppApiConfig>;
-      return {
-        accessToken: data.accessToken || DEFAULT_CONFIG.accessToken,
-        phoneNumberId: data.phoneNumberId || DEFAULT_CONFIG.phoneNumberId,
-        wabaId: data.wabaId || DEFAULT_CONFIG.wabaId,
-        enabled: data.enabled !== undefined ? data.enabled : true,
-        autoFallbackToWeb: data.autoFallbackToWeb !== undefined ? data.autoFallbackToWeb : true,
-        verifiedBusinessName: data.verifiedBusinessName || DEFAULT_CONFIG.verifiedBusinessName,
-        updatedAt: data.updatedAt,
-      };
-    }
-  } catch (err) {
-    console.warn("Could not read WhatsApp API settings from Firestore, using defaults:", err);
-  }
-
-  return DEFAULT_CONFIG;
+  return {
+    accessToken: token,
+    phoneNumberId: phoneId,
+    wabaId,
+    enabled: Boolean(token && phoneId),
+  };
 }
 
 /**
- * Persists the WhatsApp Cloud API configuration to Firestore settings.
+ * Checks whether Meta WhatsApp Cloud API credentials are present in env vars
  */
-export async function saveWhatsAppApiConfig(config: Partial<WhatsAppApiConfig>): Promise<void> {
-  try {
-    const docRef = doc(db, "settings", "whatsapp_api");
-    await setDoc(
-      docRef,
-      {
-        ...config,
-        updatedAt: Date.now(),
-      },
-      { merge: true }
-    );
-  } catch (err: any) {
-    console.error("Failed to save WhatsApp API config:", err);
-    throw new Error(formatFirebaseError(err));
-  }
+export function isWhatsAppApiConfigured(): boolean {
+  const cfg = getWhatsAppApiConfig();
+  return Boolean(cfg.accessToken && cfg.phoneNumberId);
 }
 
 /**
@@ -88,10 +52,8 @@ export function formatPhoneForMetaApi(rawPhone: string): string {
 
 export interface SendWhatsAppResult {
   success: boolean;
-  mode: "cloud_api" | "whatsapp_web";
   messageId?: string;
   error?: string;
-  fallbackToWeb?: boolean;
 }
 
 export interface SendWhatsAppMessageParams {
@@ -99,37 +61,28 @@ export interface SendWhatsAppMessageParams {
   message: string;
   templateName?: string;
   templateParams?: string[];
-  configOverride?: Partial<WhatsAppApiConfig>;
 }
 
 /**
- * Sends a WhatsApp message via Meta Cloud API.
- * If the API is unconfigured or encounters an error, returns fallback status.
+ * Sends a WhatsApp message directly via Meta Cloud API using environment variables.
  */
 export async function sendWhatsAppMessage({
   to,
   message,
   templateName,
   templateParams,
-  configOverride,
 }: SendWhatsAppMessageParams): Promise<SendWhatsAppResult> {
-  const config = configOverride
-    ? { ...(await getWhatsAppApiConfig()), ...configOverride }
-    : await getWhatsAppApiConfig();
-
+  const config = getWhatsAppApiConfig();
   const formattedPhone = formatPhoneForMetaApi(to);
+
   if (!formattedPhone) {
     throw new Error("Invalid phone number. Please provide a valid 10-digit mobile number.");
   }
 
-  // If Cloud API is disabled or credentials are missing
   if (!config.enabled || !config.accessToken || !config.phoneNumberId) {
-    return {
-      success: false,
-      mode: "whatsapp_web",
-      fallbackToWeb: true,
-      error: "Meta WhatsApp Cloud API credentials are not yet configured.",
-    };
+    throw new Error(
+      "Meta WhatsApp Cloud API credentials not configured. Please add VITE_META_WHATSAPP_TOKEN and VITE_META_PHONE_NUMBER_ID to your .env file."
+    );
   }
 
   try {
@@ -173,7 +126,7 @@ export async function sendWhatsAppMessage({
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${config.accessToken.trim()}`,
+        "Authorization": `Bearer ${config.accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -189,87 +142,67 @@ export async function sendWhatsAppMessage({
 
       console.error("Meta WhatsApp Cloud API returned error:", data);
 
-      if (config.autoFallbackToWeb) {
-        return {
-          success: false,
-          mode: "whatsapp_web",
-          fallbackToWeb: true,
-          error: errorMsg,
-        };
-      }
-
-      throw new Error(errorMsg);
+      return {
+        success: false,
+        error: errorMsg,
+      };
     }
 
     const messageId = data?.messages?.[0]?.id || "msg_sent";
     return {
       success: true,
-      mode: "cloud_api",
       messageId,
     };
   } catch (err: any) {
     console.error("Error dispatching WhatsApp Cloud API message:", err);
-
-    if (config.autoFallbackToWeb) {
-      return {
-        success: false,
-        mode: "whatsapp_web",
-        fallbackToWeb: true,
-        error: err.message || "Failed to deliver via Cloud API",
-      };
-    }
-
-    throw err;
+    return {
+      success: false,
+      error: err.message || "Failed to deliver message via WhatsApp Cloud API",
+    };
   }
 }
 
 /**
- * Sends a test ping to verify token validity and phone number access
+ * Fetches message templates directly from Meta WhatsApp Business Account (WABA)
  */
-export async function testWhatsAppApiConnection(
-  testPhone: string,
-  token: string,
-  phoneNumberId: string
-): Promise<{ success: boolean; message: string }> {
-  if (!token || !phoneNumberId) {
-    throw new Error("Please enter both the Meta Access Token and Phone Number ID.");
+export async function fetchMetaTemplates(): Promise<{
+  success: boolean;
+  templates?: any[];
+  error?: string;
+}> {
+  const config = getWhatsAppApiConfig();
+
+  if (!config.accessToken || !config.wabaId) {
+    return {
+      success: false,
+      error: "Meta WhatsApp Token (VITE_META_WHATSAPP_TOKEN) and WABA ID (VITE_META_WABA_ID) must be configured in .env",
+    };
   }
 
-  const formattedPhone = formatPhoneForMetaApi(testPhone);
-  if (!formattedPhone) {
-    throw new Error("Please enter a valid recipient phone number for the test.");
+  try {
+    const url = `https://graph.facebook.com/v19.0/${config.wabaId}/message_templates?limit=100`;
+    const response = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${config.accessToken}`,
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data?.error?.message || `Meta API Error (${response.status})`,
+      };
+    }
+
+    return {
+      success: true,
+      templates: data?.data || [],
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || "Failed to fetch templates from Meta",
+    };
   }
-
-  const url = `https://graph.facebook.com/v19.0/${phoneNumberId.trim()}/messages`;
-  const payload = {
-    messaging_product: "whatsapp",
-    recipient_type: "individual",
-    to: formattedPhone,
-    type: "text",
-    text: {
-      preview_url: false,
-      body: `🔔 *Zorba Infotech ERP — WhatsApp Cloud API Connected!*\n\nThis is a verified test ping confirming that your Meta WhatsApp Cloud API credentials are working seamlessly.\nTimestamp: ${new Date().toLocaleString("en-IN")}`,
-    },
-  };
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token.trim()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    const errorDetails = data?.error?.message || JSON.stringify(data);
-    throw new Error(`Meta API Verification Failed: ${errorDetails}`);
-  }
-
-  return {
-    success: true,
-    message: "Test message delivered successfully! Your WhatsApp Cloud API is operational.",
-  };
 }
