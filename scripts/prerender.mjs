@@ -11,12 +11,12 @@
 
 import { createServer } from "node:http";
 import { readFile, writeFile, mkdir, stat } from "node:fs/promises";
-import { join, extname, dirname } from "node:path";
+import { join, extname, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DIST = join(__dirname, "..", "dist");
+const DIST = resolve(__dirname, "..", "dist");
 const PORT = 4321;
 
 // Public routes to prerender. Admin and dynamic (/catalog/:id) routes are
@@ -60,15 +60,19 @@ async function fileExists(p) {
   }
 }
 
-// Static server with SPA fallback to index.html.
+// Static server with SPA fallback to index.html and strict directory traversal prevention.
 function startServer() {
-  return new Promise((resolve) => {
+  return new Promise((resolveServer) => {
     const server = createServer(async (req, res) => {
-      const urlPath = decodeURIComponent(req.url.split("?")[0]);
-      let filePath = join(DIST, urlPath);
-      if (!(await fileExists(filePath))) {
+      const urlPath = decodeURIComponent(req.url.split("?")[0] || "/");
+      // Sanitize path against directory traversal
+      const safePath = resolve(DIST, "." + urlPath);
+      let filePath = safePath;
+
+      if (!safePath.startsWith(DIST) || !(await fileExists(safePath))) {
         filePath = join(DIST, "index.html"); // SPA fallback
       }
+
       try {
         const data = await readFile(filePath);
         res.setHeader("Content-Type", MIME[extname(filePath)] || "application/octet-stream");
@@ -78,7 +82,7 @@ function startServer() {
         res.end("Not found");
       }
     });
-    server.listen(PORT, () => resolve(server));
+    server.listen(PORT, () => resolveServer(server));
   });
 }
 

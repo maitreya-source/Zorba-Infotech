@@ -55,8 +55,51 @@ service cloud.firestore {
       allow read, write: if isBackupExecutive();
     }
 
-    // Allow full read and write access on all other documents for authorized admin accounts
-    match /{document=**} {
+    // Authorized Admin Collections
+    match /service_calls/{ticketId} {
+      allow read, write: if isAdmin();
+      match /timeline/{eventId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /team_members/{memberId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /service_centers/{centerId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /couriers/{courierId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /device_models/{modelId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /device_categories/{categoryId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /spare_parts/{partId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /whatsapp_templates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /financial_years/{fyId}/{allSubcollections=**} {
       allow read, write: if isAdmin();
     }
   }

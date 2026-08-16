@@ -22,39 +22,46 @@ export interface GoogleSessionData {
 }
 
 /**
- * Loads the persisted Google session from localStorage
+ * In-memory storage for Google OAuth session tokens.
+ * Keeping access tokens in memory (instead of localStorage) prevents extraction
+ * via XSS or untrusted scripts running in the origin.
+ */
+let inMemoryGoogleSession: GoogleSessionData | null = null;
+
+// Purge any legacy tokens stored in localStorage from previous versions
+try {
+  if (typeof window !== "undefined" && window.localStorage) {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+} catch {
+  // Ignore storage errors in restricted contexts
+}
+
+/**
+ * Loads the active Google session from memory
  */
 export function getStoredGoogleSession(): GoogleSessionData | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw) as GoogleSessionData;
-    if (!data.accessToken || !data.permissionValidUntil) return null;
-    return data;
-  } catch {
-    return null;
-  }
+  return inMemoryGoogleSession;
 }
 
 /**
- * Persists the Google session to localStorage
+ * Persists the Google session in memory for the active session
  */
 export function saveGoogleSession(data: GoogleSessionData): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (err) {
-    console.error("Failed to save Google session to localStorage:", err);
-  }
+  inMemoryGoogleSession = data;
 }
 
 /**
- * Clears the persisted Google session from localStorage
+ * Clears the active Google session from memory and purges legacy storage
  */
 export function clearGoogleSession(): void {
+  inMemoryGoogleSession = null;
   try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (err) {
-    console.error("Failed to clear Google session:", err);
+    if (typeof window !== "undefined" && window.localStorage) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors in restricted contexts
   }
 }
 
@@ -184,6 +191,18 @@ export function base64UrlEncode(str: string): string {
 }
 
 /**
+ * Safely encodes a UTF-8 string to base64 for MIME encoded-word syntax (=?utf-8?B?...?=)
+ */
+function encodeMimeWord(str: string): string {
+  const utf8Bytes = new TextEncoder().encode(str);
+  let binary = "";
+  for (let i = 0; i < utf8Bytes.length; i++) {
+    binary += String.fromCharCode(utf8Bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
  * Builds a MIME RFC 2822 email message string
  */
 export function createMimeMessage(params: {
@@ -196,9 +215,9 @@ export function createMimeMessage(params: {
 }): string {
   const senderEmail = params.fromEmail || auth.currentUser?.email || "zorbainfotech@gmail.com";
   const senderName = params.fromName || "Zorba Infotech";
-  const fromHeader = `From: =?utf-8?B?${btoa(unescape(encodeURIComponent(senderName)))}?= <${senderEmail}>\r\n`;
+  const fromHeader = `From: =?utf-8?B?${encodeMimeWord(senderName)}?= <${senderEmail}>\r\n`;
   const toHeader = `To: <${params.to.trim()}>\r\n`;
-  const subjectHeader = `Subject: =?utf-8?B?${btoa(unescape(encodeURIComponent(params.subject)))}?=\r\n`;
+  const subjectHeader = `Subject: =?utf-8?B?${encodeMimeWord(params.subject)}?=\r\n`;
 
   const headers = [
     fromHeader,

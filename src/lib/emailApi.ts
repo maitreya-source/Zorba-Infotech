@@ -8,7 +8,6 @@ import { sendDirectGmailMessage } from "./googleAuthService";
 
 export interface EmailApiConfig {
   endpoint: string;
-  apiKey?: string;
   senderEmail: string;
   senderName: string;
   enabled: boolean;
@@ -16,16 +15,14 @@ export interface EmailApiConfig {
 
 export function getEmailApiConfig(): EmailApiConfig {
   const endpoint = (import.meta.env.VITE_EMAIL_API_ENDPOINT || "").trim();
-  const apiKey = (import.meta.env.VITE_EMAIL_API_KEY || import.meta.env.VITE_RESEND_API_KEY || "").trim();
   const senderEmail = (import.meta.env.VITE_EMAIL_SENDER_ADDRESS || "zorbainfotech@gmail.com").trim();
   const senderName = (import.meta.env.VITE_EMAIL_SENDER_NAME || "Zorba Infotech Service Center").trim();
 
   return {
     endpoint,
-    apiKey,
     senderEmail,
     senderName,
-    enabled: Boolean(endpoint || apiKey),
+    enabled: Boolean(endpoint),
   };
 }
 
@@ -353,7 +350,6 @@ export async function sendCustomerEmail(params: {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
           },
           body: JSON.stringify({
             to: params.to,

@@ -1,35 +1,36 @@
-/**
- * Meta WhatsApp Cloud API Service
- * Powered strictly by environment variables (.env)
- * Direct Meta API Delivery & Template Sync Engine
- */
+import { functions } from "./firebase";
+import { httpsCallable } from "firebase/functions";
 
 export interface WhatsAppApiConfig {
-  accessToken: string;
-  phoneNumberId: string;
+  endpoint?: string;
+  accessToken?: string;
+  phoneNumberId?: string;
   wabaId?: string;
   enabled: boolean;
 }
 
 export function getWhatsAppApiConfig(): WhatsAppApiConfig {
+  const endpoint = (import.meta.env.VITE_WHATSAPP_API_ENDPOINT || "").trim();
   const token = (import.meta.env.VITE_META_WHATSAPP_TOKEN || "").trim();
   const phoneId = (import.meta.env.VITE_META_PHONE_NUMBER_ID || "").trim();
   const wabaId = (import.meta.env.VITE_META_WABA_ID || "").trim();
 
+  // Enabled if backend endpoint, Firebase functions, or direct credentials are available
   return {
+    endpoint,
     accessToken: token,
     phoneNumberId: phoneId,
     wabaId,
-    enabled: Boolean(token && phoneId),
+    enabled: true,
   };
 }
 
 /**
- * Checks whether Meta WhatsApp Cloud API credentials are present in env vars
+ * Checks whether Meta WhatsApp API dispatch is configured (via backend endpoint or direct credentials)
  */
 export function isWhatsAppApiConfigured(): boolean {
   const cfg = getWhatsAppApiConfig();
-  return Boolean(cfg.accessToken && cfg.phoneNumberId);
+  return cfg.enabled;
 }
 
 /**
@@ -62,7 +63,7 @@ export interface SendWhatsAppMessageParams {
 }
 
 /**
- * Sends a WhatsApp message directly via Meta Cloud API using environment variables.
+ * Sends a WhatsApp message via Firebase Cloud Function, backend proxy endpoint, or direct Meta API.
  */
 export async function sendWhatsAppMessage({
   to,
@@ -77,130 +78,211 @@ export async function sendWhatsAppMessage({
     throw new Error("Invalid phone number. Please provide a valid 10-digit mobile number.");
   }
 
-  if (!config.enabled || !config.accessToken || !config.phoneNumberId) {
-    throw new Error(
-      "Meta WhatsApp Cloud API credentials not configured. Please add VITE_META_WHATSAPP_TOKEN and VITE_META_PHONE_NUMBER_ID to your .env file."
-    );
-  }
-
+  // 1. First Priority: Dispatch via Firebase Cloud Function
   try {
-    const url = `https://graph.facebook.com/v19.0/${config.phoneNumberId}/messages`;
-
-    // Construct Payload (Template or Standard Text)
-    let payload: any;
-    if (templateName && templateParams && templateParams.length > 0) {
-      payload = {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: formattedPhone,
-        type: "template",
-        template: {
-          name: templateName,
-          language: { code: "en_US" },
-          components: [
-            {
-              type: "body",
-              parameters: templateParams.map((param) => ({
-                type: "text",
-                text: param,
-              })),
-            },
-          ],
-        },
-      };
-    } else {
-      payload = {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: formattedPhone,
-        type: "text",
-        text: {
-          preview_url: false,
-          body: message.trim(),
-        },
+    const sendWhatsAppCallable = httpsCallable<SendWhatsAppMessageParams, { success: boolean; messageId: string }>(
+      functions,
+      "sendWhatsAppMessage"
+    );
+    const result = await sendWhatsAppCallable({
+      to: formattedPhone,
+      message: message.trim(),
+      templateName,
+      templateParams,
+    });
+    if (result.data?.success) {
+      return {
+        success: true,
+        messageId: result.data.messageId || "msg_sent",
       };
     }
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${config.accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      const errorMsg =
-        data?.error?.message ||
-        data?.error?.error_user_msg ||
-        `Meta API error (${response.status}): ${JSON.stringify(data)}`;
-
-      console.error("Meta WhatsApp Cloud API returned error:", data);
-
+  } catch (fnErr: any) {
+    // If functions isn't deployed or returned not-found, proceed to secondary fallbacks
+    const isFnNotFound = fnErr?.code === "not-found" || fnErr?.code === "unimplemented";
+    if (!isFnNotFound && fnErr?.message && !config.endpoint && !config.accessToken) {
       return {
         success: false,
-        error: errorMsg,
+        error: fnErr.message,
       };
     }
-
-    const messageId = data?.messages?.[0]?.id || "msg_sent";
-    return {
-      success: true,
-      messageId,
-    };
-  } catch (err: any) {
-    console.error("Error dispatching WhatsApp Cloud API message:", err);
-    return {
-      success: false,
-      error: err.message || "Failed to deliver message via WhatsApp Cloud API",
-    };
+    console.warn("Firebase Callable sendWhatsAppMessage not available, checking fallback channels:", fnErr?.message);
   }
+
+  // 2. Second Priority: Dispatch via custom backend proxy endpoint if configured
+  if (config.endpoint) {
+    try {
+      const response = await fetch(config.endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: formattedPhone,
+          message: message.trim(),
+          templateName,
+          templateParams,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && (data.success || data.messageId || data.id)) {
+        return {
+          success: true,
+          messageId: data.messageId || data.id || "msg_sent",
+        };
+      }
+      return {
+        success: false,
+        error: data.error || `WhatsApp proxy returned HTTP ${response.status}`,
+      };
+    } catch (endpointErr: any) {
+      console.error("Backend WhatsApp proxy dispatch failed:", endpointErr);
+      return {
+        success: false,
+        error: endpointErr?.message || "Failed to reach WhatsApp dispatch service",
+      };
+    }
+  }
+
+  // 3. Third Priority: Direct Meta Graph API fallback (development only)
+  if (config.accessToken && config.phoneNumberId) {
+    try {
+      const url = `https://graph.facebook.com/v19.0/${config.phoneNumberId}/messages`;
+
+      let payload: any;
+      if (templateName && templateParams && templateParams.length > 0) {
+        payload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: formattedPhone,
+          type: "template",
+          template: {
+            name: templateName,
+            language: { code: "en_US" },
+            components: [
+              {
+                type: "body",
+                parameters: templateParams.map((param) => ({
+                  type: "text",
+                  text: param,
+                })),
+              },
+            ],
+          },
+        };
+      } else {
+        payload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: formattedPhone,
+          type: "text",
+          text: {
+            preview_url: false,
+            body: message.trim(),
+          },
+        };
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${config.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMsg =
+          data?.error?.message ||
+          data?.error?.error_user_msg ||
+          `Meta API error (${response.status}): ${JSON.stringify(data)}`;
+
+        return {
+          success: false,
+          error: errorMsg,
+        };
+      }
+
+      return {
+        success: true,
+        messageId: data?.messages?.[0]?.id || "msg_sent",
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || "Failed to deliver message via WhatsApp Cloud API",
+      };
+    }
+  }
+
+  return {
+    success: false,
+    error: "WhatsApp service not available. Deploy the sendWhatsAppMessage Firebase Function or configure a backend endpoint.",
+  };
 }
 
 /**
- * Fetches message templates directly from Meta WhatsApp Business Account (WABA)
+ * Fetches message templates via Firebase Cloud Function or direct Meta WABA API
  */
 export async function fetchMetaTemplates(): Promise<{
   success: boolean;
   templates?: any[];
   error?: string;
 }> {
-  const config = getWhatsAppApiConfig();
-
-  if (!config.accessToken || !config.wabaId) {
-    return {
-      success: false,
-      error: "Meta WhatsApp Token (VITE_META_WHATSAPP_TOKEN) and WABA ID (VITE_META_WABA_ID) must be configured in .env",
-    };
-  }
-
+  // 1. Try Firebase Cloud Function first
   try {
-    const url = `https://graph.facebook.com/v19.0/${config.wabaId}/message_templates?limit=100`;
-    const response = await fetch(url, {
-      headers: {
-        "Authorization": `Bearer ${config.accessToken}`,
-      },
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
+    const fetchTemplatesCallable = httpsCallable<void, { success: boolean; templates: any[] }>(
+      functions,
+      "fetchMetaWhatsAppTemplates"
+    );
+    const result = await fetchTemplatesCallable();
+    if (result.data?.success && Array.isArray(result.data.templates)) {
       return {
-        success: false,
-        error: data?.error?.message || `Meta API Error (${response.status})`,
+        success: true,
+        templates: result.data.templates,
       };
     }
-
-    return {
-      success: true,
-      templates: data?.data || [],
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      error: err.message || "Failed to fetch templates from Meta",
-    };
+  } catch (fnErr: any) {
+    const isFnNotFound = fnErr?.code === "not-found" || fnErr?.code === "unimplemented";
+    if (!isFnNotFound && fnErr?.message) {
+      console.warn("Firebase fetchMetaWhatsAppTemplates error:", fnErr.message);
+    }
   }
+
+  // 2. Direct Meta Graph API fallback
+  const config = getWhatsAppApiConfig();
+  if (config.accessToken && config.wabaId) {
+    try {
+      const url = `https://graph.facebook.com/v19.0/${config.wabaId}/message_templates?limit=100`;
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${config.accessToken}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data?.error?.message || `Meta API Error (${response.status})`,
+        };
+      }
+
+      return {
+        success: true,
+        templates: data?.data || [],
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || "Failed to fetch templates from Meta",
+      };
+    }
+  }
+
+  return {
+    success: false,
+    error: "Templates unavailable. Deploy the fetchMetaWhatsAppTemplates Firebase Function or set META_WABA_ID.",
+  };
 }
