@@ -101,6 +101,7 @@ export default function AdminCustomerDetail() {
     recipientRole: string;
     defaultPhone: string;
     defaultMessage: string;
+    ticketId?: string;
   }>({
     open: false,
     title: "",
@@ -108,6 +109,7 @@ export default function AdminCustomerDetail() {
     recipientRole: "",
     defaultPhone: "",
     defaultMessage: "",
+    ticketId: undefined,
   });
 
   const loadData = async () => {
@@ -179,10 +181,11 @@ export default function AdminCustomerDetail() {
     const cleanPhone = customer.phone.replace(/\D/g, "");
     setWhatsAppModal({
       open: true,
-      title: `Message ${customer.name}`,
+      title: `WhatsApp: ${customer.name}`,
       recipientName: customer.name,
       recipientRole: "Customer",
       defaultPhone: cleanPhone,
+      ticketId: calls.length > 0 ? calls[0].ticketNo : undefined,
       defaultMessage: `Hello ${customer.name}, greetings from Zorba Infotech! We are reaching out regarding your service inquiries. How may we assist you today?`,
     });
   };
@@ -191,10 +194,11 @@ export default function AdminCustomerDetail() {
     const cleanPhone = (customer?.phone || call.customerPhone || "").replace(/\D/g, "");
     setWhatsAppModal({
       open: true,
-      title: `Service Update: ${call.ticketNo}`,
+      title: `WhatsApp: ${call.ticketNo}`,
       recipientName: customer?.name || call.customerName || "Customer",
       recipientRole: "Customer",
       defaultPhone: cleanPhone,
+      ticketId: call.ticketNo,
       defaultMessage: `Dear ${customer?.name || call.customerName || "Customer"},\n\nUpdate for your ticket *${call.ticketNo}* (${call.deviceCategory}${call.modelNumber ? ` - ${call.modelNumber}` : ""}):\nStatus: *${call.status.replace(/_/g, " ").toUpperCase()}*\n\nThank you for choosing Zorba Infotech!`,
     });
   };
@@ -675,6 +679,9 @@ export default function AdminCustomerDetail() {
         recipientRole={whatsAppModal.recipientRole}
         defaultPhone={whatsAppModal.defaultPhone}
         defaultMessage={whatsAppModal.defaultMessage}
+        ticketId={whatsAppModal.ticketId}
+        serviceCallsList={calls}
+        targetModule="service_calls"
       />
     </div>
   );
