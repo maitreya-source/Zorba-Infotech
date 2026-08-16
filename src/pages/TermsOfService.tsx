@@ -84,8 +84,7 @@ const TermsOfService = () => {
                 "Warranty is not applicable due to water exposure, getting wet, or submersion in water. / पानी लगने या गीला होने की वजह, पानी में डूबने की वजह से वारंटी नहीं मिलती है।",
                 "No warranty for products priced below ₹500.",
                 "Proper earthing must be compulsorily maintained at your premises.",
-                "Minimum replacement charges: ₹100 | Minimum service call charges: ₹200 (by cash, compulsory).",
-                "One-year On-Site Care Pack: ₹2,500 + GST extra.",
+                "Minimum replacement charges: ₹100 | Minimum service call charges: ₹200.",
                 "Visit charge for any technician on-site: ₹450 for the first two hours.",
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3 px-6 py-3.5 text-sm text-muted-foreground">
@@ -134,22 +133,14 @@ const TermsOfService = () => {
               <p className="font-medium text-foreground">
                 पानी लगने या गीला होने की वजह, पानी में डूबने की वजह से वारंटी नहीं मिलती है।
               </p>
-              <p className="border-t pt-4">
-                All terms &amp; conditions are disclosed in both English and Hindi and are deemed accepted by the
-                customer/dealer upon purchase and service booking.
-              </p>
             </div>
 
-            {/* Signature lines */}
-            <div className="grid grid-cols-2 gap-8 px-6 pb-8 pt-2">
-              <div>
-                <div className="border-b border-dashed border-muted-foreground/40 pb-1 mb-2" />
-                <p className="text-xs text-muted-foreground">Customer / Dealer Signature</p>
-              </div>
-              <div>
-                <div className="border-b border-dashed border-muted-foreground/40 pb-1 mb-2" />
-                <p className="text-xs text-muted-foreground">Zorba Infotech (Authorised Signatory)</p>
-              </div>
+            {/* Automatic Compliance Notice */}
+            <div className="mx-6 mb-6 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-4 flex items-center gap-3">
+              <span className="text-base shrink-0">⚖️</span>
+              <p className="text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300">
+                By using our services or purchasing products, you automatically comply with and accept the policies listed here.
+              </p>
             </div>
           </div>
 
