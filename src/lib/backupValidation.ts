@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { collection, doc, getDoc } from "firebase/firestore";
-import { db } from "./firebase";
 import type { FullDatabaseBackup } from "./backup";
 
 // ─── Zod Schemas for Strict Data Integrity Validation ────────────────────────

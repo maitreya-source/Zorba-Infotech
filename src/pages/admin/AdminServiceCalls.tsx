@@ -50,7 +50,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getServiceCalls, deleteServiceCall, restoreServiceCall, updateServiceCall, getFinancialYears } from "@/lib/firestore";
-import type { ServiceCall, ServiceCallStatus, ServiceCallType, FinancialYearDoc } from "@/lib/types";
+import type { ServiceCall, ServiceCallStatus, FinancialYearDoc } from "@/lib/types";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
@@ -59,32 +59,6 @@ import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 
 type SortField = "status" | "ticket" | "customer" | "device" | "charges";
 type SortDirection = "asc" | "desc";
-
-const getLocalDateString = (d: Date = new Date()) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const getCallDateString = (call: ServiceCall): string => {
-  if (call.dateTime) {
-    if (call.dateTime.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(call.dateTime)) {
-      return call.dateTime.slice(0, 10);
-    }
-    const d = new Date(call.dateTime);
-    if (!isNaN(d.getTime())) {
-      return getLocalDateString(d);
-    }
-  }
-  if (call.createdAt) {
-    const d = new Date(call.createdAt);
-    if (!isNaN(d.getTime())) {
-      return getLocalDateString(d);
-    }
-  }
-  return "";
-};
 
 const statusPriority: Record<ServiceCallStatus, number> = {
   in_progress: 1,
@@ -182,8 +156,12 @@ export default function AdminServiceCalls() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getServiceCalls();
+      const [data, fyData] = await Promise.all([
+        getServiceCalls(),
+        getFinancialYears().catch(() => []),
+      ]);
       setCalls(data);
+      setFys(fyData);
     } catch (err: any) {
       console.error("Firebase error in AdminServiceCalls:", err);
       setError(err?.message || "Unable to connect to Firebase to load service calls.");
@@ -315,18 +293,12 @@ export default function AdminServiceCalls() {
   const inactiveCalls = calls.filter((c) => !c.isDeleted && !isCallActive(c.status));
   const trashCalls = calls.filter((c) => !!c.isDeleted);
 
-  // Date calculation strings
-  const todayStr = getLocalDateString(new Date());
-
   // Statistics calculation for hero KPI cards (excluding trash)
   const nonDeletedCalls = calls.filter((c) => !c.isDeleted);
   const totalCalls = nonDeletedCalls.length;
   const inProgressCount = nonDeletedCalls.filter((c) => c.status === "in_progress").length;
   const serviceCenterCount = nonDeletedCalls.filter((c) => c.type === "company_service_center" || c.status === "sent_to_service_center").length;
   const onsiteCount = nonDeletedCalls.filter((c) => c.type === "onsite_visit").length;
-  const todayRevenue = nonDeletedCalls
-    .filter((c) => getCallDateString(c) === todayStr)
-    .reduce((acc, c) => acc + (c.grandTotal || 0), 0);
 
   const currentList = activeTab === "active" ? activeCalls : activeTab === "inactive" ? inactiveCalls : trashCalls;
 

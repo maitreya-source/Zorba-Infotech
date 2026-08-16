@@ -1,35 +1,19 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  BarChart3,
   Calendar,
   Printer,
-  TrendingUp,
   Wrench,
-  CheckCircle2,
   Building2,
-  MapPin,
-  Clock,
   DollarSign,
-  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { getServiceCalls } from "@/lib/firestore";
 import type { ServiceCall } from "@/lib/types";
 
 export default function AdminReports() {
   const monthInputRef = useRef<HTMLInputElement>(null);
   const [calls, setCalls] = useState<ServiceCall[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [reportType, setReportType] = useState<"daily" | "monthly">("daily");
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -37,8 +21,7 @@ export default function AdminReports() {
 
   useEffect(() => {
     getServiceCalls()
-      .then((data) => setCalls(data))
-      .finally(() => setLoading(false));
+      .then((data) => setCalls(data));
   }, []);
 
   // Filter calls based on selected period

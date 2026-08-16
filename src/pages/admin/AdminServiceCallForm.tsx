@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Building2,
   Wrench,
@@ -13,7 +13,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -252,7 +251,6 @@ export default function AdminServiceCallForm() {
   const [showQuickTimelineModal, setShowQuickTimelineModal] = useState(false);
   const [showEventsListModal, setShowEventsListModal] = useState(false);
 
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Inline Modals
@@ -354,7 +352,6 @@ export default function AdminServiceCallForm() {
   // Fetch Existing Service Call if editing, or peek upcoming Ticket Number if creating
   useEffect(() => {
     if (id) {
-      setLoading(true);
       getServiceCall(id).then((sc) => {
         if (!sc) {
           toast.error("Service Call not found");
@@ -436,8 +433,6 @@ export default function AdminServiceCallForm() {
           discountInput: String(sc.discount || 0),
           internalComments: (sc.internalComments || sc.notes || "").trim(),
         });
-
-        setLoading(false);
       });
     } else {
       const fyMeta = getFinancialYear(dateTime || new Date());

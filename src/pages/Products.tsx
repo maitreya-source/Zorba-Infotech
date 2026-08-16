@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { whatsappLink } from "@/lib/contact";
 import {
-  Monitor, Cpu, Printer, Keyboard, Camera, Wifi, HardDrive,
+  Monitor, Cpu, Printer, Keyboard, Camera, Wifi,
   Shield, School, Wrench, Package, MessageCircle, ChevronDown, ChevronUp,
   Fingerprint, Tv, Search,
 } from "lucide-react";

@@ -36,28 +36,23 @@ export default function CreateCustomerModal({
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [saving, setSaving] = useState(false);
   const [duplicateCustomer, setDuplicateCustomer] = useState<Customer | null>(null);
-  const [checkingPhone, setCheckingPhone] = useState(false);
 
   useEffect(() => {
     const raw = `${countryCode} ${phoneNumber}`;
     const cleanDigits = normalizePhone10(raw);
 
     if (cleanDigits.length >= 10) {
-      setCheckingPhone(true);
       const timer = setTimeout(async () => {
         try {
           const match = await findCustomerByPhoneNumber(raw);
           setDuplicateCustomer(match);
         } catch {
           setDuplicateCustomer(null);
-        } finally {
-          setCheckingPhone(false);
         }
       }, 250);
       return () => clearTimeout(timer);
     } else {
       setDuplicateCustomer(null);
-      setCheckingPhone(false);
     }
   }, [countryCode, phoneNumber]);
 

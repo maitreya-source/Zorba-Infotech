@@ -1,5 +1,3 @@
-import React from "react";
-
 interface ZorbaLogoProps {
   className?: string;
   size?: number | string;

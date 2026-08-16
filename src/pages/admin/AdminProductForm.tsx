@@ -4,17 +4,11 @@ import {
   ArrowLeft,
   Upload,
   X,
-  Plus,
   Trash2,
   Save,
   Package,
   Star,
-  CheckCircle2,
-  Tag,
-  DollarSign,
   Layers,
-  FileText,
-  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import {

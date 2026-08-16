@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, User, Phone, Check, Plus, Loader2 } from "lucide-react";
+import { Search, Phone, Check, Plus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { searchCustomers } from "@/lib/firestore";
 import type { Customer } from "@/lib/types";
@@ -13,7 +13,6 @@ interface CustomerTypeaheadProps {
   initialName?: string;
   value?: string;
   onChange?: (name: string) => void;
-  onClear?: () => void;
 }
 
 export default function CustomerTypeahead({
@@ -25,7 +24,6 @@ export default function CustomerTypeahead({
   initialName = "",
   value,
   onChange,
-  onClear,
 }: CustomerTypeaheadProps) {
   const [internalQuery, setInternalQuery] = useState(initialName || value || "");
   const query = value !== undefined ? value : internalQuery;

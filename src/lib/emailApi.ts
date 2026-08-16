@@ -3,7 +3,6 @@
  * Supports direct API dispatch, webhook delivery, and mailto fallback
  */
 
-import type { ServiceCall } from "./types";
 import { toTitleCase } from "./utils";
 import { sendDirectGmailMessage } from "./googleAuthService";
 

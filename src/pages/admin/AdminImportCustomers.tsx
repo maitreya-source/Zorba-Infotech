@@ -7,9 +7,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowLeft,
-  Users,
   RefreshCw,
-  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";

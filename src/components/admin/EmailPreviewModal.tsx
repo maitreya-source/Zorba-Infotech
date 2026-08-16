@@ -9,7 +9,6 @@ import {
   Zap,
   RefreshCw,
   ExternalLink,
-  Sliders,
   FileText,
   AlertCircle,
 } from "lucide-react";
@@ -40,7 +39,6 @@ import {
   buildEmailHtml,
   buildEmailText,
   sendCustomerEmail,
-  isEmailApiConfigured,
   generateMailtoLink,
 } from "@/lib/emailApi";
 
@@ -186,8 +184,6 @@ export default function EmailPreviewModal({
       customBody,
     });
   }, [selectedTemplate, recipientName, currentServiceCall, ticketId, customBody]);
-
-  const isApiReady = isEmailApiConfigured();
 
   const handleCopy = () => {
     if (!compiledText) return;

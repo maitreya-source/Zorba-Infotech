@@ -85,12 +85,10 @@ export default function WhatsAppPreviewModal({
   serviceCallsList = [],
   targetModule,
   templateName: initialTemplateName,
-  templateParams: initialTemplateParams,
   onSent,
 }: WhatsAppPreviewModalProps) {
   const [phoneNumber, setPhoneNumber] = useState(defaultPhone || "");
   const [templates, setTemplates] = useState<WhatsAppTemplateDoc[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("freeform");
   const [selectedCallId, setSelectedCallId] = useState<string>(ticketId || serviceCall?.id || "");
   const [variableValues, setVariableValues] = useState<Record<number, string>>({});
@@ -103,7 +101,6 @@ export default function WhatsAppPreviewModal({
   useEffect(() => {
     if (!open) return;
     let isMounted = true;
-    setLoadingTemplates(true);
     getWhatsAppTemplates()
       .then((data) => {
         if (!isMounted) return;
@@ -111,9 +108,6 @@ export default function WhatsAppPreviewModal({
       })
       .catch((err) => {
         console.error("Failed to fetch WhatsApp templates:", err);
-      })
-      .finally(() => {
-        if (isMounted) setLoadingTemplates(false);
       });
 
     return () => {

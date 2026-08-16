@@ -32,9 +32,7 @@ import type {
   Courier,
   Technician,
   TeamMember,
-  TeamRole,
   FinancialYearDoc,
-  FYMonthDoc,
   WhatsAppTemplateDoc,
 } from "./types";
 

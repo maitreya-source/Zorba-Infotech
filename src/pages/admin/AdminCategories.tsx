@@ -222,8 +222,8 @@ export default function AdminCategories() {
               : "Try adjusting your search query."}
           </p>
           {categories.length === 0 && (
-            <Button onClick={handleSeed} size="sm" className="gap-1 text-xs">
-              <RefreshCw className="h-3.5 w-3.5" /> Seed Default Categories
+            <Button onClick={handleSeed} disabled={seeding} size="sm" className="gap-1 text-xs">
+              <RefreshCw className={`h-3.5 w-3.5 ${seeding ? "animate-spin" : ""}`} /> {seeding ? "Seeding..." : "Seed Default Categories"}
             </Button>
           )}
         </div>

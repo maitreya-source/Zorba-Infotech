@@ -12,7 +12,7 @@ import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { getTeamMembers, createTeamMember } from "@/lib/firestore";
 import type { TeamMember, TeamRole } from "@/lib/types";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
-import { AVATAR_CATALOG, getAvatarById } from "@/lib/avatars";
+import { AVATAR_CATALOG } from "@/lib/avatars";
 
 interface StaffProfileSelectorModalProps {
   open: boolean;
@@ -100,14 +100,16 @@ export default function StaffProfileSelectorModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden bg-[#0A0E17] text-white border-slate-800 shadow-2xl rounded-3xl">
         {/* Top-Right Close Button */}
-        <button
-          type="button"
-          onClick={handleClose}
-          className="absolute top-4 right-4 z-20 h-8 w-8 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 text-slate-400 hover:text-white flex items-center justify-center transition-colors shadow-md"
-          title="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {canDismiss && (
+          <button
+            type="button"
+            onClick={handleClose}
+            className="absolute top-4 right-4 z-20 h-8 w-8 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 text-slate-400 hover:text-white flex items-center justify-center transition-colors shadow-md"
+            title="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
 
         {/* Ambient Top Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-20 h-64 w-96 rounded-full bg-blue-600/20 blur-3xl pointer-events-none" />

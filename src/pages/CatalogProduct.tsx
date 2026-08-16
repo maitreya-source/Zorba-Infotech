@@ -14,7 +14,6 @@ import {
 import Layout from "@/components/layout/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { getProduct, getCategories } from "@/lib/firestore";
 import type { Product, Category } from "@/lib/types";
 import { sanitizeExternalUrl } from "@/lib/utils";

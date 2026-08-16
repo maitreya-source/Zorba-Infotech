@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { getAvatarById, type AvatarDefinition } from "@/lib/avatars";
 
 interface AvatarGraphicProps {

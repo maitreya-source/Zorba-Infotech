@@ -1,11 +1,10 @@
-import { HelpCircle, Keyboard, Command, CornerDownLeft } from "lucide-react";
+import { Keyboard, Command } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 
 interface ShortcutsHelpModalProps {
   open: boolean;

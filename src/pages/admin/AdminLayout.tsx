@@ -6,9 +6,7 @@ import {
   Users,
   Package,
   Layers,
-  Folder,
   UserCheck,
-  ShieldCheck,
   Building2,
   Truck,
   Database,
@@ -22,8 +20,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import StaffProfileSelectorModal from "@/components/admin/StaffProfileSelectorModal";
 

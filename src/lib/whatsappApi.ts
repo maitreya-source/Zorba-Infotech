@@ -4,8 +4,6 @@
  * Direct Meta API Delivery & Template Sync Engine
  */
 
-import type { WhatsAppTemplateDoc } from "./types";
-
 export interface WhatsAppApiConfig {
   accessToken: string;
   phoneNumberId: string;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Building2, Plus, Trash2, Phone, MapPin, User, MessageCircle } from "lucide-react";
+import { Building2, Trash2, MapPin, User, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -1,9 +1,7 @@
 import { useState, useRef } from "react";
-import { Upload, FileSpreadsheet, Download, CheckCircle2, AlertCircle, RefreshCw, Users, FileText } from "lucide-react";
+import { Upload, FileSpreadsheet, Download, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createCustomer } from "@/lib/firestore";
-import type { Customer } from "@/lib/types";
 
 interface ImportCustomersModalProps {
   open: boolean;
