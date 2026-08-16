@@ -75,6 +75,7 @@ export interface SendWhatsAppRequest {
 }
 
 export const sendWhatsAppMessage = functions
+  .region("asia-south1")
   .runWith({
     timeoutSeconds: 30,
     memory: "256MB",
@@ -182,6 +183,7 @@ export const sendWhatsAppMessage = functions
 // ==========================================
 
 export const fetchMetaWhatsAppTemplates = functions
+  .region("asia-south1")
   .runWith({
     timeoutSeconds: 30,
     memory: "256MB",
