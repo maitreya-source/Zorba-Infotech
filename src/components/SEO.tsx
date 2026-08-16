@@ -1,9 +1,7 @@
 import { Helmet } from "react-helmet-async";
 
 const SITE_URL = "https://zorbainfotech.in";
-const LOGO_IMAGE = `${SITE_URL}/favicon.svg`;
-// Used for og:image / twitter:image. Ideally a 1200x630 banner; falls back to
-// the 512x512 logo, which still renders in link previews.
+const LOGO_IMAGE = `${SITE_URL}/logo-512x512.png`;
 const DEFAULT_IMAGE = LOGO_IMAGE;
 
 interface SEOProps {
