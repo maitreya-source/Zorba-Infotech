@@ -7,7 +7,7 @@ const DealerBanner = () => {
   const { ref, isVisible } = useScrollAnimation();
 
   return (
-    <section className="bg-gradient-dealer py-12 md:py-14 text-primary-foreground">
+    <section className="bg-gradient-dealer py-10 md:py-12 text-primary-foreground">
       <div
         ref={ref}
         className={`container transition-all duration-700 ${
@@ -37,7 +37,7 @@ const DealerBanner = () => {
             </Link>
           </div>
 
-          <div className="mt-12 grid grid-cols-3 gap-6">
+          <div className="mt-8 md:mt-10 grid grid-cols-3 gap-6">
             {[
               { icon: Package, label: "4000+ Products", sub: "In stock daily" },
               { icon: TrendingUp, label: "Best Margins", sub: "Competitive rates" },

@@ -51,7 +51,7 @@ const LocalSEOSection = () => {
       <FAQSchema items={faqs} />
       <div
         ref={ref}
-        className={`container py-16 transition-all duration-700 ${
+        className={`container py-10 md:py-12 transition-all duration-700 ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
         }`}
       >
