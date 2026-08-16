@@ -1298,6 +1298,52 @@ export async function deleteServiceCall(id: string): Promise<void> {
   try {
     const existing = await getServiceCall(id);
     const batch = writeBatch(db);
+    const now = Date.now();
+    const softDeleteData = cleanFirestoreData({
+      isDeleted: true,
+      deletedAt: now,
+      updatedAt: now,
+    });
+
+    if (existing?.fyId && existing?.monthKey) {
+      const subDocRef = doc(db, "financial_years", existing.fyId, "months", existing.monthKey, "service_calls", id);
+      batch.set(subDocRef, softDeleteData, { merge: true });
+    }
+    batch.set(doc(db, "service_calls", id), softDeleteData, { merge: true });
+    await batch.commit();
+  } catch (err: any) {
+    console.error("deleteServiceCall error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function restoreServiceCall(id: string): Promise<void> {
+  try {
+    const existing = await getServiceCall(id);
+    const batch = writeBatch(db);
+    const now = Date.now();
+    const restoreData = cleanFirestoreData({
+      isDeleted: false,
+      deletedAt: null,
+      updatedAt: now,
+    });
+
+    if (existing?.fyId && existing?.monthKey) {
+      const subDocRef = doc(db, "financial_years", existing.fyId, "months", existing.monthKey, "service_calls", id);
+      batch.set(subDocRef, restoreData, { merge: true });
+    }
+    batch.set(doc(db, "service_calls", id), restoreData, { merge: true });
+    await batch.commit();
+  } catch (err: any) {
+    console.error("restoreServiceCall error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function hardDeleteServiceCall(id: string): Promise<void> {
+  try {
+    const existing = await getServiceCall(id);
+    const batch = writeBatch(db);
     if (existing?.fyId && existing?.monthKey) {
       const subDocRef = doc(db, "financial_years", existing.fyId, "months", existing.monthKey, "service_calls", id);
       batch.delete(subDocRef);
@@ -1305,7 +1351,7 @@ export async function deleteServiceCall(id: string): Promise<void> {
     batch.delete(doc(db, "service_calls", id));
     await batch.commit();
   } catch (err: any) {
-    console.error("deleteServiceCall error:", err);
+    console.error("hardDeleteServiceCall error:", err);
     throw new Error(formatFirebaseError(err));
   }
 }

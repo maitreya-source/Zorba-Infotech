@@ -61,10 +61,10 @@ export default function TimelineEventsListModal({
                   onOpenChange(false);
                   onOpenAddEvent("comment_added");
                 }}
-                className="h-7 px-2 text-xs font-semibold rounded-lg gap-1 border-slate-300 dark:border-slate-700"
+                className="h-7 px-2.5 text-xs font-semibold rounded-lg gap-1.5 border-slate-300 dark:border-slate-700"
               >
-                <MessageSquare className="h-3 w-3 text-slate-500" />
-                <span>+ Note</span>
+                <MessageSquare className="h-3.5 w-3.5 text-slate-500" />
+                <span>Note</span>
               </Button>
               <Button
                 type="button"
@@ -73,10 +73,10 @@ export default function TimelineEventsListModal({
                   onOpenChange(false);
                   onOpenAddEvent("status_change");
                 }}
-                className="h-7 px-2 text-xs font-semibold rounded-lg bg-[#2563EB] hover:bg-blue-600 text-white gap-1"
+                className="h-7 px-2.5 text-xs font-semibold rounded-lg bg-[#2563EB] hover:bg-blue-600 text-white gap-1.5"
               >
-                <Plus className="h-3 w-3" />
-                <span>+ Event</span>
+                <Plus className="h-3.5 w-3.5" />
+                <span>Event</span>
               </Button>
             </div>
           </div>
@@ -141,7 +141,7 @@ export default function TimelineEventsListModal({
                 No events recorded yet.
               </p>
               <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                Use the hotkeys (F5, F6, F8, F9) or click "+ Note" to log updates.
+                Use the hotkeys (F5, F6, F8, F9) or click "Note" to log updates.
               </p>
             </div>
           )}

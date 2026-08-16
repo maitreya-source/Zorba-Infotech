@@ -11,6 +11,9 @@ interface CustomerTypeaheadProps {
   className?: string;
   placeholder?: string;
   initialName?: string;
+  value?: string;
+  onChange?: (name: string) => void;
+  onClear?: () => void;
 }
 
 export default function CustomerTypeahead({
@@ -20,20 +23,31 @@ export default function CustomerTypeahead({
   className = "",
   placeholder = "Search customer by name, phone (e.g. 9589199738), or company...",
   initialName = "",
+  value,
+  onChange,
+  onClear,
 }: CustomerTypeaheadProps) {
-  const [query, setQuery] = useState(initialName);
+  const [internalQuery, setInternalQuery] = useState(initialName || value || "");
+  const query = value !== undefined ? value : internalQuery;
+  const setQuery = (newVal: string) => {
+    if (onChange) onChange(newVal);
+    setInternalQuery(newVal);
+  };
+
   const [results, setResults] = useState<Customer[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Sync initialName if changed
+  // Sync initialName or value if changed externally
   useEffect(() => {
-    if (initialName && !query) {
-      setQuery(initialName);
+    if (value !== undefined) {
+      setInternalQuery(value);
+    } else if (initialName && !internalQuery) {
+      setInternalQuery(initialName);
     }
-  }, [initialName]);
+  }, [initialName, value]);
 
   // Click outside listener
   useEffect(() => {
@@ -48,6 +62,12 @@ export default function CustomerTypeahead({
 
   // Debounced search
   useEffect(() => {
+    if (!query || query.trim().length < 2) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
     let active = true;
     const timer = setTimeout(async () => {
       setLoading(true);
@@ -71,7 +91,7 @@ export default function CustomerTypeahead({
   }, [query]);
 
   const handleSelect = (cust: Customer) => {
-    setQuery(`${cust.name} (${cust.phone})`);
+    setQuery(cust.name);
     onSelectCustomer(cust);
     setIsOpen(false);
   };
@@ -108,10 +128,12 @@ export default function CustomerTypeahead({
             setQuery(e.target.value);
             setIsOpen(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            if (query && query.length >= 2) setIsOpen(true);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 pr-8"
+          className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 pr-8 font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 placeholder:font-normal focus:bg-white transition-colors"
         />
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {loading ? (
@@ -176,9 +198,10 @@ export default function CustomerTypeahead({
                 setIsOpen(false);
                 onAddNewCustomer();
               }}
-              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg text-xs font-bold text-[#2563EB] hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg text-xs font-bold text-[#2563EB] hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
             >
-              <Plus className="h-3.5 w-3.5" /> + Create New Customer
+              <Plus className="h-3.5 w-3.5" />
+              <span>Create New Customer</span>
             </button>
           </div>
         </div>

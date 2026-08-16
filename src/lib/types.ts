@@ -271,6 +271,12 @@ export interface ServiceCall {
   // Lifecycle Timeline
   timeline?: TimelineEvent[];
 
+  // Soft Delete & Recovery
+  isDeleted?: boolean;
+  deletedAt?: number;
+  deletedByStaffId?: string;
+  deletedByStaffName?: string;
+
   createdAt: string | number;
   updatedAt: string | number;
 }

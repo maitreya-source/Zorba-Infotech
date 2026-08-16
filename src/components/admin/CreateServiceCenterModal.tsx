@@ -195,9 +195,9 @@ export default function CreateServiceCenterModal({
               <button
                 type="button"
                 onClick={handleAddAddress}
-                className="text-[11px] font-bold text-[#2563EB] hover:underline"
+                className="text-[11px] font-bold text-[#2563EB] hover:underline cursor-pointer"
               >
-                + Add Address
+                Add Address
               </button>
             </div>
 
@@ -237,9 +237,9 @@ export default function CreateServiceCenterModal({
               <button
                 type="button"
                 onClick={handleAddPoc}
-                className="text-[11px] font-bold text-[#2563EB] hover:underline"
+                className="text-[11px] font-bold text-[#2563EB] hover:underline cursor-pointer"
               >
-                + Add POC
+                Add POC
               </button>
             </div>
 

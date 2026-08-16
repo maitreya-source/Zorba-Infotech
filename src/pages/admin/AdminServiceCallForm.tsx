@@ -23,6 +23,14 @@ import {
   CheckCircle2,
   XCircle,
   MessageSquare,
+  Phone,
+  Mail,
+  ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  RefreshCw,
+  Home,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -38,6 +46,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   getCustomers,
   getDeviceCategories,
   getServiceCenters,
@@ -47,6 +65,7 @@ import {
   getServiceCall,
   createServiceCall,
   updateServiceCall,
+  deleteServiceCall,
   addTimelineEvent,
   getFinancialYear,
   peekNextTicketNumber,
@@ -180,12 +199,12 @@ export default function AdminServiceCallForm() {
   const [dateTime, setDateTime] = useState<string>(() => {
     return new Date().toISOString().slice(0, 10);
   });
-  const [headerCenterEl, setHeaderCenterEl] = useState<HTMLElement | null>(null);
   const [rightRailEl, setRightRailEl] = useState<HTMLElement | null>(null);
+  const [breadcrumbTicketEl, setBreadcrumbTicketEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    setHeaderCenterEl(document.getElementById("admin-header-center"));
     setRightRailEl(document.getElementById("admin-right-rail"));
+    setBreadcrumbTicketEl(document.getElementById("admin-breadcrumb-ticket"));
   }, []);
 
   // Customer State
@@ -259,6 +278,7 @@ export default function AdminServiceCallForm() {
   const [showCenterModal, setShowCenterModal] = useState(false);
   const [showCourierModal, setShowCourierModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [whatsAppModal, setWhatsAppModal] = useState<{
     open: boolean;
     title: string;
@@ -400,12 +420,12 @@ export default function AdminServiceCallForm() {
   // Handle Customer Selection from Typeahead
   const handleSelectCustomer = (cust: Customer) => {
     setSelectedCustomerId(cust.id);
-    setCustomerName(cust.name);
-    setCustomerPhone(cust.phone);
-    setCustomerEmail(cust.email || "");
-    setCustomerAddress(cust.address || "");
+    setCustomerName(toTitleCase(cust.name || ""));
+    setCustomerPhone(cust.phone || "");
+    setCustomerEmail((cust.email || "").toLowerCase());
+    setCustomerAddress(toTitleCase(cust.address || ""));
     if (cust.address) {
-      setOnsiteAddress(cust.address);
+      setOnsiteAddress(toTitleCase(cust.address));
     }
   };
 
@@ -430,10 +450,10 @@ export default function AdminServiceCallForm() {
         }
       }
     },
-    onF5: () => triggerTimelineModal("replacement_sent_service_center"),
-    onF6: () => triggerTimelineModal("replacement_received_service_center"),
-    onF8: () => triggerTimelineModal("replacement_given_customer"),
-    onF9: () => triggerTimelineModal("replacement_received_customer"),
+    onF5: () => triggerTimelineModal("replacement_received_customer"),
+    onF6: () => triggerTimelineModal("replacement_sent_service_center"),
+    onF8: () => triggerTimelineModal("replacement_received_service_center"),
+    onF9: () => triggerTimelineModal("replacement_given_customer"),
   });
 
   const triggerTimelineModal = (stage: TimelineEvent["stage"]) => {
@@ -573,6 +593,18 @@ export default function AdminServiceCallForm() {
     }
   };
 
+  const handleDeleteTicket = async () => {
+    if (!id) return;
+    try {
+      await deleteServiceCall(id);
+      toast.success("Ticket moved to Trash. It can be restored anytime.");
+      navigate("/admin/service-calls");
+    } catch (err: any) {
+      console.error("Error deleting ticket:", err);
+      toast.error(err?.message || "Failed to delete ticket");
+    }
+  };
+
   // WhatsApp Message Preview Triggers (Opens editable preview modal with pre-compiled text)
   const handleOpenCustomerWhatsApp = () => {
     if (!customerPhone && !customerName) {
@@ -673,68 +705,65 @@ export default function AdminServiceCallForm() {
 
   return (
     <div className="space-y-4 max-w-[1440px] mx-auto pb-16 text-xs">
-      {/* Top Header Center Portal for Service Call Type Chips */}
-      {headerCenterEl &&
-        createPortal(
-          <div className="inline-flex p-1 rounded-xl bg-slate-900/90 border border-slate-700/80 gap-1 shadow-xs">
-            <button
-              type="button"
-              onClick={() => setType("company_service_center")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                type === "company_service_center"
-                  ? "bg-[#2563EB] text-white shadow-md shadow-blue-600/30"
-                  : "text-slate-300 hover:text-white hover:bg-slate-800/70"
-              }`}
-            >
-              <Building2 className="h-3.5 w-3.5" />
-              <span>Company Service Center</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setType("in_house_repair")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                type === "in_house_repair"
-                  ? "bg-[#2563EB] text-white shadow-md shadow-blue-600/30"
-                  : "text-slate-300 hover:text-white hover:bg-slate-800/70"
-              }`}
-            >
-              <Wrench className="h-3.5 w-3.5" />
-              <span>In-House Service / Refill</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setType("onsite_visit")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                type === "onsite_visit"
-                  ? "bg-[#2563EB] text-white shadow-md shadow-blue-600/30"
-                  : "text-slate-300 hover:text-white hover:bg-slate-800/70"
-              }`}
-            >
-              <MapPin className="h-3.5 w-3.5" />
-              <span>Onsite Visit & Install</span>
-            </button>
-          </div>,
-          headerCenterEl
-        )}
-
       <form id="service-call-form" onSubmit={handleSubmit} className="space-y-4 max-w-5xl mx-auto">
-        {/* Header Metadata: Overall Ticket Status, Technical Assignee, Date of Call */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 border-l-[#2563EB] p-4 md:p-5 shadow-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+        {/* Card 0: Service Workflow Mode Switcher + Header Metadata (Status, Tech Assignee, Date) */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-4 md:p-5 space-y-4">
+          {/* Top Service Type Mode Switcher Integrated into Header Card */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Service Workflow Mode
+              </Label>
+              <span className="text-[11px] text-slate-400 font-medium">Select workflow to adjust required fields</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-100/80 dark:bg-slate-950 p-1.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => setType("company_service_center")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  type === "company_service_center"
+                    ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/60 dark:border-slate-700"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Building2 className="h-4 w-4 shrink-0" />
+                <span>Company Service Center</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setType("in_house_repair")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  type === "in_house_repair"
+                    ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/60 dark:border-slate-700"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Wrench className="h-4 w-4 shrink-0" />
+                <span>In-House Service / Refill</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setType("onsite_visit")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  type === "onsite_visit"
+                    ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/60 dark:border-slate-700"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span>Onsite Visit & Install</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end pt-3 border-t border-slate-100 dark:border-slate-800/80">
             {/* Overall Ticket Status */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Overall Ticket Status
-                </Label>
-                {ticketNo && (
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50 font-mono text-[10px] px-1.5 py-0 rounded-full font-bold">
-                    {ticketNo}
-                  </Badge>
-                )}
-              </div>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Overall Ticket Status
+              </Label>
               <Select value={status} onValueChange={(val: ServiceCallStatus) => setStatus(val)}>
                 <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
                   <div className="flex items-center gap-2 truncate">
@@ -773,7 +802,7 @@ export default function AdminServiceCallForm() {
 
             {/* Assigned Technician */}
             <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Technical Assignee
               </Label>
               <Select
@@ -800,7 +829,7 @@ export default function AdminServiceCallForm() {
             {/* Date of Call */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Date of Call
                 </Label>
                 <span className="text-[10px] text-slate-400 font-mono font-medium">F2</span>
@@ -816,84 +845,105 @@ export default function AdminServiceCallForm() {
           </div>
         </div>
 
-        {/* Section 1: Customer Details with Fast Server-Side Typeahead */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 border-l-[#2563EB] p-4 md:p-5 shadow-xs space-y-3.5">
-          <div className="flex items-center justify-between">
+        {/* Section 1: Customer Details */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/60 text-[#2563EB] dark:text-blue-400 font-extrabold text-[11px] border border-blue-100 dark:border-blue-900 shadow-2xs">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
                 1
               </span>
-              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                Customer Details
+              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Customer & Contact Details
               </h2>
             </div>
 
-            <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-2">
               {selectedCustomerId && (
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  variant="ghost"
                   onClick={() => setShowEditCustomerModal(true)}
-                  className="font-semibold text-[#2563EB] hover:underline"
+                  className="h-8 text-xs font-semibold text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/50"
                 >
                   Edit Profile
-                </button>
+                </Button>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            {/* Auto-Fill Customer Profile (Typeahead autocomplete for 5000+ customers) */}
-            <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
-                Auto-Fill Customer (Search Name / Phone)
+          {/* Unified Customer Name & Search */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Customer Name / Search <span className="text-red-500 font-bold">*</span>
               </Label>
-              <CustomerTypeahead
-                selectedCustomerId={selectedCustomerId}
-                onSelectCustomer={handleSelectCustomer}
-                onAddNewCustomer={() => setShowCustomerModal(true)}
-                initialName={customerName ? `${customerName} (${customerPhone})` : ""}
-                className="mt-1"
-              />
             </div>
-
-            {/* Customer Name */}
-            <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
-                Customer Name <span className="text-red-500 font-bold">*</span>
-              </Label>
-              <Input
-                placeholder="e.g. Sharma Rajesh"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                required
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors"
-              />
-            </div>
-
-            {/* Contact / Phone */}
-            <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
-                Contact Phone <span className="text-red-500 font-bold">*</span>
-              </Label>
-              <Input
-                placeholder="+91 9876543210"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                required
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors"
-              />
-            </div>
+            <CustomerTypeahead
+              selectedCustomerId={selectedCustomerId}
+              value={customerName}
+              onChange={setCustomerName}
+              onSelectCustomer={handleSelectCustomer}
+              onAddNewCustomer={() => setShowCustomerModal(true)}
+              placeholder="Type name or search existing customer..."
+            />
           </div>
+
+          {/* Populated Read-Only Customer Info Display */}
+          {customerPhone || customerAddress || customerEmail || selectedCustomerId ? (
+            <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 p-3.5 space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* Phone */}
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5 text-blue-500" />
+                    Phone:
+                  </span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                    {customerPhone ? formatIndianPhoneNumber(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
+                  </span>
+                </div>
+
+                {/* Email */}
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-blue-500" />
+                    Email:
+                  </span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                    {customerEmail || <span className="text-slate-400 font-normal italic">Not provided</span>}
+                  </span>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="flex items-start gap-2 pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 text-xs">
+                <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 flex items-center gap-1.5 mt-0.5">
+                  <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                  Address:
+                </span>
+                <span className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                  {customerAddress || <span className="text-slate-400 font-normal italic">No address on file</span>}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-3 bg-slate-50/40 dark:bg-slate-950/40 text-center">
+              <p className="text-xs text-slate-400">
+                Select a customer above to view contact details, or click <button type="button" onClick={() => setShowCustomerModal(true)} className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">New Customer</button> to create a profile.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Section 2: Device & Warranty Details */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 border-l-indigo-500 p-4 md:p-5 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-extrabold text-[11px] border border-indigo-100 dark:border-indigo-900 shadow-2xs">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
               2
             </span>
-            <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-              Device, Warranty & Purchase Details
+            <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              Device & Issue Details
             </h2>
           </div>
 
@@ -902,13 +952,13 @@ export default function AdminServiceCallForm() {
             {/* Device Category */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Device Category
                 </Label>
                 <button
                   type="button"
                   onClick={() => setShowCategoryModal(true)}
-                  className="text-[10px] font-semibold text-[#2563EB] hover:underline"
+                  className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
                 >
                   + Add
                 </button>
@@ -929,7 +979,7 @@ export default function AdminServiceCallForm() {
 
             {/* Warranty Status */}
             <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Warranty Status
               </Label>
               <Select value={warrantyStatus} onValueChange={(val: WarrantyStatus) => setWarrantyStatus(val)}>
@@ -946,7 +996,7 @@ export default function AdminServiceCallForm() {
 
             {/* Model Number / Name (Hierarchical typeahead auto-fill) */}
             <div className="sm:col-span-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Model Number / Name
               </Label>
               <ModelTypeahead
@@ -957,63 +1007,61 @@ export default function AdminServiceCallForm() {
             </div>
           </div>
 
-          {/* Secondary Metadata Sub-Card (Serial, Qty, DOP, Bill No) */}
-          <div className="bg-slate-50/80 dark:bg-slate-950/50 rounded-xl p-3 border border-slate-200/70 dark:border-slate-800/80">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 block">
-                  Serial Number
-                </Label>
-                <Input
-                  placeholder="e.g. 15082026"
-                  value={serialNumber}
-                  onChange={(e) => setSerialNumber(e.target.value)}
-                  className="h-8 text-xs rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium"
-                />
-              </div>
+          {/* Secondary Metadata Sub-Grid (Serial, Qty, DOP, Bill No) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Serial Number / IMEI
+              </Label>
+              <Input
+                placeholder="e.g. 15082026"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
+              />
+            </div>
 
-              <div>
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 block">
-                  Qty
-                </Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  className="h-8 text-xs rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium"
-                />
-              </div>
+            <div>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Quantity
+              </Label>
+              <Input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
+              />
+            </div>
 
-              <div>
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 block">
-                  Purchase Date (DOP)
-                </Label>
-                <Input
-                  type="date"
-                  value={dateOfPurchase}
-                  onChange={(e) => setDateOfPurchase(e.target.value)}
-                  className="h-8 text-xs rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium"
-                />
-              </div>
+            <div>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Purchase Date (DOP)
+              </Label>
+              <Input
+                type="date"
+                value={dateOfPurchase}
+                onChange={(e) => setDateOfPurchase(e.target.value)}
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
+              />
+            </div>
 
-              <div>
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 block">
-                  Invoice / Bill Number
-                </Label>
-                <Input
-                  placeholder="e.g. INV-2024-9981"
-                  value={billNumber}
-                  onChange={(e) => setBillNumber(e.target.value)}
-                  className="h-8 text-xs rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium"
-                />
-              </div>
+            <div>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Invoice / Bill Number
+              </Label>
+              <Input
+                placeholder="e.g. INV-2024-9981"
+                value={billNumber}
+                onChange={(e) => setBillNumber(e.target.value)}
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
+              />
             </div>
           </div>
 
-          {/* Issue / Service Task Description */}
-          <div>
-            <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+          {/* Issue / Service Task Description with Horizontal Scrollable Chip Group */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
               Issue / Service Task Description <span className="text-red-500 font-bold">*</span>
             </Label>
             <Textarea
@@ -1022,12 +1070,12 @@ export default function AdminServiceCallForm() {
               onChange={(e) => setIssueDescription(e.target.value)}
               rows={2}
               required
-              className="text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
+              className="text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
             />
 
-            {/* Quick Suggestion Tags */}
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              <span className="text-[10px] text-slate-400 font-medium self-center mr-1">Quick Suggestions:</span>
+            {/* Sleek Horizontally Scrollable Chip Group */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1.5 no-scrollbar text-xs">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">Suggestions:</span>
               {QUICK_TAGS.map((tag) => (
                 <button
                   key={tag}
@@ -1035,7 +1083,7 @@ export default function AdminServiceCallForm() {
                   onClick={() => {
                     setIssueDescription((prev) => (prev ? `${prev}, ${tag}` : tag));
                   }}
-                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                  className="shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   {tag}
                 </button>
@@ -1046,24 +1094,31 @@ export default function AdminServiceCallForm() {
 
         {/* Section 3: Company Service Center Parcel Dispatch (with Courier Selection & WhatsApp follow-ups) */}
         {type === "company_service_center" && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 border-l-amber-500 p-4 md:p-5 shadow-xs space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-extrabold text-[11px] border border-amber-100 dark:border-amber-900 shadow-2xs">
-                  3
-                </span>
-                <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  Company Service Center Parcel & Courier Dispatch
-                </h2>
-              </div>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
+                3
+              </span>
+              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Service Center & Courier Dispatch
+              </h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5">
               {/* Select Service Center */}
               <div>
-                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
-                  Select Service Center
-                </Label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Service Center
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCenterModal(true)}
+                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
                 <Select
                   value={selectedServiceCenterId}
                   onValueChange={(val) => {
@@ -1093,8 +1148,8 @@ export default function AdminServiceCallForm() {
 
               {/* Dispatch Parcel Address */}
               <div>
-                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
-                  Dispatch Parcel Address
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Dispatch Address
                 </Label>
                 <Select
                   value={selectedAddressId}
@@ -1122,9 +1177,18 @@ export default function AdminServiceCallForm() {
 
               {/* Courier Partner Selection */}
               <div>
-                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
-                  Courier Partner
-                </Label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Courier Partner
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCourierModal(true)}
+                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
                 <Select
                   value={courierName}
                   onValueChange={(val) => {
@@ -1148,20 +1212,20 @@ export default function AdminServiceCallForm() {
 
               {/* Courier Tracking RMA / Docket No */}
               <div>
-                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                   Docket / RMA Tracking No.
                 </Label>
                 <Input
                   placeholder="e.g. TRK-9981 / AUG-2026"
                   value={rmaNumber}
                   onChange={(e) => setRmaNumber(e.target.value)}
-                  className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
+                  className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
                 />
               </div>
 
               {/* Courier Charges */}
               <div>
-                <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                   Courier Charges (₹)
                 </Label>
                 <Input
@@ -1169,7 +1233,7 @@ export default function AdminServiceCallForm() {
                   placeholder="0"
                   value={courierChargesInput}
                   onChange={(e) => setCourierChargesInput(e.target.value)}
-                  className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
+                  className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
                 />
               </div>
             </div>
@@ -1178,37 +1242,37 @@ export default function AdminServiceCallForm() {
 
         {/* Section 3 Alternative: Onsite Service Address (if Onsite Visit) */}
         {type === "onsite_visit" && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 border-l-amber-500 p-4 md:p-5 shadow-xs space-y-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-extrabold text-[11px] border border-amber-100 dark:border-amber-900 shadow-2xs">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
                 3
               </span>
-              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Onsite Service Address
               </h2>
             </div>
             <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Customer Site / Installation Address
               </Label>
               <Input
                 placeholder="Enter complete onsite location..."
                 value={onsiteAddress}
                 onChange={(e) => setOnsiteAddress(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
               />
             </div>
           </div>
         )}
 
-        {/* Section 4: Spare Parts & Service Charges (Supports 0 parts without errors) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 border-l-emerald-500 p-4 md:p-5 shadow-xs space-y-3.5">
+        {/* Section 4: Spare Parts & Service Charges */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-extrabold text-[11px] border border-emerald-100 dark:border-emerald-900 shadow-2xs">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
                 4
               </span>
-              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Spare Parts & Service Charges
               </h2>
             </div>
@@ -1216,19 +1280,19 @@ export default function AdminServiceCallForm() {
             <button
               type="button"
               onClick={handleAddPartRow}
-              className="text-[10px] font-semibold text-[#2563EB] hover:underline"
+              className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
             >
-              + Add Item
+              Add Item
             </button>
           </div>
 
           <div className="space-y-2.5">
             {parts.length > 0 && (
-              <div className="grid grid-cols-12 gap-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
-                <div className="col-span-7">PART / ITEM NAME (Auto-saved to Catalog)</div>
-                <div className="col-span-2">QTY</div>
-                <div className="col-span-2">UNIT PRICE (₹)</div>
-                <div className="col-span-1 text-right">TOTAL</div>
+              <div className="grid grid-cols-12 gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 px-1">
+                <div className="col-span-7">Part / Item Name (Auto-saved to Catalog)</div>
+                <div className="col-span-2">Qty</div>
+                <div className="col-span-2">Unit Price (₹)</div>
+                <div className="col-span-1 text-right">Total</div>
               </div>
             )}
 
@@ -1260,7 +1324,7 @@ export default function AdminServiceCallForm() {
                     placeholder="0"
                     value={p.unitPrice}
                     onChange={(e) => handleUpdatePart(idx, "unitPrice", e.target.value)}
-                    className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors"
+                    className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white transition-colors"
                   />
                 </div>
                 <div className="col-span-1 flex items-center justify-end gap-1.5">
@@ -1270,7 +1334,7 @@ export default function AdminServiceCallForm() {
                   <button
                     type="button"
                     onClick={() => handleRemovePartRow(idx)}
-                    className="text-slate-400 hover:text-destructive p-1 rounded-md transition-colors"
+                    className="text-slate-400 hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -1280,14 +1344,14 @@ export default function AdminServiceCallForm() {
 
             {parts.length === 0 && (
               <div className="text-xs text-slate-400 p-3 bg-slate-50/50 dark:bg-slate-950 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                No spare parts added (Intake without parts is supported). Click <button type="button" onClick={handleAddPartRow} className="text-[#2563EB] font-bold underline">+ Add Item</button> if needed.
+                No spare parts added. Click <button type="button" onClick={handleAddPartRow} className="text-[#2563EB] font-bold underline cursor-pointer">Add Item</button> if replacement hardware is required.
               </div>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
             <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Service & Repair Charges (₹)
               </Label>
               <Input
@@ -1295,12 +1359,12 @@ export default function AdminServiceCallForm() {
                 placeholder="0"
                 value={serviceChargesInput}
                 onChange={(e) => setServiceChargesInput(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors"
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white transition-colors"
               />
             </div>
 
             <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Discount (₹)
               </Label>
               <Input
@@ -1308,7 +1372,7 @@ export default function AdminServiceCallForm() {
                 placeholder="0"
                 value={discountInput}
                 onChange={(e) => setDiscountInput(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-rose-600 dark:text-rose-400 focus:bg-white transition-colors"
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-rose-600 dark:text-rose-400 placeholder:text-slate-400 focus:bg-white transition-colors"
               />
             </div>
           </div>
@@ -1318,227 +1382,290 @@ export default function AdminServiceCallForm() {
       {/* Attached Right Action Sidebar (Portal Target: #admin-right-rail) */}
       {rightRailEl &&
         createPortal(
-          <aside className="w-64 h-screen flex flex-col justify-between bg-[#0F172A] border-l border-slate-800/90 text-slate-300 select-none overflow-y-auto print:hidden">
-            {/* Top Command & Secondary Operations */}
-            <div className="flex-1 flex flex-col min-h-0">
-              {/* Header (Aligned with h-14 top bar) */}
-              <div className="shrink-0 h-14 px-4 border-b border-slate-800/80 flex items-center justify-between bg-[#0F172A]">
-                <div>
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-white">
-                    Ticket Actions
-                  </h3>
-                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">Command & Operations</p>
+          <aside className="w-72 h-screen flex flex-col justify-between bg-[#0F172A] border-l border-slate-800/90 text-slate-300 select-none overflow-hidden print:hidden">
+            {/* Header (Aligned with top bar) */}
+            <div className="shrink-0 px-4 pt-4 pb-3 border-b border-slate-800/80 bg-[#0F172A]">
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-white">
+                TICKET ACTIONS
+              </h3>
+              <p className="text-xs text-slate-400 font-normal mt-0.5">Operations & Lifecycle Controls</p>
+            </div>
+
+            {/* Scrollable Action Groups */}
+            <div className="flex-1 p-3.5 space-y-4 overflow-y-auto min-h-0">
+              {/* Audit History & Quick Note / Event */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  AUDIT & EVENTS
                 </div>
-              </div>
 
-              <div className="p-3.5 space-y-4 flex-1 overflow-y-auto">
-                {/* Print Job Card (Secondary Option) */}
-                {isEditing && (
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPrintModal(true)}
-                      className="w-full flex items-center gap-2.5 rounded-xl py-2 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800 hover:border-slate-700 cursor-pointer"
-                    >
-                      <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                      <span className="flex-1 text-left">Print Job Card</span>
-                    </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEventsListModal(true)}
+                  className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Clock className="h-4 w-4 text-indigo-400 shrink-0" />
+                    <span>Show Events</span>
                   </div>
-                )}
+                  <span className="text-xs font-bold bg-[#4F46E5] text-white h-5 w-5 rounded-full flex items-center justify-center">
+                    {timeline.length}
+                  </span>
+                </button>
 
-                {/* Quick Add Master Records */}
-                <div className="space-y-1.5">
-                  <div className="px-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Quick Add Records
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => triggerTimelineModal("comment_added")}
+                    className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
+                  >
+                    <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Add Note</span>
+                  </button>
 
                   <button
                     type="button"
-                    onClick={() => setShowCustomerModal(true)}
-                    className="w-full flex items-center justify-between rounded-xl py-2 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
+                    onClick={() => triggerTimelineModal("status_change")}
+                    className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Add Event</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* WhatsApp Communications & Follow-ups */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  WHATSAPP UPDATES
+                </div>
+
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={handleOpenCustomerWhatsApp}
+                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
                   >
                     <div className="flex items-center gap-2.5">
-                      <UserPlus className="h-4 w-4 text-blue-400 shrink-0" />
-                      <span className="truncate">New Customer</span>
+                      <MessageSquare className="h-4 w-4 shrink-0 text-indigo-400" />
+                      <span>Message Customer</span>
                     </div>
-                    <kbd className="text-[10px] font-mono text-slate-400 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded font-bold">Alt+C</kbd>
+                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenServiceCenterWhatsApp}
+                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <RefreshCw className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span>Follow-up Service Center</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenCourierPickupWhatsApp}
+                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ArrowUp className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span>Ask Courier for Pickup</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenCourierDeliveryWhatsApp}
+                    className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ArrowDown className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span>Ask Courier for Delivery</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Milestone Progression */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  MILESTONE PROGRESSION
+                </div>
+
+                <div className="space-y-1">
+                  {[
+                    {
+                      index: 1,
+                      stage: "replacement_received_customer" as const,
+                      label: "Recv from Customer",
+                      hotkey: "F5",
+                    },
+                    {
+                      index: 2,
+                      stage: "replacement_sent_service_center" as const,
+                      label: "Sent to Service Center",
+                      hotkey: "F6",
+                    },
+                    {
+                      index: 3,
+                      stage: "replacement_received_service_center" as const,
+                      label: "Recv from Service Cent...",
+                      hotkey: "F8",
+                    },
+                    {
+                      index: 4,
+                      stage: "replacement_given_customer" as const,
+                      label: "Given to Customer",
+                      hotkey: "F9",
+                    },
+                  ].map((m) => {
+                    // Determine if this milestone is the current active milestone
+                    let activeIndex = 1;
+                    if (timeline && timeline.length > 0) {
+                      for (let i = timeline.length - 1; i >= 0; i--) {
+                        const s = timeline[i]?.stage;
+                        if (s === "replacement_given_customer") { activeIndex = 4; break; }
+                        if (s === "replacement_received_service_center") { activeIndex = 3; break; }
+                        if (s === "replacement_sent_service_center") { activeIndex = 2; break; }
+                        if (s === "replacement_received_customer" || s === "intake_created") { activeIndex = 1; break; }
+                      }
+                    } else {
+                      if (status === "delivered" || status === "completed") activeIndex = 4;
+                      else if (status === "sent_to_service_center") activeIndex = 2;
+                      else if (status === "received" || status === "in_progress") activeIndex = 1;
+                    }
+
+                    const isActive = activeIndex === m.index;
+
+                    return (
+                      <button
+                        key={m.stage}
+                        type="button"
+                        onClick={() => triggerTimelineModal(m.stage)}
+                        className={`w-full flex items-center justify-between rounded-xl py-2 px-2.5 text-xs transition-all cursor-pointer group ${
+                          isActive
+                            ? "font-semibold text-white bg-[#141e30] border border-slate-700/80 shadow-xs"
+                            : "font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white border border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={`h-5 w-5 rounded-full font-bold flex items-center justify-center text-[10px] shrink-0 ${
+                              isActive
+                                ? "bg-[#4F46E5] text-white"
+                                : "bg-slate-800 border border-slate-700 text-slate-300"
+                            }`}
+                          >
+                            {m.index}
+                          </span>
+                          <span className="truncate">{m.label}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-400 font-bold shrink-0">{m.hotkey}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Ticket Controls / Operations (Print & Delete) */}
+              {isEditing && (
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    TICKET CONTROLS
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowPrintModal(true)}
+                      className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Printer className="h-4 w-4 shrink-0 text-indigo-400" />
+                        <span>Print Job Card</span>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(true)}
+                      className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Trash2 className="h-4 w-4 shrink-0 text-slate-400" />
+                        <span>Delete Ticket</span>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Master Record Quick Adds */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  QUICK MASTER RECORDS
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomerModal(true)}
+                    className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
+                  >
+                    <UserPlus className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Customer</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShowCenterModal(true)}
-                    className="w-full flex items-center gap-2.5 rounded-xl py-2 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
                   >
-                    <Building2 className="h-4 w-4 text-amber-400 shrink-0" />
-                    <span className="flex-1 text-left truncate">Add Service Center</span>
+                    <Home className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Center</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShowCourierModal(true)}
-                    className="w-full flex items-center gap-2.5 rounded-xl py-2 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer"
                   >
-                    <Truck className="h-4 w-4 text-emerald-400 shrink-0" />
-                    <span className="flex-1 text-left truncate">Add Courier</span>
-                  </button>
-                </div>
-
-                {/* WhatsApp Communications */}
-                <div className="space-y-1.5">
-                  <div className="px-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    WhatsApp Updates
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenCustomerWhatsApp}
-                    className="group w-full flex items-center gap-2.5 rounded-xl py-2 px-3 text-xs font-semibold text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 transition-all border border-emerald-900/40 bg-emerald-950/20 hover:border-emerald-700/60 cursor-pointer"
-                  >
-                    <MessageCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                    <span className="flex-1 text-left truncate">Message Customer</span>
-                  </button>
-
-                  {type === "company_service_center" && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleOpenServiceCenterWhatsApp}
-                        className="group w-full flex items-center gap-2.5 rounded-xl py-2 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
-                      >
-                        <Building2 className="h-4 w-4 text-slate-400 shrink-0" />
-                        <span className="flex-1 text-left truncate">Follow up Service Center</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleOpenCourierPickupWhatsApp}
-                        className="group w-full flex items-center gap-2.5 rounded-xl py-2 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
-                      >
-                        <Truck className="h-4 w-4 text-amber-400 shrink-0" />
-                        <span className="flex-1 text-left truncate">Ask Courier for Pickup</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleOpenCourierDeliveryWhatsApp}
-                        className="group w-full flex items-center gap-2.5 rounded-xl py-2 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
-                      >
-                        <Package className="h-4 w-4 text-purple-400 shrink-0" />
-                        <span className="flex-1 text-left truncate">Ask Courier for Delivery</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {/* Audit & Timeline Events */}
-                <div className="space-y-1.5">
-                  <div className="px-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Audit & Timeline
-                  </div>
-
-                  {/* Show Events Popup Trigger */}
-                  <button
-                    type="button"
-                    onClick={() => setShowEventsListModal(true)}
-                    className="w-full flex items-center justify-between rounded-xl py-2 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <History className="h-4 w-4 text-blue-400 shrink-0" />
-                      <span className="truncate">Show Events</span>
-                    </div>
-                    <Badge variant="outline" className="text-[10px] font-mono font-bold bg-blue-950/80 text-blue-300 border-blue-800/80 px-1.5 py-0 rounded">
-                      {timeline.length}
-                    </Badge>
-                  </button>
-
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => triggerTimelineModal("comment_added")}
-                      className="flex items-center justify-center gap-1.5 rounded-xl py-2 px-2 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
-                    >
-                      <MessageSquare className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">+ Add Note</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => triggerTimelineModal("status_change")}
-                      className="flex items-center justify-center gap-1.5 rounded-xl py-2 px-2 text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all border border-slate-800/80 hover:border-slate-700 bg-slate-900/40 cursor-pointer"
-                    >
-                      <Plus className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">+ Add Event</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Milestone Hotkeys */}
-                <div className="space-y-1.5">
-                  <div className="px-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Milestone Hotkeys
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => triggerTimelineModal("replacement_sent_service_center")}
-                    className="w-full flex items-center justify-between rounded-xl py-2 px-3 text-xs font-semibold text-amber-300 hover:bg-amber-950/40 hover:text-amber-200 transition-all border border-amber-900/40 bg-amber-950/20 hover:border-amber-700/50 cursor-pointer"
-                  >
-                    <span className="truncate">Sent to SC</span>
-                    <kbd className="text-[10px] font-mono text-amber-400 bg-amber-950/80 border border-amber-800 px-1.5 py-0.5 rounded font-bold">F5</kbd>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => triggerTimelineModal("replacement_received_service_center")}
-                    className="w-full flex items-center justify-between rounded-xl py-2 px-3 text-xs font-semibold text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 transition-all border border-purple-900/40 bg-purple-950/20 hover:border-purple-700/50 cursor-pointer"
-                  >
-                    <span className="truncate">Recv from SC</span>
-                    <kbd className="text-[10px] font-mono text-purple-400 bg-purple-950/80 border border-purple-800 px-1.5 py-0.5 rounded font-bold">F6</kbd>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => triggerTimelineModal("replacement_given_customer")}
-                    className="w-full flex items-center justify-between rounded-xl py-2 px-3 text-xs font-semibold text-emerald-300 hover:bg-emerald-950/40 hover:text-emerald-200 transition-all border border-emerald-900/40 bg-emerald-950/20 hover:border-emerald-700/50 cursor-pointer"
-                  >
-                    <span className="truncate">Given to Cust</span>
-                    <kbd className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-1.5 py-0.5 rounded font-bold">F8</kbd>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => triggerTimelineModal("replacement_received_customer")}
-                    className="w-full flex items-center justify-between rounded-xl py-2 px-3 text-xs font-semibold text-blue-300 hover:bg-blue-950/40 hover:text-blue-200 transition-all border border-blue-900/40 bg-blue-950/20 hover:border-blue-700/50 cursor-pointer"
-                  >
-                    <span className="truncate">Recv from Cust</span>
-                    <kbd className="text-[10px] font-mono text-blue-400 bg-blue-950/80 border border-blue-800 px-1.5 py-0.5 rounded font-bold">F9</kbd>
+                    <Truck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Courier</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Bottom Dock: Financial Summary + Primary Save & Accept Button */}
-            <div className="shrink-0 p-4 border-t border-slate-800/80 bg-slate-900/90 space-y-3.5">
+            {/* Pinned Sticky Bottom Action Bar: Financial Summary + Primary Save CTA */}
+            <div className="shrink-0 p-3.5 border-t border-slate-800/80 bg-slate-900/95 space-y-3">
               {/* Financial Breakdown */}
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between items-center text-[11px] text-slate-400">
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between items-center text-[11px] text-slate-300">
                   <span>Spare Parts</span>
-                  <span className="font-mono text-slate-300">₹{partsTotal.toLocaleString("en-IN")}</span>
+                  <span className="font-mono text-slate-200 font-semibold">₹{partsTotal.toLocaleString("en-IN")}</span>
                 </div>
-                <div className="flex justify-between items-center text-[11px] text-slate-400">
+                <div className="flex justify-between items-center text-[11px] text-slate-300">
                   <span>Service Charge</span>
-                  <span className="font-mono text-slate-300">₹{serviceChargesNum.toLocaleString("en-IN")}</span>
+                  <span className="font-mono text-slate-200 font-semibold">₹{serviceChargesNum.toLocaleString("en-IN")}</span>
                 </div>
                 {type === "company_service_center" && courierChargesNum > 0 && (
-                  <div className="flex justify-between items-center text-[11px] text-slate-400">
+                  <div className="flex justify-between items-center text-[11px] text-slate-300">
                     <span>Courier Charge</span>
-                    <span className="font-mono text-slate-300">₹{courierChargesNum.toLocaleString("en-IN")}</span>
+                    <span className="font-mono text-slate-200 font-semibold">₹{courierChargesNum.toLocaleString("en-IN")}</span>
                   </div>
                 )}
                 {discountNum > 0 && (
                   <div className="flex justify-between items-center text-[11px] text-rose-400 font-medium">
                     <span>Discount</span>
-                    <span className="font-mono text-rose-400">-₹{discountNum.toLocaleString("en-IN")}</span>
+                    <span className="font-mono text-rose-400 font-semibold">-₹{discountNum.toLocaleString("en-IN")}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-2 border-t border-slate-800 font-bold text-white">
@@ -1547,7 +1674,7 @@ export default function AdminServiceCallForm() {
                 </div>
               </div>
 
-              {/* Primary Save & Accept Button placed at the very bottom after grand total */}
+              {/* Primary Save & Accept Button pinned in sticky footer */}
               <Button
                 type="submit"
                 form="service-call-form"
@@ -1621,7 +1748,13 @@ export default function AdminServiceCallForm() {
         }
         open={showEditCustomerModal}
         onOpenChange={setShowEditCustomerModal}
-        onUpdated={() => {
+        onUpdated={(updated) => {
+          if (updated) {
+            if (updated.name) setCustomerName(toTitleCase(updated.name));
+            if (updated.phone) setCustomerPhone(updated.phone);
+            if (updated.email !== undefined) setCustomerEmail((updated.email || "").toLowerCase());
+            if (updated.address !== undefined) setCustomerAddress(toTitleCase(updated.address || ""));
+          }
           loadMasterData();
         }}
       />
@@ -1693,6 +1826,39 @@ export default function AdminServiceCallForm() {
         open={showPrintModal}
         onOpenChange={setShowPrintModal}
       />
+
+      {/* Delete Ticket Confirmation Dialog */}
+      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move Ticket {ticketNo} to Trash?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This ticket will be moved to the <strong>Trash / Archived</strong> tab and hidden from active lists. You can restore it back anytime from the Service Calls dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTicket}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold"
+            >
+              Move to Trash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Top Header Breadcrumb Ticket Number Portal */}
+      {breadcrumbTicketEl && ticketNo &&
+        createPortal(
+          <div className="flex items-center gap-2 ml-2">
+            <span className="text-slate-600">/</span>
+            <span className="font-bold text-white tracking-wide font-mono">
+              {ticketNo}
+            </span>
+          </div>,
+          breadcrumbTicketEl
+        )}
     </div>
   );
 }

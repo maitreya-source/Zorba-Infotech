@@ -19,7 +19,7 @@ interface EditCustomerModalProps {
   customer: Customer | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdated?: () => void;
+  onUpdated?: (updatedCustomer?: Partial<Customer>) => void;
 }
 
 export default function EditCustomerModal({
@@ -87,17 +87,19 @@ export default function EditCustomerModal({
 
     setSaving(true);
     try {
-      await updateCustomer(customer.id, {
+      const updatedData: Partial<Customer> = {
         name: formattedName,
         phone: formattedPhone,
         additionalPhones: cleanExtraPhones.length > 0 ? cleanExtraPhones : undefined,
         email: email.trim() || undefined,
         address: address.trim() || undefined,
         companyName: companyName.trim() ? toTitleCase(companyName) : undefined,
-      });
+      };
+
+      await updateCustomer(customer.id, updatedData);
 
       toast.success("Customer profile updated");
-      if (onUpdated) onUpdated();
+      if (onUpdated) onUpdated(updatedData);
       onOpenChange(false);
     } catch (err: any) {
       console.error("Error updating customer:", err);
@@ -207,7 +209,8 @@ export default function EditCustomerModal({
                     onClick={handleAddPhone}
                     className="h-6 text-[11px] gap-1 text-primary hover:bg-primary/10"
                   >
-                    <Plus className="h-3 w-3" /> + Add Phone
+                    <Plus className="h-3 w-3" />
+                    <span>Add Phone</span>
                   </Button>
                 </div>
 

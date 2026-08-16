@@ -70,7 +70,7 @@ export default function TimelineCard({
             title="Add Internal Note / Comment"
           >
             <MessageSquare className="h-3 w-3 text-slate-500" />
-            <span>+ Add Note</span>
+            <span>Add Note</span>
           </Button>
 
           <Button
@@ -158,7 +158,7 @@ export default function TimelineCard({
               })
             ) : (
               <div className="text-xs text-slate-400 py-3 italic">
-                No timeline events recorded yet. Click "+ Add Note" or "+ Add Event" to log actions.
+                No timeline events recorded yet. Click "Add Note" or "Add Event" to log actions.
               </div>
             )}
           </div>

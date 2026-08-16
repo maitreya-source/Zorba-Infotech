@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Send,
   XCircle,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getServiceCalls, deleteServiceCall, updateServiceCall, getFinancialYears } from "@/lib/firestore";
+import { getServiceCalls, deleteServiceCall, restoreServiceCall, updateServiceCall, getFinancialYears } from "@/lib/firestore";
 import type { ServiceCall, ServiceCallStatus, ServiceCallType, FinancialYearDoc } from "@/lib/types";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
@@ -163,7 +164,7 @@ export default function AdminServiceCalls() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [fyFilter, setFyFilter] = useState<string>("all");
   const [fys, setFys] = useState<FinancialYearDoc[]>([]);
-  const [activeTab, setActiveTab] = useState<"active" | "inactive">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "inactive" | "trash">("active");
   
   // Interactive Header Sort: default sorted by status ascending (in_progress -> received)
   const [sortField, setSortField] = useState<SortField>("status");
@@ -210,11 +211,21 @@ export default function AdminServiceCalls() {
     if (!deleteId) return;
     try {
       await deleteServiceCall(deleteId);
-      toast.success("Service Call deleted");
+      toast.success("Ticket moved to Trash. It can be restored anytime.");
       setDeleteId(null);
       loadData();
     } catch {
-      toast.error("Failed to delete service call");
+      toast.error("Failed to move ticket to Trash");
+    }
+  };
+
+  const handleRestore = async (callId: string, ticketNumber?: string) => {
+    try {
+      await restoreServiceCall(callId);
+      toast.success(`Ticket ${ticketNumber || callId} restored to active list`);
+      loadData();
+    } catch {
+      toast.error("Failed to restore service call");
     }
   };
 
@@ -231,7 +242,16 @@ export default function AdminServiceCalls() {
   };
 
   // Status Badge with dot indicator matching Figma design
-  const getStatusDotBadge = (status: ServiceCallStatus) => {
+  const getStatusDotBadge = (status: ServiceCallStatus, isDeleted?: boolean) => {
+    if (isDeleted) {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/40">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+          Trash / Archived
+        </span>
+      );
+    }
+
     switch (status) {
       case "in_progress":
         return (
@@ -287,26 +307,28 @@ export default function AdminServiceCalls() {
     }
   };
 
-  // Categorize active vs inactive
+  // Categorize active vs inactive vs trash
   const isCallActive = (status: ServiceCallStatus) =>
     ["received", "in_progress", "sent_to_service_center", "waiting_for_parts"].includes(status);
 
-  const activeCalls = calls.filter((c) => isCallActive(c.status));
-  const inactiveCalls = calls.filter((c) => !isCallActive(c.status));
+  const activeCalls = calls.filter((c) => !c.isDeleted && isCallActive(c.status));
+  const inactiveCalls = calls.filter((c) => !c.isDeleted && !isCallActive(c.status));
+  const trashCalls = calls.filter((c) => !!c.isDeleted);
 
   // Date calculation strings
   const todayStr = getLocalDateString(new Date());
 
-  // Statistics calculation for hero KPI cards
-  const totalCalls = calls.length;
-  const inProgressCount = calls.filter((c) => c.status === "in_progress").length;
-  const serviceCenterCount = calls.filter((c) => c.type === "company_service_center" || c.status === "sent_to_service_center").length;
-  const onsiteCount = calls.filter((c) => c.type === "onsite_visit").length;
-  const todayRevenue = calls
+  // Statistics calculation for hero KPI cards (excluding trash)
+  const nonDeletedCalls = calls.filter((c) => !c.isDeleted);
+  const totalCalls = nonDeletedCalls.length;
+  const inProgressCount = nonDeletedCalls.filter((c) => c.status === "in_progress").length;
+  const serviceCenterCount = nonDeletedCalls.filter((c) => c.type === "company_service_center" || c.status === "sent_to_service_center").length;
+  const onsiteCount = nonDeletedCalls.filter((c) => c.type === "onsite_visit").length;
+  const todayRevenue = nonDeletedCalls
     .filter((c) => getCallDateString(c) === todayStr)
     .reduce((acc, c) => acc + (c.grandTotal || 0), 0);
 
-  const currentList = activeTab === "active" ? activeCalls : inactiveCalls;
+  const currentList = activeTab === "active" ? activeCalls : activeTab === "inactive" ? inactiveCalls : trashCalls;
 
   // Filter list
   const filtered = currentList.filter((c) => {
@@ -498,27 +520,56 @@ export default function AdminServiceCalls() {
             onClick={() => {
               setActiveTab("active");
             }}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
               activeTab === "active"
                 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             <Activity className="h-3.5 w-3.5 text-blue-600" />
-            Active Service Calls
+            <span>Active Calls</span>
+            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+              activeTab === "active" ? "bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+            }`}>
+              {activeCalls.length}
+            </span>
           </button>
 
           <button
             onClick={() => {
               setActiveTab("inactive");
             }}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
               activeTab === "inactive"
                 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            Inactive / Completed Calls
+            <span>Completed / Delivered</span>
+            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+              activeTab === "inactive" ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+            }`}>
+              {inactiveCalls.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab("trash");
+            }}
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "trash"
+                ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Trash / Archived</span>
+            {trashCalls.length > 0 && (
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400">
+                {trashCalls.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -606,7 +657,7 @@ export default function AdminServiceCalls() {
         <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-20 text-center shadow-xs px-4">
           <Wrench className="h-12 w-12 text-slate-300 dark:text-slate-700 mb-3" />
           <p className="font-bold text-base font-display text-slate-900 dark:text-white">
-            No {activeTab === "active" ? "Active" : "Inactive"} Service Calls Found
+            No {activeTab === "active" ? "Active" : activeTab === "inactive" ? "Inactive" : "Trash / Archived"} Service Calls Found
           </p>
           <p className="text-xs text-slate-500 mt-1 max-w-xs">
             {calls.length === 0
@@ -648,9 +699,18 @@ export default function AdminServiceCalls() {
                       key={item.id}
                       onClick={(e) => {
                         const target = e.target as HTMLElement;
-                        if (!target.closest("button") && !target.closest("a")) {
-                          navigate(`/admin/service-calls/${item.id}/edit`);
+                        if (
+                          target.closest("button") ||
+                          target.closest("a") ||
+                          target.closest("[role='menuitem']") ||
+                          target.closest("[role='option']") ||
+                          target.closest("[data-radix-popper-content-wrapper]") ||
+                          target.closest(".action-cell") ||
+                          target.closest(".status-cell")
+                        ) {
+                          return;
                         }
+                        navigate(`/admin/service-calls/${item.id}/edit`);
                       }}
                       className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
                     >
@@ -683,13 +743,14 @@ export default function AdminServiceCalls() {
                       </td>
 
                       {/* Status */}
-                      <td className="px-4 py-4 align-middle">
+                      <td className="status-cell px-4 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={item.status}
                           onValueChange={(val: ServiceCallStatus) => handleStatusChange(item.id, val)}
+                          disabled={!!item.isDeleted}
                         >
                           <SelectTrigger className="h-auto border-0 bg-transparent p-0 shadow-none focus:ring-0 w-fit">
-                            <SelectValue>{getStatusDotBadge(item.status)}</SelectValue>
+                            <SelectValue>{getStatusDotBadge(item.status, item.isDeleted)}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {STATUS_OPTIONS.map((opt) => {
@@ -716,50 +777,79 @@ export default function AdminServiceCalls() {
                         </div>
                       </td>
 
-                      {/* Actions (Pencil Edit & Horizontal Dots Dropdown) */}
-                      <td className="pl-4 pr-6 py-4 align-middle text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Link to={`/admin/service-calls/${item.id}/edit`}>
-                            <button
+                      {/* Actions (Pencil Edit & Horizontal Dots Dropdown / Restore in Trash) */}
+                      <td className="action-cell pl-4 pr-6 py-4 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          {activeTab === "trash" ? (
+                            <Button
                               type="button"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                              title="Edit Service Call"
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRestore(item.id, item.ticketNo);
+                              }}
+                              className="h-8 text-xs font-bold gap-1.5 rounded-lg border-emerald-300 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer shadow-2xs"
                             >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                          </Link>
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              <span>Restore Ticket</span>
+                            </Button>
+                          ) : (
+                            <>
+                              <Link to={`/admin/service-calls/${item.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                  title="Edit Service Call"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                              </Link>
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                type="button"
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                title="More Actions"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44 text-xs font-medium">
-                              <DropdownMenuItem
-                                onClick={() => setPrintCall(item)}
-                                className="gap-2 cursor-pointer"
-                              >
-                                <Printer className="h-3.5 w-3.5 text-slate-500" /> Print Job Card
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => navigate(`/admin/service-calls/${item.id}/edit`)}
-                                className="gap-2 cursor-pointer"
-                              >
-                                <Pencil className="h-3.5 w-3.5 text-slate-500" /> Edit Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setDeleteId(item.id)}
-                                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> Delete Ticket
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    title="More Actions"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44 text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setPrintCall(item);
+                                    }}
+                                    className="gap-2 cursor-pointer"
+                                  >
+                                    <Printer className="h-3.5 w-3.5 text-slate-500" /> Print Job Card
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      navigate(`/admin/service-calls/${item.id}/edit`);
+                                    }}
+                                    className="gap-2 cursor-pointer"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5 text-slate-500" /> Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setDeleteId(item.id);
+                                    }}
+                                    className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" /> Move to Trash
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -777,22 +867,22 @@ export default function AdminServiceCalls() {
       <ShortcutsHelpModal open={showShortcutsModal} onOpenChange={setShowShortcutsModal} />
       <JobCardPrintModal serviceCall={printCall} open={!!printCall} onOpenChange={(open) => !open && setPrintCall(null)} />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete / Move to Trash Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Service Call Ticket?</AlertDialogTitle>
+            <AlertDialogTitle>Move Service Call to Trash?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove this service call ticket permanently. This action cannot be undone.
+              This ticket will be moved to the <strong>Trash / Archived</strong> tab and hidden from active lists. You can restore it back anytime.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold"
             >
-              Delete Ticket
+              Move to Trash
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

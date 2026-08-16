@@ -49,32 +49,32 @@ const STAGE_OPTIONS: {
   iconColor: string;
 }[] = [
   {
+    stage: "replacement_received_customer",
+    title: "Received from Customer (F5)",
+    defaultStatus: "received",
+    icon: Inbox,
+    iconColor: "text-blue-500",
+  },
+  {
     stage: "replacement_sent_service_center",
-    title: "Replacement Sent to Service Center (F5)",
+    title: "Replacement Sent to Service Center (F6)",
     defaultStatus: "sent_to_service_center",
     icon: Truck,
     iconColor: "text-amber-500",
   },
   {
     stage: "replacement_received_service_center",
-    title: "Replacement Received from Service Center (F6)",
+    title: "Replacement Received from Service Center (F8)",
     defaultStatus: "received",
     icon: Package,
     iconColor: "text-purple-500",
   },
   {
     stage: "replacement_given_customer",
-    title: "Replacement Product Given to Customer (F8)",
+    title: "Replacement Product Given to Customer (F9)",
     defaultStatus: "delivered",
     icon: Send,
     iconColor: "text-emerald-500",
-  },
-  {
-    stage: "replacement_received_customer",
-    title: "Replacement Product Received from Customer (F9)",
-    defaultStatus: "in_progress",
-    icon: Inbox,
-    iconColor: "text-blue-500",
   },
   {
     stage: "status_change",

@@ -9,16 +9,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        hero: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow font-semibold text-base",
-        cta: "bg-zorba-green text-zorba-green-foreground hover:bg-zorba-green/90 font-semibold",
-        dealer: "bg-zorba-orange text-zorba-orange-foreground hover:bg-zorba-orange/90 font-semibold",
-        whatsapp: "bg-[hsl(142,70%,45%)] text-primary-foreground hover:bg-[hsl(142,70%,40%)] font-semibold",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs cursor-pointer",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xs cursor-pointer",
+        outline: "border border-input bg-background text-slate-800 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-slate-800 dark:hover:text-white transition-colors cursor-pointer",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-slate-200/90 dark:hover:bg-slate-700/90 transition-colors cursor-pointer",
+        ghost: "text-slate-700 dark:text-slate-300 hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-slate-800 dark:hover:text-white transition-colors cursor-pointer",
+        link: "text-primary underline-offset-4 hover:underline cursor-pointer",
+        hero: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow font-semibold text-base cursor-pointer",
+        cta: "bg-zorba-green text-zorba-green-foreground hover:bg-zorba-green/90 font-semibold cursor-pointer",
+        dealer: "bg-zorba-orange text-zorba-orange-foreground hover:bg-zorba-orange/90 font-semibold cursor-pointer",
+        whatsapp: "bg-[hsl(142,70%,45%)] text-primary-foreground hover:bg-[hsl(142,70%,40%)] font-semibold cursor-pointer",
       },
       size: {
         default: "h-10 px-4 py-2",

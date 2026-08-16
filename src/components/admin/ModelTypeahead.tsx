@@ -52,7 +52,7 @@ export default function ModelTypeahead({
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
-        className="h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+        className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 placeholder:text-slate-500 dark:placeholder:text-slate-400 font-medium"
       />
 
       {isOpen && filtered.length > 0 && (

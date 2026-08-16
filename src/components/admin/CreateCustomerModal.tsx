@@ -205,7 +205,8 @@ export default function CreateCustomerModal({
                     onClick={handleAddPhone}
                     className="h-6 text-[11px] gap-1 text-primary hover:bg-primary/10"
                   >
-                    <Plus className="h-3 w-3" /> + Add Phone
+                    <Plus className="h-3 w-3" />
+                    <span>Add Phone</span>
                   </Button>
                 </div>
 

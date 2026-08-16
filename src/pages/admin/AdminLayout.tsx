@@ -99,20 +99,20 @@ export default function AdminLayout() {
               to={to}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
-                `group flex items-center gap-3.5 rounded-xl py-2.5 transition-all text-xs font-semibold ${
-                  collapsed ? "justify-center px-0" : "px-3.5"
+                `group flex items-center gap-3 rounded-xl py-2.5 transition-all text-xs ${
+                  collapsed ? "justify-center px-0" : "px-3"
                 } ${
                   isActive
-                    ? "bg-[#2563EB] text-white shadow-md shadow-blue-600/30 font-bold"
-                    : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                    ? "bg-slate-800/90 text-white font-bold border border-slate-700/80 shadow-xs"
+                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 font-medium"
                 }`
               }
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              <Icon className={`h-4 w-4 shrink-0 transition-colors group-hover:text-white`} />
               {!collapsed && (
                 <>
                   <span className="flex-1 truncate">{label}</span>
-                  <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-[.bg-\[\#2563EB\]]:opacity-100 transition-opacity" />
+                  <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60 transition-opacity text-slate-500" />
                 </>
               )}
             </NavLink>
@@ -185,9 +185,10 @@ export default function AdminLayout() {
                   Service Calls
                 </Link>
                 <span className="text-slate-600">/</span>
-                <span className="font-bold text-white tracking-wide">
+                <span className="text-slate-300">
                   {location.pathname.includes("/new") ? "New Service Call" : "Edit Ticket"}
                 </span>
+                <span id="admin-breadcrumb-ticket" className="inline-flex items-center" />
               </>
             ) : (
               <span className="font-bold text-white tracking-wide">{activeNav}</span>
