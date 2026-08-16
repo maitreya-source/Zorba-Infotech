@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
+import { SEO } from "@/components/SEO";
 import {
   ShieldAlert,
   LogOut,
@@ -102,6 +103,11 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
+      <SEO
+        title="Zorba Infotech – Staff Authentication & Operations ERP"
+        description="Internal ERP platform for Zorba Infotech: service call tracking, technician workflows, customer notifications, and IT distribution management."
+        path="/admin"
+      />
       {/* Top Navigation Bar */}
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">

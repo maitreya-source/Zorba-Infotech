@@ -29,15 +29,15 @@ const HeroSection = () => {
             Neemuch's #1 Computer Hardware Destination
           </span>
           <h1 className="text-4xl font-bold font-display leading-tight md:text-5xl lg:text-6xl tracking-tight">
-            Your Complete
+            Zorba Infotech
             <span className="block text-gradient-primary bg-clip-text text-transparent" style={{
               backgroundImage: 'linear-gradient(135deg, hsl(199 89% 48%), hsl(152 69% 50%))'
             }}>
-              IT Partner
+              Computer Hardware, IT Distribution &amp; Service Center
             </span>
           </h1>
-          <p className="mt-5 text-lg text-primary-foreground/70 max-w-xl mx-auto leading-relaxed">
-            Wholesale distribution, custom PC builds, repair services & complete IT solutions for consumers and businesses.
+          <p className="mt-5 text-base sm:text-lg text-primary-foreground/80 max-w-2xl mx-auto leading-relaxed">
+            Zorba Infotech is Neemuch's premier computer hardware distributor, custom PC assembler, and authorized multi-brand service center. Our platform provides wholesale IT component distribution, hardware diagnostics, repair job card management, warranty support, and automated customer service updates for businesses and consumers.
           </p>
           <div className="mt-8 max-w-lg mx-auto">
             <SearchBar />
