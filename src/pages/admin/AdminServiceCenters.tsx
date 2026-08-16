@@ -96,14 +96,14 @@ export default function AdminServiceCenters() {
       </div>
 
       {/* Filter / Search bar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-sm w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search by center name, city, address, phone…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs rounded-xl"
+            className="pl-9 h-9 text-xs rounded-xl w-full"
           />
         </div>
 

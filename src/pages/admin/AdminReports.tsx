@@ -212,8 +212,8 @@ export default function AdminReports() {
           <div className="space-y-4">
             {dailyList.map((day) => (
               <div key={day.date} className="rounded-xl border bg-muted/20 p-3 space-y-2">
-                <div className="flex items-center justify-between border-b pb-1.5">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b pb-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-xs text-foreground font-mono">
                       📅 {new Date(day.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                     </span>
@@ -221,7 +221,7 @@ export default function AdminReports() {
                       {day.count} Tickets
                     </Badge>
                   </div>
-                  <div className="font-extrabold text-sm text-primary font-display">
+                  <div className="font-extrabold text-xs sm:text-sm text-primary font-display">
                     Daily Revenue: ₹{day.revenue.toLocaleString("en-IN")}
                   </div>
                 </div>
@@ -229,20 +229,20 @@ export default function AdminReports() {
                 {/* Day Service Calls List */}
                 <div className="divide-y text-xs">
                   {day.calls.map((call) => (
-                    <div key={call.id} className="py-1.5 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
+                    <div key={call.id} className="py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         <span className="font-mono font-bold text-primary text-[11px]">{call.ticketNo}</span>
                         <span className="font-semibold text-foreground">{call.customerName}</span>
-                        <span className="text-muted-foreground font-mono">({call.deviceCategory})</span>
+                        <span className="text-muted-foreground font-mono text-[11px]">({call.deviceCategory})</span>
                         {call.technicianName && (
-                          <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700">
+                          <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
                             👤 {call.technicianName}
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-muted-foreground truncate max-w-xs">{call.issueDescription}</span>
-                        <span className="font-bold text-foreground">₹{call.grandTotal}</span>
+                      <div className="flex items-center justify-between sm:justify-end gap-3 text-[11px] sm:text-xs">
+                        <span className="text-muted-foreground truncate max-w-[200px] sm:max-w-xs">{call.issueDescription}</span>
+                        <span className="font-bold text-foreground shrink-0 font-mono">₹{call.grandTotal || 0}</span>
                       </div>
                     </div>
                   ))}

@@ -514,79 +514,81 @@ export default function AdminServiceCalls() {
 
       {/* 3. Filter Bar: Segmented Tabs + Search + Dropdowns */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pt-0.5">
-        {/* Left Segmented Tab Pills */}
-        <div className="inline-flex items-center gap-1 p-1 bg-slate-200/60 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-800 shrink-0 w-fit">
-          <button
-            onClick={() => {
-              setActiveTab("active");
-            }}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "active"
-                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Activity className="h-3.5 w-3.5 text-blue-600" />
-            <span>Active Calls</span>
-            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
-              activeTab === "active" ? "bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-            }`}>
-              {activeCalls.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveTab("inactive");
-            }}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === "inactive"
-                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <span>Completed / Delivered</span>
-            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
-              activeTab === "inactive" ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-            }`}>
-              {inactiveCalls.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveTab("trash");
-            }}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === "trash"
-                ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Trash / Archived</span>
-            {trashCalls.length > 0 && (
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400">
-                {trashCalls.length}
+        {/* Left Segmented Tab Pills (Horizontally scrollable on mobile) */}
+        <div className="overflow-x-auto no-scrollbar max-w-full pb-0.5">
+          <div className="inline-flex items-center gap-1 p-1 bg-slate-200/60 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-800 shrink-0 w-fit">
+            <button
+              onClick={() => {
+                setActiveTab("active");
+              }}
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "active"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Activity className="h-3.5 w-3.5 text-blue-600" />
+              <span>Active Calls</span>
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                activeTab === "active" ? "bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+              }`}>
+                {activeCalls.length}
               </span>
-            )}
-          </button>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("inactive");
+              }}
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "inactive"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <span>Completed / Delivered</span>
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                activeTab === "inactive" ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+              }`}>
+                {inactiveCalls.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("trash");
+              }}
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "trash"
+                  ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Trash / Archived</span>
+              {trashCalls.length > 0 && (
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400">
+                  {trashCalls.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Right Filters */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="relative min-w-[220px] flex-1 sm:w-64">
+        {/* Right Filters (Responsive Grid on Mobile) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex items-center gap-2.5 w-full xl:w-auto">
+          <div className="relative min-w-[180px] sm:col-span-2 md:flex-1 md:w-64">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
               placeholder="Search ticket, customer, device..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs"
+              className="pl-9 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs w-full"
             />
           </div>
 
           <Select value={fyFilter} onValueChange={setFyFilter}>
-            <SelectTrigger className="w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
+            <SelectTrigger className="w-full md:w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
               <SelectValue placeholder="All FYs" />
             </SelectTrigger>
             <SelectContent className="max-h-56">
@@ -600,7 +602,7 @@ export default function AdminServiceCalls() {
           </Select>
 
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
+            <SelectTrigger className="w-full md:w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -612,7 +614,7 @@ export default function AdminServiceCalls() {
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
+            <SelectTrigger className="w-full md:w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold sm:col-span-2 md:col-span-1">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>

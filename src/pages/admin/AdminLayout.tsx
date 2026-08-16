@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Menu,
+  X,
   ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,6 +45,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -58,14 +60,22 @@ export default function AdminLayout() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
-      {/* Fixed Non-scrollable Sidebar (Dark Navy #0F172A) */}
+      {/* Mobile Backdrop Overlay */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 md:hidden transition-opacity"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar: Fixed Off-Canvas Drawer on Mobile, Static Rail on Desktop */}
       <aside
-        className={`h-screen flex shrink-0 flex-col bg-[#0F172A] text-slate-300 z-20 transition-all duration-300 print:hidden overflow-hidden select-none ${
-          collapsed ? "w-18" : "w-64"
-        }`}
+        className={`fixed md:static inset-y-0 left-0 z-50 h-screen flex shrink-0 flex-col bg-[#0F172A] text-slate-300 transition-all duration-300 print:hidden overflow-hidden select-none ${
+          mobileSidebarOpen ? "translate-x-0 w-64 shadow-2xl" : "-translate-x-full md:translate-x-0"
+        } ${collapsed ? "md:w-18" : "md:w-64"}`}
       >
         {/* Brand Header (Fixed - exact h-14 matching top bar and right rail) */}
-        <div className="shrink-0 h-14 px-5 border-b border-slate-800/80 flex items-center justify-between">
+        <div className="shrink-0 h-14 px-4 md:px-5 border-b border-slate-800/80 flex items-center justify-between">
           {!collapsed ? (
             <div>
               <h1 className="text-lg font-extrabold font-display tracking-tight text-white leading-tight">
@@ -76,13 +86,26 @@ export default function AdminLayout() {
           ) : (
             <div className="mx-auto text-white font-extrabold text-lg">Z</div>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-slate-400 hover:text-white p-1 rounded-md transition-colors hidden md:block"
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
+
+          <div className="flex items-center gap-1">
+            {/* Desktop Collapse Toggle */}
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="text-slate-400 hover:text-white p-1 rounded-md transition-colors hidden md:block cursor-pointer"
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+
+            {/* Mobile Close Toggle */}
+            <button
+              onClick={() => setMobileSidebarOpen(false)}
+              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 md:hidden transition-colors cursor-pointer"
+              title="Close Menu"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Navigation Modules (Scrolls internally only if viewport is tiny) */}
@@ -97,6 +120,7 @@ export default function AdminLayout() {
             <NavLink
               key={to}
               to={to}
+              onClick={() => setMobileSidebarOpen(false)}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 `group flex items-center gap-3 rounded-xl py-2.5 transition-all text-xs ${
@@ -126,6 +150,7 @@ export default function AdminLayout() {
             onClick={() => {
               setSelectorDismissed(false);
               setShowSelectorModal(true);
+              setMobileSidebarOpen(false);
             }}
             className={`group flex items-center gap-3 cursor-pointer rounded-2xl p-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/80 transition-all duration-200 shadow-sm ${
               collapsed ? "justify-center p-1.5" : ""
@@ -155,7 +180,7 @@ export default function AdminLayout() {
           {/* Sign Out from Gmail Button */}
           <button
             onClick={handleSignOut}
-            className={`flex items-center gap-2 text-xs text-slate-400 hover:text-red-400 transition-colors w-full ${
+            className={`flex items-center gap-2 text-xs text-slate-400 hover:text-red-400 transition-colors w-full cursor-pointer ${
               collapsed ? "justify-center" : "px-2 py-1"
             }`}
             title={`Sign out from Gmail (${user?.email || "Google Account"})`}
@@ -169,67 +194,70 @@ export default function AdminLayout() {
       {/* Main Container Area with Fixed Top Navbar & Dedicated Scrollable Ticket Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Continuous Dark Navy Top Header Bar (h-14) */}
-        <header className="shrink-0 h-14 flex items-center justify-between px-4 md:px-6 bg-[#0F172A] border-b border-slate-800/80 text-slate-300 z-10 print:hidden gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium shrink-0">
+        <header className="shrink-0 h-14 flex items-center justify-between px-3 md:px-6 bg-[#0F172A] border-b border-slate-800/80 text-slate-300 z-10 print:hidden gap-2 md:gap-3">
+          <div className="flex items-center gap-1.5 md:gap-2 text-xs text-slate-400 font-medium shrink-0 min-w-0">
             <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 md:hidden mr-1"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 md:hidden mr-0.5 cursor-pointer"
+              aria-label="Open Menu"
             >
               <Menu className="h-4 w-4" />
             </button>
-            <span className="text-slate-400">Admin</span>
-            <span className="text-slate-600">/</span>
+            <span className="text-slate-400 hidden sm:inline">Admin</span>
+            <span className="text-slate-600 hidden sm:inline">/</span>
             {isServiceCallForm ? (
               <>
-                <Link to="/admin/service-calls" className="text-slate-300 hover:text-white transition-colors">
+                <Link to="/admin/service-calls" className="text-slate-300 hover:text-white transition-colors truncate hidden sm:inline">
                   Service Calls
                 </Link>
-                <span className="text-slate-600">/</span>
-                <span className="text-slate-300">
+                <span className="text-slate-600 hidden sm:inline">/</span>
+                <span className="text-slate-300 truncate font-semibold">
                   {location.pathname.includes("/new") ? "New Service Call" : "Edit Ticket"}
                 </span>
-                <span id="admin-breadcrumb-ticket" className="inline-flex items-center" />
+                <span id="admin-breadcrumb-ticket" className="inline-flex items-center ml-1" />
               </>
             ) : (
-              <span className="font-bold text-white tracking-wide">{activeNav}</span>
+              <span className="font-bold text-white tracking-wide truncate">{activeNav}</span>
             )}
           </div>
 
           {/* Center: Dynamic Center Area for Service Call Type Chips */}
-          <div id="admin-header-center" className="flex items-center justify-center flex-1 min-w-0" />
+          <div id="admin-header-center" className="flex items-center justify-center flex-1 min-w-0 overflow-x-auto no-scrollbar" />
 
           {/* Right: Back to List on Service Call Form OR Back to Main Website on other pages */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
             {isServiceCallForm ? (
               <Link
                 to="/admin/service-calls"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-3.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all"
               >
-                <ArrowLeft className="h-3.5 w-3.5 text-slate-400 group-hover:text-white" />
-                <span>Back to List</span>
+                <ArrowLeft className="h-3.5 w-3.5 text-slate-400" />
+                <span className="hidden sm:inline">Back to List</span>
+                <span className="sm:hidden">List</span>
               </Link>
             ) : (
               <a
                 href="/"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-3.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all"
               >
-                <ArrowLeft className="h-3.5 w-3.5 text-slate-400 group-hover:text-white" />
-                <span>Back to Main Website</span>
+                <ArrowLeft className="h-3.5 w-3.5 text-slate-400" />
+                <span className="hidden sm:inline">Back to Main Website</span>
+                <span className="sm:hidden">Website</span>
               </a>
             )}
           </div>
         </header>
 
         {/* Dedicated Independent Scrollable Ticket / Main Content Container */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 p-4 md:p-6 focus:outline-none">
+        <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 p-2 sm:p-4 md:p-6 focus:outline-none">
           <Outlet />
         </main>
       </div>
 
-      {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-screen) */}
-      <div id="admin-right-rail" className="h-screen shrink-0 empty:hidden print:hidden z-20" />
+      {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-screen on Desktop) */}
+      <div id="admin-right-rail" className="h-screen shrink-0 empty:hidden print:hidden z-20 hidden xl:block" />
 
       {/* Netflix Profile Selector Modal */}
       <StaffProfileSelectorModal

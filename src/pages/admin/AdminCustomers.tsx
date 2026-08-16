@@ -88,19 +88,19 @@ export default function AdminCustomers() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
             <Button
               onClick={() => setShowImportModal(true)}
               variant="outline"
               size="sm"
-              className="h-9 text-xs rounded-xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold gap-1.5"
+              className="h-9 text-xs rounded-xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold gap-1.5 cursor-pointer"
             >
               <FileSpreadsheet className="h-4 w-4 text-emerald-400" /> Import CSV
             </Button>
             <Button
               onClick={() => setShowCreateModal(true)}
               size="sm"
-              className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0"
+              className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
             >
               <UserPlus className="h-4 w-4" /> Add Customer
             </Button>
@@ -109,14 +109,14 @@ export default function AdminCustomers() {
       </div>
 
       {/* Filter / Search bar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-sm w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Search by name (LastName FirstName), phone, company…"
+            placeholder="Search by name, phone, company…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs rounded-xl"
+            className="pl-9 h-9 text-xs rounded-xl w-full"
           />
         </div>
 

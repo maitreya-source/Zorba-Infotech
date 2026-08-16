@@ -460,7 +460,7 @@ export default function AdminBackupRestore() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Target Financial Year Scope
@@ -527,7 +527,7 @@ export default function AdminBackupRestore() {
               <span>{syncingDrive ? "Syncing to Google Drive..." : "Sync to Google Drive"}</span>
             </Button>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button
                 onClick={handleExportDownload}
                 disabled={!isAuthorized || exporting || restoring || syncingDrive}

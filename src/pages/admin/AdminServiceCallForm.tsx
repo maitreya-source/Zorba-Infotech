@@ -1377,6 +1377,254 @@ export default function AdminServiceCallForm() {
             </div>
           </div>
         </div>
+
+        {/* Mobile-Only (< xl) Ticket Operations & Actions Card */}
+        <div className="xl:hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b pb-2.5">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Ticket Actions & Operations</h3>
+              <p className="text-[11px] text-slate-400">Audits, WhatsApp updates & milestone progression</p>
+            </div>
+            {isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPrintModal(true)}
+                className="h-8 text-xs font-semibold rounded-lg gap-1.5 cursor-pointer"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>Print</span>
+              </Button>
+            )}
+          </div>
+
+          {/* 1. Audit & Events */}
+          <div className="space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Audit & Timeline Events
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEventsListModal(true)}
+                className="h-9 text-xs font-semibold rounded-xl gap-1.5 bg-slate-50 dark:bg-slate-800/60 cursor-pointer"
+              >
+                <Clock className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                <span>Events ({timeline.length})</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => triggerTimelineModal("comment_added")}
+                className="h-9 text-xs font-semibold rounded-xl gap-1.5 bg-slate-50 dark:bg-slate-800/60 cursor-pointer"
+              >
+                <FileText className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                <span>Add Note</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => triggerTimelineModal("status_change")}
+                className="h-9 text-xs font-semibold rounded-xl gap-1.5 bg-slate-50 dark:bg-slate-800/60 cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                <span>Add Event</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* 2. WhatsApp Communications */}
+          <div className="space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              WhatsApp Communications
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleOpenCustomerWhatsApp}
+                className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300"
+              >
+                <MessageSquare className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span>Message Customer</span>
+              </Button>
+
+              {type === "company_service_center" && serviceCenterName && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenServiceCenterWhatsApp}
+                  className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                  <span>Follow-up Center</span>
+                </Button>
+              )}
+
+              {selectedCourierId && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenCourierPickupWhatsApp}
+                    className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer"
+                  >
+                    <ArrowUp className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                    <span>Courier Pickup</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenCourierDeliveryWhatsApp}
+                    className="h-9 text-xs font-semibold rounded-xl gap-2 justify-start cursor-pointer"
+                  >
+                    <ArrowDown className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                    <span>Courier Delivery</span>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 3. Milestone Progression */}
+          <div className="space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Milestone Progression
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { index: 1, stage: "replacement_received_customer" as const, label: "1. Recv from Customer" },
+                { index: 2, stage: "replacement_sent_service_center" as const, label: "2. Sent to Center" },
+                { index: 3, stage: "replacement_received_service_center" as const, label: "3. Recv from Center" },
+                { index: 4, stage: "replacement_given_customer" as const, label: "4. Given to Customer" },
+              ].map((m) => {
+                let activeIndex = 1;
+                if (timeline && timeline.length > 0) {
+                  for (let i = timeline.length - 1; i >= 0; i--) {
+                    const s = timeline[i]?.stage;
+                    if (s === "replacement_given_customer") { activeIndex = 4; break; }
+                    if (s === "replacement_received_service_center") { activeIndex = 3; break; }
+                    if (s === "replacement_sent_service_center") { activeIndex = 2; break; }
+                    if (s === "replacement_received_customer" || s === "intake_created") { activeIndex = 1; break; }
+                  }
+                } else {
+                  if (status === "delivered" || status === "completed") activeIndex = 4;
+                  else if (status === "sent_to_service_center") activeIndex = 2;
+                  else if (status === "received" || status === "in_progress") activeIndex = 1;
+                }
+                const isActive = activeIndex === m.index;
+
+                return (
+                  <button
+                    key={m.stage}
+                    type="button"
+                    onClick={() => triggerTimelineModal(m.stage)}
+                    className={`flex items-center justify-between rounded-xl py-2 px-2.5 text-xs transition-all cursor-pointer border ${
+                      isActive
+                        ? "bg-blue-50 dark:bg-blue-950/60 border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-300 font-bold shadow-2xs"
+                        : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 font-medium"
+                    }`}
+                  >
+                    <span className="truncate">{m.label}</span>
+                    {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0 ml-1" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. Quick Master Records */}
+          <div className="space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Quick Master Records
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCustomerModal(true)}
+                className="h-8.5 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer"
+              >
+                <UserPlus className="h-3.5 w-3.5 text-slate-400" />
+                <span>Customer</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCenterModal(true)}
+                className="h-8.5 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer"
+              >
+                <Home className="h-3.5 w-3.5 text-slate-400" />
+                <span>Center</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCourierModal(true)}
+                className="h-8.5 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer"
+              >
+                <Truck className="h-3.5 w-3.5 text-slate-400" />
+                <span>Courier</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Delete Button on Mobile */}
+          {isEditing && (
+            <div className="pt-2 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteModal(true)}
+                className="w-full h-9 text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl gap-2 cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete Ticket</span>
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Sticky Bottom Action Bar (< xl) */}
+        <div className="xl:hidden sticky bottom-0 z-30 -mx-2 sm:-mx-4 -mb-2 sm:-mb-4 p-3 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 shadow-lg backdrop-blur-md flex items-center justify-between gap-3">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Grand Total</span>
+            <span className="font-mono text-base font-extrabold text-slate-900 dark:text-white">
+              ₹{grandTotal.toLocaleString("en-IN")}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link to="/admin/service-calls">
+              <Button type="button" variant="outline" size="sm" className="h-10 text-xs rounded-xl cursor-pointer">
+                Cancel
+              </Button>
+            </Link>
+
+            <Button
+              type="submit"
+              disabled={saving}
+              className="h-10 px-5 text-xs font-bold bg-[#2563EB] hover:bg-blue-600 text-white rounded-xl shadow-glow-sm cursor-pointer"
+            >
+              {saving ? "Saving..." : isEditing ? "Update Ticket" : "Save Ticket"}
+            </Button>
+          </div>
+        </div>
       </form>
 
       {/* Attached Right Action Sidebar (Portal Target: #admin-right-rail) */}
