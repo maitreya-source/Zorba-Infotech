@@ -79,7 +79,7 @@ export default function AdminWhatsAppTemplates() {
   // Test Modal State
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [testTemplate, setTestTemplate] = useState<WhatsAppTemplateDoc | null>(null);
-  const [testPhone, setTestPhone] = useState("+91 ");
+  const [testPhone, setTestPhone] = useState("+91 95891 99730");
   const [testSending, setTestSending] = useState(false);
 
   // Form State

@@ -8,6 +8,7 @@ import {
   Inbox,
   Activity,
   FileText,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -75,6 +76,13 @@ const STAGE_OPTIONS: {
     defaultStatus: "delivered",
     icon: Send,
     iconColor: "text-emerald-500",
+  },
+  {
+    stage: "payment_received",
+    title: "Payment Received from Customer",
+    defaultStatus: "completed",
+    icon: Receipt,
+    iconColor: "text-emerald-600",
   },
   {
     stage: "status_change",

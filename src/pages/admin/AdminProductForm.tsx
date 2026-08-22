@@ -19,6 +19,7 @@ import {
   uploadProductPhoto,
   createCategory,
 } from "@/lib/firestore";
+import { toTitleCase, formatModelNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -221,7 +222,7 @@ export default function AdminProductForm() {
 
     setSaving(true);
     try {
-      const cleanModel = form.model.trim().replace(/[/#?%]/g, "-").toUpperCase();
+      const cleanModel = formatModelNumber(form.model);
       const productId = isEdit ? id! : cleanModel;
 
       // Handle photo
@@ -233,12 +234,12 @@ export default function AdminProductForm() {
       }
 
       const payload = {
-        name: form.name.trim(),
-        brand: form.brand.trim(),
+        name: toTitleCase(form.name),
+        brand: form.brand.trim() ? toTitleCase(form.brand) : "",
         model: cleanModel,
-        itemCode: form.itemCode.trim(),
-        warranty: form.warranty.trim(),
-        serviceCenter: form.serviceCenter.trim(),
+        itemCode: form.itemCode.trim().toUpperCase(),
+        warranty: form.warranty.trim() ? toTitleCase(form.warranty) : "",
+        serviceCenter: form.serviceCenter.trim() ? toTitleCase(form.serviceCenter) : "",
         productUrl: form.productUrl.trim(),
         price: form.price !== "" ? Number(form.price) : null,
         description: form.description.trim(),
@@ -446,14 +447,20 @@ export default function AdminProductForm() {
             <div className="md:col-span-6">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                 <span>
-                  Model Number <span className="text-red-500">*</span> (Unique Document ID)
+                  Model Number <span className="text-red-500">*</span> (no spaces)
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono font-normal">Indexed Key</span>
               </Label>
               <Input
                 placeholder="e.g. DS-2CD2043G2-I"
                 value={form.model}
-                onChange={(e) => set("model", e.target.value)}
+                onChange={(e) => set("model", e.target.value.replace(/\s+/g, "-").toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === " ") {
+                    e.preventDefault();
+                    set("model", form.model ? `${form.model}-` : "");
+                  }
+                }}
                 disabled={isEdit}
                 required
                 className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono uppercase font-bold text-[#2563EB]"
@@ -474,6 +481,7 @@ export default function AdminProductForm() {
                 placeholder="e.g. Hikvision / HP / Canon / Dell / D-Link"
                 value={form.brand}
                 onChange={(e) => set("brand", e.target.value)}
+                onBlur={() => set("brand", toTitleCase(form.brand))}
                 className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
               />
             </div>

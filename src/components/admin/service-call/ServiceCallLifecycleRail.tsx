@@ -18,6 +18,8 @@ import {
   Truck,
   Save,
   CheckCircle2,
+  CreditCard,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -25,6 +27,8 @@ import type {
   ServiceCallType,
   TimelineEvent,
   TimelineStage,
+  PaymentStatus,
+  PaymentMode,
 } from "@/lib/types";
 
 interface ServiceCallLifecycleRailProps {
@@ -41,6 +45,9 @@ interface ServiceCallLifecycleRailProps {
   courierChargesNum: number;
   discountNum: number;
   grandTotal: number;
+  paymentStatus?: PaymentStatus;
+  paymentMode?: PaymentMode;
+  onOpenPaymentModal: () => void;
   onShowEventsListModal: () => void;
   onTriggerTimelineModal: (stageOrType: TimelineStage | "comment_added" | "status_change") => void;
   onOpenCustomerWhatsApp: () => void;
@@ -69,6 +76,9 @@ export default function ServiceCallLifecycleRail({
   courierChargesNum,
   discountNum,
   grandTotal,
+  paymentStatus = "due",
+  paymentMode,
+  onOpenPaymentModal,
   onShowEventsListModal,
   onTriggerTimelineModal,
   onOpenCustomerWhatsApp,
@@ -82,6 +92,12 @@ export default function ServiceCallLifecycleRail({
   onOpenCenterModal,
   onOpenCourierModal,
 }: ServiceCallLifecycleRailProps) {
+  const handleMilestoneClick = (stage: TimelineStage) => {
+    onTriggerTimelineModal(stage);
+    if (stage === "replacement_given_customer") {
+      onOpenPaymentModal();
+    }
+  };
   // Determine active milestone stage
   let activeIndex = 1;
   if (timeline && timeline.length > 0) {
@@ -269,7 +285,34 @@ export default function ServiceCallLifecycleRail({
           </div>
         </div>
 
-        {/* 3. Milestone Progression */}
+        {/* 3. Payment Status & Milestone Progression */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Payment Status
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+              paymentStatus === "paid"
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300"
+                : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300"
+            }`}>
+              {paymentStatus === "paid" ? "PAID" : "DUE (Task)"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenPaymentModal}
+            className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-amber-500 shrink-0" />
+              <span>{paymentStatus === "paid" ? "Payment Received" : "Confirm Payment Received"}</span>
+            </div>
+            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">Update ➔</span>
+          </button>
+        </div>
+
+        {/* Milestone Progression */}
         <div className="space-y-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Milestone Progression
@@ -281,7 +324,7 @@ export default function ServiceCallLifecycleRail({
                 <button
                   key={m.stage}
                   type="button"
-                  onClick={() => onTriggerTimelineModal(m.stage)}
+                  onClick={() => handleMilestoneClick(m.stage)}
                   className={`flex items-center justify-between rounded-xl py-2 px-2.5 text-xs transition-all cursor-pointer border ${
                     isActive
                       ? "bg-blue-50 dark:bg-blue-950/60 border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-300 font-bold shadow-2xs"
@@ -508,6 +551,38 @@ export default function ServiceCallLifecycleRail({
                 </div>
               </div>
 
+              {/* Payment Collection Task / Status Widget */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    PAYMENT STATUS
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    paymentStatus === "paid"
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                      : "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                  }`}>
+                    {paymentStatus === "paid" ? "PAID" : "DUE (Task)"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onOpenPaymentModal}
+                  className={`w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold transition-all border cursor-pointer group ${
+                    paymentStatus === "paid"
+                      ? "bg-[#141e30] border-emerald-500/30 text-emerald-300 hover:bg-emerald-950/40"
+                      : "bg-[#141e30] border-amber-500/30 text-amber-200 hover:bg-amber-950/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <CreditCard className={`h-4 w-4 shrink-0 ${paymentStatus === "paid" ? "text-emerald-400" : "text-amber-400"}`} />
+                    <span>{paymentStatus === "paid" ? "Payment Received" : "Confirm Payment Received"}</span>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+
               {/* Milestone Progression */}
               <div className="space-y-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -521,7 +596,7 @@ export default function ServiceCallLifecycleRail({
                       <button
                         key={m.stage}
                         type="button"
-                        onClick={() => onTriggerTimelineModal(m.stage)}
+                        onClick={() => handleMilestoneClick(m.stage)}
                         className={`w-full flex items-center justify-between rounded-xl py-2 px-2.5 text-xs transition-all cursor-pointer group ${
                           isActive
                             ? "font-semibold text-white bg-[#141e30] border border-slate-700/80 shadow-xs"

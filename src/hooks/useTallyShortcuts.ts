@@ -14,7 +14,7 @@ function isTextField(el: EventTarget | null): boolean {
 }
 
 interface TallyShortcutOptions {
-  onAltC?: () => void;  // Create New Customer / Category
+  onAltC?: (context?: { isProductSection?: boolean; isCustomerSection?: boolean }) => void;  // Create New Customer / Product / Category
   onAltA?: () => void;  // Add Service Call / Add Row
   onAltD?: () => void;  // Delete Selected Row / Entry
   onCtrlA?: () => void; // Accept / Save current screen (Ctrl + A / Cmd + A)
@@ -119,10 +119,20 @@ export function useTallyShortcuts(options: TallyShortcutOptions) {
         }
       }
 
-      // Alt + C -> Create Customer/Category
+      // Alt + C -> Multi-purpose Create (Customer / Product / Category depending on focus)
       if (e.altKey && (e.key.toLowerCase() === "c" || e.code === "KeyC")) {
         e.preventDefault();
-        opts.onAltC?.();
+        const activeEl = document.activeElement as HTMLElement | null;
+        const isProductSection = Boolean(
+          activeEl?.closest?.('[data-shortcut-section="product"]') ||
+          activeEl?.closest?.('[data-section="products"]') ||
+          activeEl?.closest?.('[data-section="parts"]')
+        );
+        const isCustomerSection = Boolean(
+          activeEl?.closest?.('[data-shortcut-section="customer"]') ||
+          activeEl?.closest?.('[data-section="customer"]')
+        );
+        opts.onAltC?.({ isProductSection, isCustomerSection });
         return;
       }
       // Alt + A -> Add new item/service call

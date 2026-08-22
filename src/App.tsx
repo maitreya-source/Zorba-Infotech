@@ -38,11 +38,14 @@ const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetail = lazy(() => import("./pages/admin/AdminCustomerDetail"));
 const AdminImportCustomers = lazy(() => import("./pages/admin/AdminImportCustomers"));
 const AdminTeam = lazy(() => import("./pages/admin/AdminTeam"));
+const AdminTeamMemberDetail = lazy(() => import("./pages/admin/AdminTeamMemberDetail"));
 const AdminServiceCenters = lazy(() => import("./pages/admin/AdminServiceCenters"));
 const AdminCouriers = lazy(() => import("./pages/admin/AdminCouriers"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminWhatsAppTemplates = lazy(() => import("./pages/admin/AdminWhatsAppTemplates"));
 const AdminBackupRestore = lazy(() => import("./pages/admin/AdminBackupRestore"));
+const AdminQuotations = lazy(() => import("./pages/admin/AdminQuotations"));
+const AdminQuotationForm = lazy(() => import("./pages/admin/AdminQuotationForm"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -97,12 +100,17 @@ const App = () => (
                       <Route path="/admin/service-calls" element={<AdminServiceCalls />} />
                       <Route path="/admin/service-calls/new" element={<AdminServiceCallForm />} />
                       <Route path="/admin/service-calls/:id/edit" element={<AdminServiceCallForm />} />
+                      <Route path="/admin/quotations" element={<AdminQuotations />} />
+                      <Route path="/admin/quotations/new" element={<AdminQuotationForm />} />
+                      <Route path="/admin/quotations/:id/edit" element={<AdminQuotationForm />} />
                       <Route path="/admin/device-categories" element={<AdminCategories />} />
                       <Route path="/admin/customers" element={<AdminCustomers />} />
-                      <Route path="/admin/customers/:id" element={<AdminCustomerDetail />} />
                       <Route path="/admin/customers/import" element={<AdminImportCustomers />} />
+                      <Route path="/admin/customers/:id" element={<AdminCustomerDetail />} />
                       <Route path="/admin/team" element={<AdminTeam />} />
+                      <Route path="/admin/team/:id" element={<AdminTeamMemberDetail />} />
                       <Route path="/admin/technicians" element={<AdminTeam />} />
+                      <Route path="/admin/technicians/:id" element={<AdminTeamMemberDetail />} />
                       <Route path="/admin/staff" element={<AdminTeam />} />
                       <Route path="/admin/service-centers" element={<AdminServiceCenters />} />
                       <Route path="/admin/couriers" element={<AdminCouriers />} />

@@ -116,8 +116,8 @@ export default function EditCustomerModal({
         name: formattedName,
         phone: formattedPhone,
         additionalPhones: cleanExtraPhones.length > 0 ? cleanExtraPhones : undefined,
-        email: email.trim() || undefined,
-        address: address.trim() || undefined,
+        email: email.trim().toLowerCase() || undefined,
+        address: address.trim() ? toTitleCase(address) : undefined,
         companyName: companyName.trim() ? toTitleCase(companyName) : undefined,
       };
 

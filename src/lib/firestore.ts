@@ -14,10 +14,11 @@ import {
   serverTimestamp,
   runTransaction,
   writeBatch,
+  deleteField,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { toTitleCase, formatIndianPhoneNumber, generateSearchTokens } from "./utils";
+import { toTitleCase, formatModelNumber, formatIndianPhoneNumber, generateSearchTokens } from "./utils";
 import type {
   Category,
   Product,
@@ -34,6 +35,11 @@ import type {
   TeamMember,
   FinancialYearDoc,
   WhatsAppTemplateDoc,
+  Quotation,
+  QuotationTemplate,
+  TechnicianPayout,
+  PaymentStatus,
+  PaymentMode,
 } from "./types";
 
 const FIREBASE_TIMEOUT_MS = 10000;
@@ -83,8 +89,14 @@ export function cleanFirestoreData<T>(data: T): T {
       .map((item) => (typeof item === "object" && item !== null ? cleanFirestoreData(item) : item)) as unknown as T;
   }
   if (typeof data === "object" && !((data as any) instanceof Date)) {
-    // Preserve Firestore FieldValue and Timestamp instances
-    if (typeof (data as any).toMillis === "function" || (data as any)._methodName) {
+    // Preserve Firestore FieldValue and Timestamp instances (including deleteField)
+    if (
+      typeof (data as any).toMillis === "function" ||
+      (data as any)._methodName ||
+      (data as any)._delegate !== undefined ||
+      (data as any).constructor?.name === "FieldValue" ||
+      (data as any).constructor?.name === "DeleteFieldValueImpl"
+    ) {
       return data;
     }
     const result: Record<string, any> = {};
@@ -187,11 +199,28 @@ export async function seedDefaultCategories(force: boolean = false): Promise<voi
 
 // ─── Products (Unique Model Number Document ID) ───────────────────────────────
 
-export async function getProducts(): Promise<Product[]> {
+let _cachedProducts: Product[] | null = null;
+let _cachedProductsTimestamp = 0;
+const PRODUCTS_CACHE_TTL = 30000; // 30 seconds
+
+export function invalidateProductsCache() {
+  _cachedProducts = null;
+  _cachedProductsTimestamp = 0;
+}
+
+export async function getProducts(forceRefresh = false): Promise<Product[]> {
+  const now = Date.now();
+  if (!forceRefresh && _cachedProducts && now - _cachedProductsTimestamp < PRODUCTS_CACHE_TTL) {
+    return _cachedProducts;
+  }
   try {
     const snap = await fetchWithTimeout(getDocs(collection(db, "products")));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product);
+    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product);
+    _cachedProducts = list;
+    _cachedProductsTimestamp = now;
+    return list;
   } catch (err: any) {
+    if (_cachedProducts) return _cachedProducts;
     console.error("getProducts error:", err);
     throw new Error(formatFirebaseError(err));
   }
@@ -208,14 +237,40 @@ export async function getProduct(id: string): Promise<Product | null> {
   }
 }
 
+export async function searchProducts(queryText: string, categoryIdFilter?: string, limitCount = 30): Promise<Product[]> {
+  const clean = (queryText || "").trim().toLowerCase();
+  try {
+    const all = await getProducts();
+    return all
+      .filter((p) => {
+        if (categoryIdFilter && categoryIdFilter !== "all" && p.categoryId?.toLowerCase() !== categoryIdFilter.toLowerCase()) {
+          return false;
+        }
+        if (!clean) return true;
+        const nameMatch = p.name && p.name.toLowerCase().includes(clean);
+        const modelMatch = p.model && p.model.toLowerCase().includes(clean);
+        const brandMatch = p.brand && p.brand.toLowerCase().includes(clean);
+        const itemCodeMatch = p.itemCode && p.itemCode.toLowerCase().includes(clean);
+        const descMatch = p.description && p.description.toLowerCase().includes(clean);
+        const catMatch = p.categoryId && p.categoryId.toLowerCase().includes(clean);
+        const idMatch = p.id && p.id.toLowerCase().includes(clean);
+        return nameMatch || modelMatch || brandMatch || itemCodeMatch || descMatch || catMatch || idMatch;
+      })
+      .slice(0, limitCount);
+  } catch (err: any) {
+    console.error("searchProducts error:", err);
+    return [];
+  }
+}
+
 export async function createProduct(
   data: Omit<Product, "id" | "createdAt" | "updatedAt">
 ): Promise<Product> {
-  const modelNo = (data.model || "").trim();
+  const modelNo = formatModelNumber(data.model);
   if (!modelNo) {
     throw new Error("Model number is required to create a product.");
   }
-  const cleanDocId = modelNo.replace(/[/\\#?%]/g, "-").toUpperCase();
+  const cleanDocId = modelNo;
   const docRef = doc(db, "products", cleanDocId);
   
   const existing = await getDoc(docRef);
@@ -226,12 +281,20 @@ export async function createProduct(
   const productData: Product = {
     id: cleanDocId,
     ...data,
+    name: toTitleCase(data.name),
+    brand: data.brand ? toTitleCase(data.brand) : "",
+    category: data.category ? toTitleCase(data.category) : "",
     model: cleanDocId,
+    itemCode: data.itemCode ? data.itemCode.trim().toUpperCase() : "",
+    warranty: data.warranty ? toTitleCase(data.warranty) : "",
+    serviceCenter: data.serviceCenter ? toTitleCase(data.serviceCenter) : "",
+    description: data.description ? data.description.trim() : "",
     createdAt: serverTimestamp() as any,
     updatedAt: serverTimestamp() as any,
   };
 
   await setDoc(docRef, cleanFirestoreData(productData));
+  invalidateProductsCache();
 
   // Sync model number to service call models auto-suggest
   if (data.categoryId) {
@@ -251,13 +314,24 @@ export async function updateProduct(
   data: Partial<Omit<Product, "id" | "createdAt" | "updatedAt">>
 ): Promise<void> {
   try {
+    const sanitized: any = { ...data };
+    if (sanitized.name) sanitized.name = toTitleCase(sanitized.name);
+    if (sanitized.brand) sanitized.brand = toTitleCase(sanitized.brand);
+    if (sanitized.category) sanitized.category = toTitleCase(sanitized.category);
+    if (sanitized.model) sanitized.model = formatModelNumber(sanitized.model);
+    if (sanitized.itemCode) sanitized.itemCode = sanitized.itemCode.trim().toUpperCase();
+    if (sanitized.warranty) sanitized.warranty = toTitleCase(sanitized.warranty);
+    if (sanitized.serviceCenter) sanitized.serviceCenter = toTitleCase(sanitized.serviceCenter);
+    if (sanitized.description) sanitized.description = sanitized.description.trim();
+
     await updateDoc(
       doc(db, "products", id),
       cleanFirestoreData({
-        ...data,
+        ...sanitized,
         updatedAt: serverTimestamp(),
       })
     );
+    invalidateProductsCache();
   } catch (err: any) {
     console.error("updateProduct error:", err);
     throw new Error(formatFirebaseError(err));
@@ -267,6 +341,7 @@ export async function updateProduct(
 export async function deleteProduct(id: string): Promise<void> {
   try {
     await deleteDoc(doc(db, "products", id));
+    invalidateProductsCache();
   } catch (err: any) {
     console.error("deleteProduct error:", err);
     throw new Error(formatFirebaseError(err));
@@ -351,11 +426,28 @@ export async function deleteDeviceCategory(id: string): Promise<void> {
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 
-export async function getCustomers(): Promise<Customer[]> {
+let _cachedCustomers: Customer[] | null = null;
+let _cachedCustomersTimestamp = 0;
+const CUSTOMERS_CACHE_TTL = 30000; // 30 seconds
+
+export function invalidateCustomersCache() {
+  _cachedCustomers = null;
+  _cachedCustomersTimestamp = 0;
+}
+
+export async function getCustomers(forceRefresh = false): Promise<Customer[]> {
+  const now = Date.now();
+  if (!forceRefresh && _cachedCustomers && now - _cachedCustomersTimestamp < CUSTOMERS_CACHE_TTL) {
+    return _cachedCustomers;
+  }
   try {
     const snap = await fetchWithTimeout(getDocs(collection(db, "customers")));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Customer);
+    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Customer);
+    _cachedCustomers = list;
+    _cachedCustomersTimestamp = now;
+    return list;
   } catch (err: any) {
+    if (_cachedCustomers) return _cachedCustomers;
     console.error("getCustomers error:", err);
     throw new Error(formatFirebaseError(err));
   }
@@ -424,6 +516,8 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
   const formattedName = toTitleCase(data.name);
   const formattedPhone = formatIndianPhoneNumber(data.phone);
   const formattedCompany = data.companyName ? toTitleCase(data.companyName) : undefined;
+  const formattedAddress = data.address ? toTitleCase(data.address) : undefined;
+  const formattedCity = data.city ? toTitleCase(data.city) : undefined;
   const additionalPhones = data.additionalPhones?.map(formatIndianPhoneNumber);
 
   const searchTokens = generateSearchTokens({
@@ -441,10 +535,13 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
     phone: formattedPhone,
     additionalPhones,
     companyName: formattedCompany,
+    address: formattedAddress,
+    city: formattedCity,
     searchTokens,
     createdAt: Date.now(),
   };
   await setDoc(docRef, cleanFirestoreData(newCust));
+  invalidateCustomersCache();
   return newCust;
 }
 
@@ -475,6 +572,8 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
   const formattedName = data.name ? toTitleCase(data.name) : existing?.name;
   const formattedPhone = data.phone ? formatIndianPhoneNumber(data.phone) : existing?.phone;
   const formattedCompany = data.companyName !== undefined ? (data.companyName ? toTitleCase(data.companyName) : undefined) : existing?.companyName;
+  const formattedAddress = data.address !== undefined ? (data.address ? toTitleCase(data.address) : undefined) : existing?.address;
+  const formattedCity = data.city !== undefined ? (data.city ? toTitleCase(data.city) : undefined) : existing?.city;
   const email = data.email !== undefined ? data.email : existing?.email;
   const additionalPhones = data.additionalPhones ? data.additionalPhones.map(formatIndianPhoneNumber) : existing?.additionalPhones;
 
@@ -492,46 +591,41 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
     ...(formattedPhone ? { phone: formattedPhone } : {}),
     ...(additionalPhones ? { additionalPhones } : {}),
     ...(data.companyName !== undefined ? { companyName: formattedCompany } : {}),
+    ...(data.address !== undefined ? { address: formattedAddress } : {}),
+    ...(data.city !== undefined ? { city: formattedCity } : {}),
     searchTokens,
   };
   await setDoc(doc(db, "customers", id), cleanFirestoreData(formattedData), { merge: true });
+  invalidateCustomersCache();
 }
 
 export async function searchCustomers(queryText: string, limitCount = 30): Promise<Customer[]> {
-  const clean = queryText.trim().toLowerCase();
+  const clean = (queryText || "").trim().toLowerCase();
   try {
-    if (!clean) {
-      const q = query(collection(db, "customers"), orderBy("createdAt", "desc"), limit(limitCount));
-      const snap = await fetchWithTimeout(getDocs(q));
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Customer);
-    }
-
-    // Try tokenized Firestore query first
-    try {
-      const q = query(
-        collection(db, "customers"),
-        where("searchTokens", "array-contains", clean),
-        limit(limitCount)
-      );
-      const snap = await fetchWithTimeout(getDocs(q));
-      if (!snap.empty) {
-        return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Customer);
-      }
-    } catch {
-      // Fallback to in-memory filter if tokens are missing/unindexed
-    }
-
     const all = await getCustomers();
+    if (!clean) {
+      return all.slice(0, limitCount);
+    }
+
     const qDigits = clean.replace(/\D/g, "");
     return all
       .filter((c) => {
-        const nameMatch = c.name?.toLowerCase().includes(clean);
+        const nameMatch = c.name && c.name.toLowerCase().includes(clean);
         const phoneDigits = (c.phone || "").replace(/\D/g, "");
-        const phoneMatch = qDigits && (phoneDigits.includes(qDigits) || phoneDigits.endsWith(qDigits));
-        const companyMatch = c.companyName?.toLowerCase().includes(clean);
-        const emailMatch = c.email?.toLowerCase().includes(clean);
-        const idMatch = c.id?.toLowerCase().includes(clean);
-        return nameMatch || phoneMatch || companyMatch || emailMatch || idMatch;
+        const phoneMatch = Boolean(
+          (qDigits && phoneDigits.includes(qDigits)) ||
+          (c.phone && c.phone.toLowerCase().includes(clean)) ||
+          (c.additionalPhones &&
+            c.additionalPhones.some((p) => {
+              const pDigits = (p || "").replace(/\D/g, "");
+              return (qDigits && pDigits.includes(qDigits)) || (p && p.toLowerCase().includes(clean));
+            }))
+        );
+        const companyMatch = c.companyName && c.companyName.toLowerCase().includes(clean);
+        const emailMatch = c.email && c.email.toLowerCase().includes(clean);
+        const addressMatch = c.address && c.address.toLowerCase().includes(clean);
+        const idMatch = c.id && c.id.toLowerCase().includes(clean);
+        return nameMatch || phoneMatch || companyMatch || emailMatch || addressMatch || idMatch;
       })
       .slice(0, limitCount);
   } catch (err: any) {
@@ -541,18 +635,55 @@ export async function searchCustomers(queryText: string, limitCount = 30): Promi
 }
 
 export async function getCustomer(id: string): Promise<Customer | null> {
+  if (!id || id === "import") return null;
+  const cleanId = decodeURIComponent(id).trim();
+
+  // Strategy 1: Direct Firestore Document ID lookup
   try {
-    const snap = await fetchWithTimeout(getDoc(doc(db, "customers", id)));
-    if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() } as Customer;
+    const snap = await fetchWithTimeout(getDoc(doc(db, "customers", cleanId)));
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() } as Customer;
+    }
   } catch (err: any) {
-    console.error("getCustomer error:", err);
-    throw new Error(formatFirebaseError(err));
+    console.warn("getCustomer direct document lookup warning:", err);
   }
+
+  // Strategy 2: Lookup by Mobile Phone Number
+  try {
+    const byPhone = await findCustomerByPhoneNumber(cleanId);
+    if (byPhone) return byPhone;
+  } catch (err) {
+    console.warn("findCustomerByPhoneNumber fallback error:", err);
+  }
+
+  // Strategy 3: Lookup in in-memory / full customer list (by ID, Phone digits, or Name)
+  try {
+    const all = await getCustomers();
+    const cleanLower = cleanId.toLowerCase();
+    const cleanDigits = cleanId.replace(/\D/g, "");
+
+    const found = all.find((c) => {
+      if (c.id === cleanId || c.id?.toLowerCase() === cleanLower) return true;
+      if (cleanDigits && cleanDigits.length >= 10) {
+        const p1 = (c.phone || "").replace(/\D/g, "");
+        if (p1 === cleanDigits || p1.endsWith(cleanDigits) || cleanDigits.endsWith(p1)) return true;
+        if (c.additionalPhones?.some((ap) => (ap || "").replace(/\D/g, "") === cleanDigits)) return true;
+      }
+      if (c.name && c.name.toLowerCase() === cleanLower) return true;
+      return false;
+    });
+
+    if (found) return found;
+  } catch (err: any) {
+    console.error("getCustomer fallback scan error:", err);
+  }
+
+  return null;
 }
 
 export async function deleteCustomer(id: string): Promise<void> {
   await deleteDoc(doc(db, "customers", id));
+  invalidateCustomersCache();
 }
 
 // ─── Service Centers ──────────────────────────────────────────────────────────
@@ -721,6 +852,21 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   }));
 }
 
+export async function getTeamMember(id: string): Promise<TeamMember | null> {
+  try {
+    const snap = await fetchWithTimeout(getDoc(doc(db, "team_members", id)));
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() } as TeamMember;
+    }
+    const all = await getTeamMembers();
+    return all.find((m) => m.id === id || m.name.toLowerCase() === id.toLowerCase()) || null;
+  } catch (err: any) {
+    console.warn("getTeamMember warning:", err);
+    const all = await getTeamMembers();
+    return all.find((m) => m.id === id || m.name.toLowerCase() === id.toLowerCase()) || null;
+  }
+}
+
 export async function createTeamMember(
   data: Omit<TeamMember, "id" | "createdAt">
 ): Promise<TeamMember> {
@@ -740,12 +886,28 @@ export async function updateTeamMember(
   id: string,
   data: Partial<TeamMember>
 ): Promise<void> {
-  const payload: Partial<TeamMember> = {
+  const payload: Record<string, any> = {
     ...data,
     ...(data.name ? { name: toTitleCase(data.name) } : {}),
     ...(data.phone ? { phone: formatIndianPhoneNumber(data.phone) } : {}),
   };
-  await setDoc(doc(db, "team_members", id), cleanFirestoreData(payload), { merge: true });
+
+  if ("email" in data) {
+    const cleanEmail = typeof data.email === "string" ? data.email.trim() : "";
+    payload.email = cleanEmail ? cleanEmail : deleteField();
+  }
+
+  if ("specialization" in data) {
+    const cleanSpec = typeof data.specialization === "string" ? data.specialization.trim() : "";
+    payload.specialization = cleanSpec ? cleanSpec : deleteField();
+  }
+
+  const cleanPayload = cleanFirestoreData(payload);
+  try {
+    await updateDoc(doc(db, "team_members", id), cleanPayload);
+  } catch {
+    await setDoc(doc(db, "team_members", id), cleanPayload, { merge: true });
+  }
 }
 
 export async function deleteTeamMember(id: string): Promise<void> {
@@ -1171,6 +1333,27 @@ export async function getServiceCallsForCustomer(
   }
 }
 
+export async function getServiceCallsForTechnician(
+  technicianId: string,
+  technicianName?: string
+): Promise<ServiceCall[]> {
+  try {
+    const allCalls = await getServiceCalls();
+    const cleanName = (technicianName || "").trim().toLowerCase();
+
+    return allCalls.filter((c) => {
+      if (c.technicianId && c.technicianId === technicianId) return true;
+      if (cleanName && c.technicianName && c.technicianName.trim().toLowerCase() === cleanName) {
+        return true;
+      }
+      return false;
+    });
+  } catch (err: any) {
+    console.error("getServiceCallsForTechnician error:", err);
+    return [];
+  }
+}
+
 export async function peekNextTicketNumber(fyId: string, monthKey: string): Promise<string> {
   const [cYear, cMonth] = monthKey.split("-");
   const prefix = `SC-${cYear}-${cMonth}-`;
@@ -1305,12 +1488,23 @@ export async function createServiceCall(
     ...cleanCallData
   } = data;
 
+  const sanitizedParts = (data.parts || []).map((p) => ({
+    ...p,
+    name: toTitleCase(p.name),
+    category: p.category ? toTitleCase(p.category) : undefined,
+  }));
+
   const newCallDoc = {
     id: ticketNo,
     ticketNo,
     fyId,
     monthKey,
     ...cleanCallData,
+    deviceCategory: data.deviceCategory ? toTitleCase(data.deviceCategory) : "",
+    modelNumber: data.modelNumber ? formatModelNumber(data.modelNumber) : "",
+    handledByStaffName: data.handledByStaffName ? toTitleCase(data.handledByStaffName) : "",
+    assignedTechnicianName: data.assignedTechnicianName ? toTitleCase(data.assignedTechnicianName) : "",
+    parts: sanitizedParts,
     customerId: customerId || "cust-unknown",
     timeline: data.timeline && data.timeline.length > 0 ? data.timeline : initialTimeline,
     createdAt: now,
@@ -1333,10 +1527,10 @@ export async function createServiceCall(
 
   // Auto-save model and spare parts to catalog
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
-    saveDeviceModel(data.deviceCategory, data.modelNumber.trim()).catch(() => {});
+    saveDeviceModel(data.deviceCategory, data.modelNumber).catch(() => {});
   }
-  if (data.parts && data.parts.length > 0) {
-    for (const part of data.parts) {
+  if (sanitizedParts.length > 0) {
+    for (const part of sanitizedParts) {
       if (part.name && part.name.trim()) {
         saveSparePartToCatalog(part.name.trim(), part.unitPrice || 0, data.deviceCategory).catch(() => {});
       }
@@ -1345,10 +1539,10 @@ export async function createServiceCall(
 
   return {
     ...newCallDoc,
-    customerName: data.customerName || "",
+    customerName: data.customerName ? toTitleCase(data.customerName) : "",
     customerPhone: data.customerPhone || "",
     customerEmail: data.customerEmail || "",
-    customerAddress: data.customerAddress || "",
+    customerAddress: data.customerAddress ? toTitleCase(data.customerAddress) : "",
   } as ServiceCall;
 }
 
@@ -1381,8 +1575,21 @@ export async function updateServiceCall(
     ...cleanUpdateData
   } = data;
 
+  const sanitizedUpdate: any = { ...cleanUpdateData };
+  if (sanitizedUpdate.deviceCategory) sanitizedUpdate.deviceCategory = toTitleCase(sanitizedUpdate.deviceCategory);
+  if (sanitizedUpdate.modelNumber) sanitizedUpdate.modelNumber = formatModelNumber(sanitizedUpdate.modelNumber);
+  if (sanitizedUpdate.handledByStaffName) sanitizedUpdate.handledByStaffName = toTitleCase(sanitizedUpdate.handledByStaffName);
+  if (sanitizedUpdate.assignedTechnicianName) sanitizedUpdate.assignedTechnicianName = toTitleCase(sanitizedUpdate.assignedTechnicianName);
+  if (sanitizedUpdate.parts && Array.isArray(sanitizedUpdate.parts)) {
+    sanitizedUpdate.parts = sanitizedUpdate.parts.map((p: any) => ({
+      ...p,
+      name: toTitleCase(p.name),
+      category: p.category ? toTitleCase(p.category) : undefined,
+    }));
+  }
+
   const formattedData: Partial<ServiceCall> = {
-    ...cleanUpdateData,
+    ...sanitizedUpdate,
     fyId,
     monthKey,
     updatedAt: Date.now(),
@@ -1400,7 +1607,7 @@ export async function updateServiceCall(
   await batch.commit();
 
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
-    saveDeviceModel(data.deviceCategory, data.modelNumber.trim()).catch(() => {});
+    saveDeviceModel(data.deviceCategory, data.modelNumber).catch(() => {});
   }
   if (data.parts && data.parts.length > 0) {
     for (const part of data.parts) {
@@ -1505,8 +1712,8 @@ export async function getDeviceModels(categoryName?: string): Promise<DeviceMode
 }
 
 export async function saveDeviceModel(categoryName: string, modelName: string): Promise<DeviceModel> {
-  const cleanCat = categoryName.trim();
-  const cleanModel = modelName.trim();
+  const cleanCat = toTitleCase(categoryName);
+  const cleanModel = formatModelNumber(modelName);
   if (!cleanCat || !cleanModel) throw new Error("Category and Model name required");
 
   const existing = await getDeviceModels(cleanCat);
@@ -1545,7 +1752,7 @@ export async function saveSparePartToCatalog(
   unitPrice: number,
   category?: string
 ): Promise<SparePartCatalogItem> {
-  const cleanName = name.trim();
+  const cleanName = toTitleCase(name);
   if (!cleanName) throw new Error("Part name required");
 
   const existing = await getSparePartsCatalog();
@@ -1557,7 +1764,7 @@ export async function saveSparePartToCatalog(
     id: docRef.id,
     name: cleanName,
     unitPrice,
-    category,
+    category: category ? toTitleCase(category) : undefined,
     createdAt: Date.now(),
   };
   await setDoc(docRef, cleanFirestoreData(newPart));
@@ -1567,6 +1774,39 @@ export async function saveSparePartToCatalog(
 // ─── WhatsApp Message Templates ──────────────────────────────────────────────
 
 export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" | "updatedAt">[] = [
+  {
+    id: "zorba_payment_received",
+    name: "zorba_payment_received",
+    displayName: "Customer Payment Received Receipt",
+    category: "utility",
+    targetModule: "service_calls",
+    language: "en_US",
+    headerType: "none",
+    bodyText:
+      "*ZORBA INFOTECH - PAYMENT RECEIVED RECEIPT*\n\n" +
+      "Dear *{{1}}*,\n" +
+      "We have received your payment of *₹{{2}}* for ticket *{{3}}*.\n\n" +
+      "🎫 *Ticket No:* {{3}}\n" +
+      "💰 *Amount Received:* ₹{{2}}\n" +
+      "💳 *Payment Mode:* {{4}}\n" +
+      "📅 *Date:* {{5}}\n" +
+      "💻 *Device:* {{6}}\n\n" +
+      "Thank you for choosing Zorba Infotech!\n" +
+      "📞 Support: +91 95891 99738 | Main: +91 91798 90150 | 🌐 www.zorbainfotech.in",
+    variables: [
+      { index: 1, label: "Customer Name", fallbackValue: "Customer", erpKey: "customer.name" },
+      { index: 2, label: "Amount Received", fallbackValue: "0", erpKey: "paidAmount" },
+      { index: 3, label: "Ticket No", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
+      { index: 4, label: "Payment Mode", fallbackValue: "UPI / Cash", erpKey: "paymentMode" },
+      { index: 5, label: "Payment Date", fallbackValue: "Today", erpKey: "paymentDate" },
+      { index: 6, label: "Device Details", fallbackValue: "Device Unit", erpKey: "deviceCategory" },
+    ],
+    buttons: [
+      { type: "phone_number", text: "Call Support", urlOrPhone: "+919589199738" },
+    ],
+    active: true,
+    metaStatus: "approved",
+  },
   {
     id: "zorba_customer_service_update",
     name: "zorba_customer_service_update",
@@ -1795,6 +2035,389 @@ export async function seedDefaultWhatsAppTemplates(force: boolean = false): Prom
     }
   } catch (err) {
     console.warn("Could not seed default WhatsApp templates:", err);
+  }
+}
+
+// ==========================================
+// Quotations & Quotation Templates
+// ==========================================
+
+export function getQuotationMonthKey(dateOrStr?: string | Date): { year: string; month: string; monthKey: string } {
+  let d: Date;
+  if (!dateOrStr) {
+    d = new Date();
+  } else if (dateOrStr instanceof Date) {
+    d = dateOrStr;
+  } else {
+    d = new Date(dateOrStr);
+    if (isNaN(d.getTime())) d = new Date();
+  }
+  const year = String(d.getFullYear());
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return { year, month, monthKey: `${year}-${month}` };
+}
+
+export async function peekNextQuotationNumber(dateOrStr?: string | Date): Promise<string> {
+  const { year, month, monthKey } = getQuotationMonthKey(dateOrStr);
+  const prefix = `QT-${year}-${month}-`;
+  const counterRef = doc(db, "counters", `quotations_${monthKey}`);
+
+  try {
+    const counterDoc = await fetchWithTimeout(getDoc(counterRef));
+    let current = 0;
+    if (counterDoc.exists()) {
+      current = counterDoc.data().current || 0;
+    } else {
+      try {
+        const q = query(
+          collection(db, "quotations"),
+          orderBy("createdAt", "desc"),
+          limit(50)
+        );
+        const snap = await fetchWithTimeout(getDocs(q));
+        const existingNums = snap.docs
+          .map((docSnap) => {
+            const data = docSnap.data();
+            const qNo = data.quotationNo || "";
+            const match = qNo.match(new RegExp(`^QT-${year}-${month}-(\\d+)`)) || qNo.match(new RegExp(`^QT-${year}${month}-(\\d+)`));
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter((n) => !isNaN(n) && n > 0);
+        if (existingNums.length > 0) {
+          current = Math.max(...existingNums);
+        }
+      } catch {
+        // Ignore fallback scan error
+      }
+    }
+    const next = current + 1;
+    return `${prefix}${String(next).padStart(4, "0")}`;
+  } catch (err) {
+    return `${prefix}0001`;
+  }
+}
+
+export async function getNextQuotationNumber(dateOrStr?: string | Date): Promise<string> {
+  const { year, month, monthKey } = getQuotationMonthKey(dateOrStr);
+  const prefix = `QT-${year}-${month}-`;
+  const counterRef = doc(db, "counters", `quotations_${monthKey}`);
+
+  try {
+    const nextCount = await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      let current = 0;
+      if (counterDoc.exists()) {
+        current = counterDoc.data().current || 0;
+      } else {
+        try {
+          const q = query(
+            collection(db, "quotations"),
+            orderBy("createdAt", "desc"),
+            limit(50)
+          );
+          const snap = await getDocs(q);
+          const existingNums = snap.docs
+            .map((docSnap) => {
+              const data = docSnap.data();
+              const qNo = data.quotationNo || "";
+              const match = qNo.match(new RegExp(`^QT-${year}-${month}-(\\d+)`)) || qNo.match(new RegExp(`^QT-${year}${month}-(\\d+)`));
+              return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter((n) => !isNaN(n) && n > 0);
+          if (existingNums.length > 0) {
+            current = Math.max(...existingNums);
+          }
+        } catch {
+          // Ignore fallback query failure
+        }
+      }
+      const next = current + 1;
+      transaction.set(counterRef, { current: next, updatedAt: serverTimestamp() }, { merge: true });
+      return next;
+    });
+    return `${prefix}${String(nextCount).padStart(4, "0")}`;
+  } catch (err) {
+    console.warn("Atomic quotation counter transaction failed, using fallback:", err);
+    return `${prefix}${String(Date.now()).slice(-4)}`;
+  }
+}
+
+export async function getQuotations(filters?: {
+  customerId?: string;
+  startDate?: string;
+  endDate?: string;
+  dateFilter?: "today" | "month" | "all";
+}): Promise<Quotation[]> {
+  try {
+    const q = query(collection(db, "quotations"), orderBy("createdAt", "desc"));
+    const snap = await fetchWithTimeout(getDocs(q));
+    let items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Quotation);
+
+    if (filters?.customerId) {
+      items = items.filter((q) => q.customerId === filters.customerId);
+    }
+
+    if (filters?.dateFilter === "today") {
+      const todayStr = new Date().toISOString().split("T")[0];
+      items = items.filter((q) => (q.date || "").startsWith(todayStr));
+    } else if (filters?.dateFilter === "month") {
+      const currentYearMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+      items = items.filter((q) => (q.date || "").startsWith(currentYearMonth));
+    } else if (filters?.startDate && filters?.endDate) {
+      items = items.filter((q) => {
+        const d = q.date || "";
+        return d >= (filters.startDate || "") && d <= (filters.endDate || "");
+      });
+    }
+
+    return items;
+  } catch (err) {
+    console.error("getQuotations error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function getQuotationsForCustomer(
+  customerId: string,
+  customerPhone?: string,
+  customerName?: string
+): Promise<Quotation[]> {
+  try {
+    const allQuotes = await getQuotations();
+    const cleanPhone = (customerPhone || "").replace(/\D/g, "");
+    const cleanName = (customerName || "").trim().toLowerCase();
+
+    return allQuotes.filter((q) => {
+      if (q.customerId && q.customerId === customerId) return true;
+      if (cleanPhone) {
+        const quotePhone = (q.customerPhone || "").replace(/\D/g, "");
+        if (quotePhone && (quotePhone === cleanPhone || quotePhone.endsWith(cleanPhone) || cleanPhone.endsWith(quotePhone))) {
+          return true;
+        }
+      }
+      if (cleanName && q.customerName && q.customerName.trim().toLowerCase() === cleanName) {
+        return true;
+      }
+      return false;
+    });
+  } catch (err: any) {
+    console.error("getQuotationsForCustomer error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function getQuotation(id: string): Promise<Quotation | null> {
+  try {
+    const docRef = doc(db, "quotations", id);
+    const snap = await fetchWithTimeout(getDoc(docRef));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() } as Quotation;
+  } catch (err) {
+    console.error("getQuotation error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function createQuotation(
+  data: Omit<Quotation, "id" | "createdAt" | "quotationNo"> & { quotationNo?: string }
+): Promise<Quotation> {
+  try {
+    let quotationNo = (data.quotationNo || "").trim();
+    if (!quotationNo || quotationNo.startsWith("QUOT-DRAFT") || quotationNo.startsWith("QT-DRAFT")) {
+      quotationNo = await getNextQuotationNumber(data.date || new Date());
+    }
+
+    const sanitizedItems = (data.items || []).map((it) => ({
+      ...it,
+      productName: toTitleCase(it.productName),
+      category: it.category ? toTitleCase(it.category) : "",
+      modelNumber: it.modelNumber ? formatModelNumber(it.modelNumber) : "",
+      description: it.description ? it.description.trim() : "",
+    }));
+
+    const docRef = doc(collection(db, "quotations"));
+    const newQuotation: Quotation = {
+      id: docRef.id,
+      ...data,
+      customerName: toTitleCase(data.customerName),
+      customerAddress: data.customerAddress ? toTitleCase(data.customerAddress) : "",
+      templateName: data.templateName ? toTitleCase(data.templateName) : "",
+      items: sanitizedItems,
+      quotationNo,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await setDoc(docRef, cleanFirestoreData(newQuotation));
+    return newQuotation;
+  } catch (err) {
+    console.error("createQuotation error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function updateQuotation(
+  id: string,
+  data: Partial<Quotation>
+): Promise<void> {
+  try {
+    const sanitized: any = { ...data };
+    if (sanitized.customerName) sanitized.customerName = toTitleCase(sanitized.customerName);
+    if (sanitized.customerAddress) sanitized.customerAddress = toTitleCase(sanitized.customerAddress);
+    if (sanitized.templateName) sanitized.templateName = toTitleCase(sanitized.templateName);
+    if (sanitized.items && Array.isArray(sanitized.items)) {
+      sanitized.items = sanitized.items.map((it: any) => ({
+        ...it,
+        productName: toTitleCase(it.productName),
+        category: it.category ? toTitleCase(it.category) : "",
+        modelNumber: it.modelNumber ? formatModelNumber(it.modelNumber) : "",
+        description: it.description ? it.description.trim() : "",
+      }));
+    }
+
+    const docRef = doc(db, "quotations", id);
+    await setDoc(docRef, cleanFirestoreData({ ...sanitized, updatedAt: Date.now() }), { merge: true });
+  } catch (err) {
+    console.error("updateQuotation error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function deleteQuotation(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, "quotations", id));
+  } catch (err) {
+    console.error("deleteQuotation error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function getQuotationTemplates(): Promise<QuotationTemplate[]> {
+  try {
+    const q = query(collection(db, "quotation_templates"), orderBy("createdAt", "desc"));
+    const snap = await fetchWithTimeout(getDocs(q));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as QuotationTemplate);
+  } catch (err) {
+    console.error("getQuotationTemplates error:", err);
+    return [];
+  }
+}
+
+export async function createQuotationTemplate(
+  data: Omit<QuotationTemplate, "id" | "createdAt">
+): Promise<QuotationTemplate> {
+  try {
+    const docRef = doc(collection(db, "quotation_templates"));
+    const newTemplate: QuotationTemplate = {
+      id: docRef.id,
+      ...data,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await setDoc(docRef, cleanFirestoreData(newTemplate));
+    return newTemplate;
+  } catch (err) {
+    console.error("createQuotationTemplate error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function updateQuotationTemplate(
+  id: string,
+  data: Partial<QuotationTemplate>
+): Promise<void> {
+  try {
+    const docRef = doc(db, "quotation_templates", id);
+    await setDoc(docRef, cleanFirestoreData({ ...data, updatedAt: Date.now() }), { merge: true });
+  } catch (err) {
+    console.error("updateQuotationTemplate error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function deleteQuotationTemplate(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, "quotation_templates", id));
+  } catch (err) {
+    console.error("deleteQuotationTemplate error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+// ==========================================
+// Technician Payouts & Commission Payroll
+// ==========================================
+
+export async function getTechnicianPayouts(
+  technicianId?: string,
+  monthKey?: string
+): Promise<TechnicianPayout[]> {
+  try {
+    const q = query(collection(db, "technician_payouts"), orderBy("createdAt", "desc"));
+    const snap = await fetchWithTimeout(getDocs(q));
+    let items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TechnicianPayout);
+    if (technicianId) {
+      items = items.filter((p) => p.technicianId === technicianId);
+    }
+    if (monthKey) {
+      items = items.filter((p) => p.monthKey === monthKey);
+    }
+    return items;
+  } catch (err) {
+    console.error("getTechnicianPayouts error:", err);
+    return [];
+  }
+}
+
+export async function recordTechnicianPayout(
+  data: Omit<TechnicianPayout, "id" | "createdAt">
+): Promise<TechnicianPayout> {
+  try {
+    const docRef = doc(collection(db, "technician_payouts"));
+    const newPayout: TechnicianPayout = {
+      id: docRef.id,
+      ...data,
+      createdAt: Date.now(),
+    };
+    await setDoc(docRef, cleanFirestoreData(newPayout));
+    return newPayout;
+  } catch (err) {
+    console.error("recordTechnicianPayout error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function deleteTechnicianPayout(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, "technician_payouts", id));
+  } catch (err) {
+    console.error("deleteTechnicianPayout error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function updateServiceCallPaymentStatus(
+  id: string,
+  payment: {
+    paymentStatus: PaymentStatus;
+    paymentMode?: PaymentMode;
+    amountPaid?: number;
+    paymentDate?: string;
+    paymentNotes?: string;
+  }
+): Promise<void> {
+  try {
+    const docRef = doc(db, "service_calls", id);
+    await setDoc(
+      docRef,
+      cleanFirestoreData({
+        ...payment,
+        updatedAt: Date.now(),
+      }),
+      { merge: true }
+    );
+  } catch (err) {
+    console.error("updateServiceCallPaymentStatus error:", err);
+    throw new Error(formatFirebaseError(err));
   }
 }
 

@@ -1,0 +1,796 @@
+import { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import {
+  Wrench,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  CreditCard,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle,
+  Receipt,
+  Wallet,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  getServiceCallsForTechnician,
+  getTechnicianPayouts,
+  recordTechnicianPayout,
+  deleteTechnicianPayout,
+} from "@/lib/firestore";
+import type { TeamMember, ServiceCall, TechnicianPayout, PaymentMode } from "@/lib/types";
+import AvatarGraphic from "@/components/admin/AvatarGraphic";
+import { useStaffProfile } from "@/contexts/StaffProfileContext";
+
+interface TechnicianCommissionModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  technician: TeamMember | null;
+}
+
+export default function TechnicianCommissionModal({
+  open,
+  onOpenChange,
+  technician,
+}: TechnicianCommissionModalProps) {
+  const { activeProfile } = useStaffProfile();
+
+  // Current Month Key (e.g. "2026-08")
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    return new Date().toISOString().slice(0, 7);
+  });
+
+  const [calls, setCalls] = useState<ServiceCall[]>([]);
+  const [payouts, setPayouts] = useState<TechnicianPayout[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<"completed" | "payment_due" | "pending" | "all" | "payouts">("completed");
+
+  // Record Payout Modal State
+  const [showRecordPayoutModal, setShowRecordPayoutModal] = useState(false);
+  const [payoutAmount, setPayoutAmount] = useState("");
+  const [payoutDate, setPayoutDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [payoutMode, setPayoutMode] = useState<PaymentMode>("upi");
+  const [payoutRef, setPayoutRef] = useState("");
+  const [payoutNotes, setPayoutNotes] = useState("");
+  const [savingPayout, setSavingPayout] = useState(false);
+
+  const commissionRate = technician?.commissionPercentage ?? 50;
+
+  const loadData = async () => {
+    if (!technician) return;
+    setLoading(true);
+    try {
+      const [allCalls, allPayouts] = await Promise.all([
+        getServiceCallsForTechnician(technician.id, technician.name),
+        getTechnicianPayouts(technician.id, selectedMonth),
+      ]);
+      setCalls(allCalls);
+      setPayouts(allPayouts);
+    } catch (err: any) {
+      console.error("Error loading technician commission data:", err);
+      toast.error("Failed to load technician task and payout history");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && technician) {
+      loadData();
+    }
+  }, [open, technician, selectedMonth]);
+
+  // Month navigation
+  const handlePrevMonth = () => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y, m - 2, 1);
+    setSelectedMonth(d.toISOString().slice(0, 7));
+  };
+
+  const handleNextMonth = () => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y, m, 1);
+    setSelectedMonth(d.toISOString().slice(0, 7));
+  };
+
+  const monthLabel = useMemo(() => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y, m - 1, 1);
+    return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  }, [selectedMonth]);
+
+  // Filter calls for this month
+  const monthCalls = useMemo(() => {
+    return calls.filter((c) => {
+      const callDate = c.dateTime || "";
+      return callDate.startsWith(selectedMonth);
+    });
+  }, [calls, selectedMonth]);
+
+  // Helper: check if payment was received from customer
+  const isCallPaymentReceived = (c: ServiceCall): boolean => {
+    // If grandTotal is 0 or undefined, no payment was owed by customer (warranty/free checkup)
+    if (!c.grandTotal || c.grandTotal === 0) return true;
+    return c.paymentStatus === "paid";
+  };
+
+  // Completed / Delivered calls in month
+  const allCompletedCalls = useMemo(() => {
+    return monthCalls.filter(
+      (c) => c.status === "completed" || c.status === "delivered"
+    );
+  }, [monthCalls]);
+
+  // Completed & customer payment RECEIVED (Commission payable now)
+  const completedPaidCalls = useMemo(() => {
+    return allCompletedCalls.filter((c) => isCallPaymentReceived(c));
+  }, [allCompletedCalls]);
+
+  // Completed but customer payment DUE (Commission withheld until collected)
+  const completedPaymentDueCalls = useMemo(() => {
+    return allCompletedCalls.filter((c) => !isCallPaymentReceived(c));
+  }, [allCompletedCalls]);
+
+  // Pending / Active calls
+  const pendingCalls = useMemo(() => {
+    return calls.filter(
+      (c) => c.status !== "completed" && c.status !== "delivered" && c.status !== "cancelled"
+    );
+  }, [calls]);
+
+  // Financial Calculations
+  const paidServiceCharges = useMemo(() => {
+    return completedPaidCalls.reduce((sum, c) => sum + (Number(c.serviceCharges) || 0), 0);
+  }, [completedPaidCalls]);
+
+  const withheldServiceCharges = useMemo(() => {
+    return completedPaymentDueCalls.reduce((sum, c) => sum + (Number(c.serviceCharges) || 0), 0);
+  }, [completedPaymentDueCalls]);
+
+  const totalServiceCharges = paidServiceCharges + withheldServiceCharges;
+
+  // Payable Commission (Calculated strictly on received customer payments)
+  const commissionEarned = useMemo(() => {
+    return Math.round((paidServiceCharges * commissionRate) / 100);
+  }, [paidServiceCharges, commissionRate]);
+
+  // Withheld Commission (Pending customer payment)
+  const commissionWithheld = useMemo(() => {
+    return Math.round((withheldServiceCharges * commissionRate) / 100);
+  }, [withheldServiceCharges, commissionRate]);
+
+  const totalPaid = useMemo(() => {
+    return payouts.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  }, [payouts]);
+
+  const balanceDue = useMemo(() => {
+    return commissionEarned - totalPaid;
+  }, [commissionEarned, totalPaid]);
+
+  // Open Record Payout Modal
+  const handleOpenPayoutDialog = () => {
+    setPayoutAmount(balanceDue > 0 ? String(balanceDue) : "");
+    setPayoutDate(new Date().toISOString().split("T")[0]);
+    setPayoutMode("upi");
+    setPayoutRef("");
+    setPayoutNotes("");
+    setShowRecordPayoutModal(true);
+  };
+
+  // Submit Payout
+  const handleSavePayout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!technician) return;
+    const amountNum = parseFloat(payoutAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast.error("Please enter a valid payout amount");
+      return;
+    }
+
+    setSavingPayout(true);
+    try {
+      await recordTechnicianPayout({
+        technicianId: technician.id,
+        technicianName: technician.name,
+        monthKey: selectedMonth,
+        amount: amountNum,
+        date: payoutDate,
+        paymentMode: payoutMode,
+        referenceNumber: payoutRef.trim() || undefined,
+        notes: payoutNotes.trim() || undefined,
+        createdByStaffId: activeProfile?.id,
+        createdByStaffName: activeProfile?.name,
+      });
+
+      toast.success(`Recorded payment of ₹${amountNum.toLocaleString("en-IN")} to ${technician.name}`);
+      setShowRecordPayoutModal(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to record payment");
+    } finally {
+      setSavingPayout(false);
+    }
+  };
+
+  // Delete Payout
+  const handleDeletePayout = async (payoutId: string) => {
+    if (!confirm("Are you sure you want to remove this payout record?")) return;
+    try {
+      await deleteTechnicianPayout(payoutId);
+      toast.success("Payout record deleted");
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete payout");
+    }
+  };
+
+  if (!technician) return null;
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border-slate-200 dark:border-slate-800 p-6 text-xs">
+          <DialogHeader className="p-0 mb-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AvatarGraphic
+                  avatarId={technician.avatar || "penguin"}
+                  className="w-12 h-12 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700"
+                />
+                <div>
+                  <DialogTitle className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>{technician.name}</span>
+                    <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-bold border-purple-200">
+                      Technician • {commissionRate}% Commission
+                    </Badge>
+                  </DialogTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {technician.phone} • {technician.specialization || "General Service"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Month Navigator */}
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl self-start sm:self-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrevMonth}
+                  className="h-7 w-7 p-0 rounded-xl"
+                  title="Previous Month"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-bold text-xs px-2 min-w-[130px] text-center text-slate-800 dark:text-slate-200">
+                  {monthLabel}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNextMonth}
+                  className="h-7 w-7 p-0 rounded-xl"
+                  title="Next Month"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Financial Summary KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-5">
+            {/* Completed Jobs */}
+            <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60">
+              <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+                Completed Jobs ({monthLabel.split(" ")[0]})
+              </span>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold text-blue-900 dark:text-blue-100 font-mono">
+                  {allCompletedCalls.length}
+                </span>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400">tickets</span>
+              </div>
+              <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                {completedPaidCalls.length} Paid • {completedPaymentDueCalls.length} Due
+              </div>
+            </div>
+
+            {/* Collected Service Charges */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                Paid Service Charges
+              </span>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+                  ₹{paidServiceCharges.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                Collected from customers
+              </div>
+            </div>
+
+            {/* Commission Earned (Payable) */}
+            <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/60">
+              <span className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
+                Payable Comm. ({commissionRate}%)
+              </span>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold text-indigo-900 dark:text-indigo-100 font-mono">
+                  ₹{commissionEarned.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5">
+                On collected charges
+              </div>
+            </div>
+
+            {/* Commission Withheld (Pending customer payment) */}
+            <div className="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60">
+              <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">
+                Commission Withheld
+              </span>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold text-rose-900 dark:text-rose-100 font-mono">
+                  ₹{commissionWithheld.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5">
+                {completedPaymentDueCalls.length} unpaid by customer
+              </div>
+            </div>
+
+            {/* Net Balance Due */}
+            <div className={`p-3.5 rounded-2xl border ${
+              balanceDue > 0
+                ? "bg-amber-50/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800"
+                : "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800"
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className={`text-[11px] font-bold ${
+                  balanceDue > 0 ? "text-amber-800 dark:text-amber-300" : "text-emerald-800 dark:text-emerald-300"
+                }`}>
+                  {balanceDue > 0 ? "Net Payable to Tech" : "Settled / Fully Paid"}
+                </span>
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className={`text-2xl font-extrabold font-mono ${
+                  balanceDue > 0 ? "text-amber-950 dark:text-amber-100" : "text-emerald-950 dark:text-emerald-100"
+                }`}>
+                  ₹{Math.abs(balanceDue).toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-500 mt-0.5">
+                After ₹{totalPaid.toLocaleString("en-IN")} paid
+              </div>
+            </div>
+          </div>
+
+          {/* Action Bar & Tabs */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto max-w-full pb-1">
+              <div className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setTab("completed")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    tab === "completed"
+                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Completed & Paid ({completedPaidCalls.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("payment_due")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    tab === "payment_due"
+                      ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Cust Payment Due ({completedPaymentDueCalls.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("pending")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    tab === "pending"
+                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Pending Tasks ({pendingCalls.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("all")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    tab === "all"
+                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  All Month Calls ({monthCalls.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("payouts")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    tab === "payouts"
+                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Monthly Payments ({payouts.length})
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleOpenPayoutDialog}
+              className="h-8 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              <span>Record Monthly Payout</span>
+            </Button>
+          </div>
+
+          {/* Tab Content: Tasks vs Payouts */}
+          {tab !== "payouts" ? (
+            <div className="space-y-3">
+              {loading ? (
+                <div className="p-8 text-center text-slate-400">Loading service call records...</div>
+              ) : (
+                (() => {
+                  const displayCalls =
+                    tab === "completed"
+                      ? completedPaidCalls
+                      : tab === "payment_due"
+                      ? completedPaymentDueCalls
+                      : tab === "pending"
+                      ? pendingCalls
+                      : monthCalls;
+
+                  if (displayCalls.length === 0) {
+                    return (
+                      <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400">
+                        No service calls found for this filter in {monthLabel}.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500">
+                            <th className="py-2.5 px-3">Ticket #</th>
+                            <th className="py-2.5 px-3">Date</th>
+                            <th className="py-2.5 px-3">Customer</th>
+                            <th className="py-2.5 px-3">Device / Issue</th>
+                            <th className="py-2.5 px-3">Job Status</th>
+                            <th className="py-2.5 px-3">Customer Payment</th>
+                            <th className="py-2.5 px-3 text-right">Service Charge</th>
+                            <th className="py-2.5 px-3 text-right">Tech Cut ({commissionRate}%)</th>
+                            <th className="py-2.5 px-3 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                          {displayCalls.map((c) => {
+                            const scNum = Number(c.serviceCharges) || 0;
+                            const cut = Math.round((scNum * commissionRate) / 100);
+                            const isCompleted = c.status === "completed" || c.status === "delivered";
+                            const isPaidByCustomer = isCallPaymentReceived(c);
+
+                            return (
+                              <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
+                                <td className="py-2.5 px-3 font-mono font-bold text-blue-600 dark:text-blue-400">
+                                  {c.ticketNo}
+                                </td>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                                  {c.dateTime || "-"}
+                                </td>
+                                <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                                  {c.customerName || "-"}
+                                </td>
+                                <td className="py-2.5 px-3 max-w-[180px] truncate text-slate-600 dark:text-slate-400">
+                                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                    {c.deviceCategory}:
+                                  </span>{" "}
+                                  {c.issueDescription}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] uppercase font-bold ${
+                                      isCompleted
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                        : "bg-amber-50 text-amber-700 border-amber-300"
+                                    }`}
+                                  >
+                                    {c.status.replace(/_/g, " ")}
+                                  </Badge>
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  {isPaidByCustomer ? (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 text-[10px] font-bold gap-1"
+                                    >
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      <span>PAID</span>
+                                    </Badge>
+                                  ) : (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 text-[10px] font-bold gap-1"
+                                    >
+                                      <AlertCircle className="h-3 w-3" />
+                                      <span>DUE (₹{c.grandTotal || 0})</span>
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                  ₹{scNum.toLocaleString("en-IN")}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono font-bold">
+                                  {isCompleted ? (
+                                    isPaidByCustomer ? (
+                                      <div className="text-indigo-600 dark:text-indigo-400">
+                                        <span>₹{cut.toLocaleString("en-IN")}</span>
+                                        <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-sans font-semibold">
+                                          ✓ Ready to pay
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-amber-600 dark:text-amber-400">
+                                        <span className="line-through text-slate-400">₹{cut.toLocaleString("en-IN")}</span>
+                                        <div className="text-[9px] text-rose-600 dark:text-rose-400 font-sans font-bold">
+                                          ⚠ Withheld (Cust Due)
+                                        </div>
+                                      </div>
+                                    )
+                                  ) : (
+                                    <span className="text-slate-400 text-[11px] font-sans">Pending Repair</span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <Link
+                                    to={`/admin/service-calls/${c.id}/edit`}
+                                    target="_blank"
+                                    className="text-blue-600 hover:text-blue-800 p-1 inline-flex items-center gap-1 font-semibold"
+                                  >
+                                    <span>Open</span>
+                                    <ExternalLink className="h-3 w-3" />
+                                  </Link>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          ) : (
+            /* Payouts Ledger */
+            <div className="space-y-3">
+              {payouts.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400">
+                  No payout payments recorded for {technician.name} in {monthLabel}.
+                </div>
+              ) : (
+                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500">
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Amount (₹)</th>
+                        <th className="py-2.5 px-3">Payment Mode</th>
+                        <th className="py-2.5 px-3">Reference / Txn</th>
+                        <th className="py-2.5 px-3">Notes</th>
+                        <th className="py-2.5 px-3">Recorded By</th>
+                        <th className="py-2.5 px-3 text-center">Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                      {payouts.map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
+                          <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                            {p.date}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
+                            ₹{p.amount.toLocaleString("en-IN")}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <Badge variant="outline" className="text-[10px] uppercase font-bold">
+                              {p.paymentMode}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                            {p.referenceNumber || "-"}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                            {p.notes || "-"}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-500 text-[11px]">
+                            {p.createdByStaffName || "Admin"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePayout(p.id)}
+                              className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                              title="Delete Payout"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="p-0 pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="h-9 text-xs rounded-xl"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Monthly Payout Dialog */}
+      <Dialog open={showRecordPayoutModal} onOpenChange={setShowRecordPayoutModal}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-slate-200 dark:border-slate-800 p-5 text-xs">
+          <DialogHeader className="p-0 mb-3">
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                <Receipt className="h-4 w-4" />
+              </div>
+              <div>
+                <span>Record Payout to {technician.name}</span>
+                <p className="text-[11px] font-normal text-slate-400">
+                  Month: {monthLabel} • Total Due: ₹{balanceDue.toLocaleString("en-IN")}
+                </p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSavePayout} className="space-y-3.5">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Payout Amount (₹) <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                type="number"
+                placeholder="e.g. 5000"
+                value={payoutAmount}
+                onChange={(e) => setPayoutAmount(e.target.value)}
+                className="h-9 text-xs font-mono rounded-xl"
+                autoFocus
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Payment Date
+                </Label>
+                <Input
+                  type="date"
+                  value={payoutDate}
+                  onChange={(e) => setPayoutDate(e.target.value)}
+                  className="h-9 text-xs rounded-xl"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Payment Mode
+                </Label>
+                <Select value={payoutMode} onValueChange={(v) => setPayoutMode(v as PaymentMode)}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="upi" className="text-xs">UPI / GPay / PhonePe</SelectItem>
+                    <SelectItem value="cash" className="text-xs">Cash</SelectItem>
+                    <SelectItem value="bank_transfer" className="text-xs">Bank Transfer (NEFT/IMPS)</SelectItem>
+                    <SelectItem value="card" className="text-xs">Card</SelectItem>
+                    <SelectItem value="other" className="text-xs">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Transaction Ref / Cheque No. (Optional)
+              </Label>
+              <Input
+                placeholder="e.g. UPI Ref 928472918"
+                value={payoutRef}
+                onChange={(e) => setPayoutRef(e.target.value)}
+                className="h-9 text-xs rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Payment Remarks / Notes (Optional)
+              </Label>
+              <Input
+                placeholder="e.g. August Commission advance settlement"
+                value={payoutNotes}
+                onChange={(e) => setPayoutNotes(e.target.value)}
+                className="h-9 text-xs rounded-xl"
+              />
+            </div>
+
+            <DialogFooter className="p-0 pt-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRecordPayoutModal(false)}
+                className="h-9 text-xs rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={savingPayout}
+                className="h-9 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {savingPayout ? "Saving Payout..." : "Save Payment Record"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

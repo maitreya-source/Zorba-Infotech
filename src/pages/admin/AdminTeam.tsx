@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle, Crown, Code } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle, Crown, Code, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,8 +35,10 @@ import { getTeamMembers, createTeamMember, updateTeamMember, deleteTeamMember } 
 import type { TeamMember, TeamRole } from "@/lib/types";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { AVATAR_CATALOG, getAvatarById } from "@/lib/avatars";
+import TechnicianCommissionModal from "@/components/admin/TechnicianCommissionModal";
 
 export default function AdminTeam() {
+  const navigate = useNavigate();
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +48,17 @@ export default function AdminTeam() {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [showModal, setShowModal] = useState(false);
 
+  // Technician Task & Commission Modal State
+  const [selectedTechForModal, setSelectedTechForModal] = useState<TeamMember | null>(null);
+  const [showCommissionModal, setShowCommissionModal] = useState(false);
+
   // Form State
   const [formName, setFormName] = useState("");
   const [formRole, setFormRole] = useState<TeamRole>("backoffice");
   const [formPhone, setFormPhone] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formSpecialization, setFormSpecialization] = useState("");
+  const [formCommission, setFormCommission] = useState<string>("50");
   const [formAvatar, setFormAvatar] = useState("penguin");
   const [formActive, setFormActive] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,10 +84,11 @@ export default function AdminTeam() {
   const openCreateModal = () => {
     setEditingMember(null);
     setFormName("");
-    setFormRole("backoffice");
+    setFormRole("technician");
     setFormPhone("");
     setFormEmail("");
     setFormSpecialization("");
+    setFormCommission("50");
     setFormAvatar("penguin");
     setFormActive(true);
     setShowModal(true);
@@ -92,6 +101,7 @@ export default function AdminTeam() {
     setFormPhone(member.phone || "");
     setFormEmail(member.email || "");
     setFormSpecialization(member.specialization || "");
+    setFormCommission(String(member.commissionPercentage ?? 50));
     setFormAvatar(member.avatar || "penguin");
     setFormActive(member.active !== false);
     setShowModal(true);
@@ -108,6 +118,8 @@ export default function AdminTeam() {
       return;
     }
 
+    const commissionNum = formRole === "technician" ? (parseFloat(formCommission) || 50) : undefined;
+
     setSaving(true);
     try {
       if (editingMember) {
@@ -115,8 +127,9 @@ export default function AdminTeam() {
           name: formName.trim(),
           role: formRole,
           phone: formPhone.trim(),
-          email: formEmail.trim() || undefined,
-          specialization: formSpecialization.trim() || undefined,
+          email: formEmail.trim(),
+          specialization: formSpecialization.trim(),
+          commissionPercentage: commissionNum,
           avatar: formAvatar,
           active: formActive,
         });
@@ -128,6 +141,7 @@ export default function AdminTeam() {
           phone: formPhone.trim(),
           email: formEmail.trim() || undefined,
           specialization: formSpecialization.trim() || undefined,
+          commissionPercentage: commissionNum,
           avatar: formAvatar,
           active: formActive,
         });
@@ -154,7 +168,7 @@ export default function AdminTeam() {
     }
   };
 
-  const getRoleBadge = (role: TeamRole) => {
+  const getRoleBadge = (role: TeamRole, commissionPercentage?: number) => {
     switch (role) {
       case "proprietor":
         return (
@@ -304,13 +318,19 @@ export default function AdminTeam() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filtered.map((member) => (
-                  <tr key={member.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
+                  <tr
+                    key={member.id}
+                    onClick={() => navigate(`/admin/team/${member.id}`)}
+                    className="hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer group"
+                  >
                     {/* Name with Avatar */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <AvatarGraphic avatarId={member.avatar || "penguin"} size="sm" />
                         <div>
-                          <div className="font-bold text-slate-900 dark:text-white text-xs">{member.name}</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1">
+                            <span>{member.name}</span>
+                          </div>
                           {member.email && (
                             <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                               <Mail className="h-3 w-3" /> {member.email}
@@ -322,7 +342,7 @@ export default function AdminTeam() {
 
                     {/* Role */}
                     <td className="px-4 py-3">
-                      {getRoleBadge(member.role)}
+                      {getRoleBadge(member.role, member.commissionPercentage)}
                     </td>
 
                     {/* Phone */}
@@ -347,13 +367,16 @@ export default function AdminTeam() {
 
                     {/* Actions */}
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-foreground"
                           title="Edit Team Member"
-                          onClick={() => openEditModal(member)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(member);
+                          }}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -362,10 +385,14 @@ export default function AdminTeam() {
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                           title="Delete Team Member"
-                          onClick={() => setDeleteId(member.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteId(member.id);
+                          }}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 transition-colors ml-1" />
                       </div>
                     </td>
                   </tr>
@@ -445,6 +472,37 @@ export default function AdminTeam() {
                 className="mt-1 h-9 text-xs rounded-xl"
               />
             </div>
+
+            {/* Technician Commission Input (Only applicable for role === 'technician') */}
+            {formRole === "technician" && (
+              <div className="space-y-1.5 p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                    <Wrench className="h-3.5 w-3.5 text-purple-600" />
+                    <span>Technician Commission Rate (%)</span>
+                  </Label>
+                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                    Monthly Settlement
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="50"
+                    value={formCommission}
+                    onChange={(e) => setFormCommission(e.target.value)}
+                    className="h-9 text-xs font-mono font-bold rounded-xl bg-white dark:bg-slate-900"
+                    required
+                  />
+                  <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300">%</span>
+                </div>
+                <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80 leading-relaxed">
+                  Technician receives this percentage of the total service charges collected on their completed service calls in a given month.
+                </p>
+              </div>
+            )}
 
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -543,6 +601,13 @@ export default function AdminTeam() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Technician Monthly Tasks & Commission Payroll Modal */}
+      <TechnicianCommissionModal
+        open={showCommissionModal}
+        onOpenChange={setShowCommissionModal}
+        technician={selectedTechForModal}
+      />
     </div>
   );
 }

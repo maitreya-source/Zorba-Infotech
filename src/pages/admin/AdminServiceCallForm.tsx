@@ -46,6 +46,7 @@ import {
   addTimelineEvent,
   getFinancialYear,
   peekNextTicketNumber,
+  updateServiceCallPaymentStatus,
 } from "@/lib/firestore";
 import {
   toTitleCase,
@@ -69,6 +70,9 @@ import type {
   ServicePart,
   WarrantyStatus,
   WhatsAppTargetModule,
+  PaymentStatus,
+  PaymentMode,
+  Product,
 } from "@/lib/types";
 import TimelineEventsListModal from "@/components/admin/TimelineEventsListModal";
 import AddTimelineEventModal from "@/components/admin/AddTimelineEventModal";
@@ -76,6 +80,7 @@ import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
 import EmailPreviewModal from "@/components/admin/EmailPreviewModal";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
+import CreateProductModal from "@/components/admin/CreateProductModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
@@ -84,6 +89,7 @@ import ServiceCallCustomerCard from "@/components/admin/service-call/ServiceCall
 import ServiceCallDeviceDetailsCard from "@/components/admin/service-call/ServiceCallDeviceDetailsCard";
 import ServiceCallBillingPartsCard from "@/components/admin/service-call/ServiceCallBillingPartsCard";
 import ServiceCallLifecycleRail from "@/components/admin/service-call/ServiceCallLifecycleRail";
+import ServiceCallPaymentModal from "@/components/admin/service-call/ServiceCallPaymentModal";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
@@ -245,6 +251,13 @@ export default function AdminServiceCallForm() {
   const [discountInput, setDiscountInput] = useState<string>("0");
   const [internalComments, setInternalComments] = useState("");
 
+  // Payment Status Tracking
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("due");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("upi");
+  const [amountPaid, setAmountPaid] = useState<number>(0);
+  const [paymentDate, setPaymentDate] = useState<string>("");
+  const [paymentNotes, setPaymentNotes] = useState<string>("");
+
   // Timeline Lifecycle Subcollection
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [quickTimelineStage, setQuickTimelineStage] = useState<TimelineEvent["stage"] | null>(null);
@@ -252,10 +265,13 @@ export default function AdminServiceCallForm() {
   const [showEventsListModal, setShowEventsListModal] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
 
   // Inline Modals
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showEditCustomerModal, setShowEditCustomerModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
   const [showCourierModal, setShowCourierModal] = useState(false);
@@ -405,6 +421,12 @@ export default function AdminServiceCallForm() {
         setInternalComments(sc.internalComments || sc.notes || "");
         setTimeline(sc.timeline || []);
 
+        setPaymentStatus(sc.paymentStatus || "due");
+        if (sc.paymentMode) setPaymentMode(sc.paymentMode);
+        if (sc.amountPaid !== undefined) setAmountPaid(sc.amountPaid);
+        if (sc.paymentDate) setPaymentDate(sc.paymentDate);
+        if (sc.paymentNotes) setPaymentNotes(sc.paymentNotes);
+
         initialSnapshotRef.current = JSON.stringify({
           type: sc.type,
           dateTime: sc.dateTime,
@@ -432,6 +454,7 @@ export default function AdminServiceCallForm() {
           serviceChargesInput: String(sc.serviceCharges || 0),
           discountInput: String(sc.discount || 0),
           internalComments: (sc.internalComments || sc.notes || "").trim(),
+          paymentStatus: sc.paymentStatus || "due",
         });
       });
     } else {
@@ -537,6 +560,8 @@ export default function AdminServiceCallForm() {
     const isAnyModalOpen =
       showCustomerModal ||
       showEditCustomerModal ||
+      showProductModal ||
+      showPaymentModal ||
       showCategoryModal ||
       showCenterModal ||
       showCourierModal ||
@@ -551,6 +576,8 @@ export default function AdminServiceCallForm() {
     if (isAnyModalOpen) {
       if (showCustomerModal) setShowCustomerModal(false);
       if (showEditCustomerModal) setShowEditCustomerModal(false);
+      if (showProductModal) setShowProductModal(false);
+      if (showPaymentModal) setShowPaymentModal(false);
       if (showCategoryModal) setShowCategoryModal(false);
       if (showCenterModal) setShowCenterModal(false);
       if (showCourierModal) setShowCourierModal(false);
@@ -590,6 +617,14 @@ export default function AdminServiceCallForm() {
           setShowEscQuitPrompt(false);
         }
       : undefined,
+    onAltC: (context) => {
+      if (context?.isProductSection) {
+        setShowProductModal(true);
+      } else {
+        setShowCustomerModal(true);
+      }
+    },
+    onAltA: () => handleAddPartRow(),
     onCtrlF2: () => {
       if (dateInputRef.current) {
         dateInputRef.current.focus();
@@ -601,12 +636,91 @@ export default function AdminServiceCallForm() {
     onF5: () => triggerTimelineModal("replacement_received_customer"),
     onF6: () => triggerTimelineModal("replacement_sent_service_center"),
     onF8: () => triggerTimelineModal("replacement_received_service_center"),
-    onF9: () => triggerTimelineModal("replacement_given_customer"),
+    onF9: () => {
+      triggerTimelineModal("replacement_given_customer");
+    },
   });
 
   const triggerTimelineModal = (stage: TimelineEvent["stage"]) => {
     setQuickTimelineStage(stage);
     setShowQuickTimelineModal(true);
+    if (stage === "replacement_given_customer") {
+      setShowPaymentModal(true);
+    }
+  };
+
+  const handleConfirmPayment = async (data: {
+    paymentStatus: PaymentStatus;
+    paymentMode?: PaymentMode;
+    amountPaid?: number;
+    paymentDate?: string;
+    paymentNotes?: string;
+  }) => {
+    setPaymentStatus(data.paymentStatus);
+    if (data.paymentMode) setPaymentMode(data.paymentMode);
+    if (data.amountPaid !== undefined) setAmountPaid(data.amountPaid);
+    if (data.paymentDate) setPaymentDate(data.paymentDate);
+    if (data.paymentNotes !== undefined) setPaymentNotes(data.paymentNotes);
+    setShowPaymentModal(false);
+
+    if (id) {
+      setPaymentSaving(true);
+      try {
+        await updateServiceCallPaymentStatus(id, data);
+        if (data.paymentStatus === "paid") {
+          const paymentEvt: TimelineEvent = {
+            id: `evt-${Date.now()}`,
+            timestamp: Date.now(),
+            stage: "payment_received",
+            title: `Payment Received (₹${data.amountPaid ?? grandTotal} via ${(data.paymentMode || "UPI").toUpperCase()})`,
+            staffId: activeProfile?.id || "admin",
+            staffName: activeProfile?.name || "Admin Staff",
+            status: status,
+            comments: data.paymentNotes || undefined,
+          };
+          setTimeline((prev) => [...prev, paymentEvt]);
+          await addTimelineEvent(id, paymentEvt).catch(() => {});
+        }
+        toast.success(
+          data.paymentStatus === "paid"
+            ? "Payment marked as Paid & Event Logged!"
+            : "Payment status set to Due (Task)"
+        );
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to update payment status");
+      } finally {
+        setPaymentSaving(false);
+      }
+    } else {
+      if (data.paymentStatus === "paid") {
+        const paymentEvt: TimelineEvent = {
+          id: `evt-${Date.now()}`,
+          timestamp: Date.now(),
+          stage: "payment_received",
+          title: `Payment Received (₹${data.amountPaid ?? grandTotal} via ${(data.paymentMode || "UPI").toUpperCase()})`,
+          staffId: activeProfile?.id || "admin",
+          staffName: activeProfile?.name || "Admin Staff",
+          status: status,
+          comments: data.paymentNotes || undefined,
+        };
+        setTimeline((prev) => [...prev, paymentEvt]);
+      }
+      toast.info(`Payment set to ${data.paymentStatus.toUpperCase()}`);
+    }
+  };
+
+  const handleProductCreated = (newProd: Product) => {
+    setParts((prev) => [
+      ...prev,
+      {
+        id: `part-${Date.now()}`,
+        name: newProd.name + (newProd.model ? ` (${newProd.model})` : ""),
+        quantity: 1,
+        unitPrice: newProd.price || 0,
+        totalPrice: newProd.price || 0,
+      },
+    ]);
+    toast.success(`Created & added "${newProd.name}" to parts billing`);
   };
 
   const handleAddTimelineEvent = async (eventData: Omit<TimelineEvent, "id" | "timestamp">) => {
@@ -721,6 +835,13 @@ export default function AdminServiceCallForm() {
         internalComments: internalComments.trim() || undefined,
         notes: internalComments.trim() || undefined,
         timeline,
+
+        // Payment status
+        paymentStatus,
+        paymentMode: paymentStatus === "paid" || paymentStatus === "partial" ? paymentMode : undefined,
+        amountPaid: paymentStatus === "paid" || paymentStatus === "partial" ? (amountPaid || grandTotal) : 0,
+        paymentDate: paymentStatus === "paid" || paymentStatus === "partial" ? (paymentDate || dateTime) : undefined,
+        paymentNotes: paymentNotes.trim() || undefined,
       };
 
       if (isEditing && id) {
@@ -1094,6 +1215,7 @@ export default function AdminServiceCallForm() {
           onServiceChargesInputChange={setServiceChargesInput}
           discountInput={discountInput}
           onDiscountInputChange={setDiscountInput}
+          onOpenProductModal={() => setShowProductModal(true)}
         />
 
       </form>
@@ -1113,6 +1235,9 @@ export default function AdminServiceCallForm() {
         courierChargesNum={courierChargesNum}
         discountNum={discountNum}
         grandTotal={grandTotal}
+        paymentStatus={paymentStatus}
+        paymentMode={paymentMode}
+        onOpenPaymentModal={() => setShowPaymentModal(true)}
         onShowEventsListModal={() => setShowEventsListModal(true)}
         onTriggerTimelineModal={triggerTimelineModal}
         onOpenCustomerWhatsApp={handleOpenCustomerWhatsApp}
@@ -1341,6 +1466,29 @@ export default function AdminServiceCallForm() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Quick Create Product Modal (triggered by Alt+C in parts section or button) */}
+      <CreateProductModal
+        open={showProductModal}
+        onOpenChange={setShowProductModal}
+        onCreated={handleProductCreated}
+      />
+
+      {/* Payment Status Confirmation Modal (default Due task vs Paid) */}
+      <ServiceCallPaymentModal
+        open={showPaymentModal}
+        onOpenChange={setShowPaymentModal}
+        ticketNo={ticketNo || "NEW"}
+        customerName={customerName}
+        grandTotal={grandTotal}
+        currentPaymentStatus={paymentStatus}
+        currentPaymentMode={paymentMode}
+        currentAmountPaid={amountPaid}
+        currentPaymentDate={paymentDate}
+        currentPaymentNotes={paymentNotes}
+        onConfirm={handleConfirmPayment}
+        saving={paymentSaving}
+      />
 
       {/* Top Header Breadcrumb Ticket Number Portal */}
       {breadcrumbTicketEl && ticketNo &&

@@ -4,6 +4,9 @@ import { httpsCallable } from "firebase/functions";
 export interface WhatsAppApiConfig {
   endpoint?: string;
   accessToken?: string;
+  appId?: string;
+  appToken?: string;
+  businessId?: string;
   phoneNumberId?: string;
   wabaId?: string;
   enabled: boolean;
@@ -11,14 +14,27 @@ export interface WhatsAppApiConfig {
 
 export function getWhatsAppApiConfig(): WhatsAppApiConfig {
   const endpoint = (import.meta.env.VITE_WHATSAPP_API_ENDPOINT || "").trim();
-  const token = (import.meta.env.VITE_META_WHATSAPP_TOKEN || "").trim();
-  const phoneId = (import.meta.env.VITE_META_PHONE_NUMBER_ID || "").trim();
-  const wabaId = (import.meta.env.VITE_META_WABA_ID || "").trim();
+  const appId = (import.meta.env.VITE_META_APP_ID || import.meta.env.VITE_APP_ID || "").trim();
+  const appToken = (import.meta.env.VITE_META_APP_TOKEN || import.meta.env.VITE_APP_TOKEN || "").trim();
+  const businessId = (import.meta.env.VITE_META_BUSINESS_ID || import.meta.env.VITE_BUSINESS_ID || "").trim();
+  let token = (import.meta.env.VITE_META_WHATSAPP_TOKEN || "").trim();
+  const phoneId = (import.meta.env.VITE_META_PHONE_NUMBER_ID || import.meta.env.VITE_PHONE_NUMBER_ID || "").trim();
+  const wabaId = (import.meta.env.VITE_META_WABA_ID || import.meta.env.VITE_WABA_ID || "").trim();
+
+  // If direct token isn't provided but App ID & App Secret / Token are, compose the client/app token
+  if (!token && appId && appToken) {
+    token = `${appId}|${appToken}`;
+  } else if (!token && appToken) {
+    token = appToken;
+  }
 
   // Enabled if backend endpoint, Firebase functions, or direct credentials are available
   return {
     endpoint,
     accessToken: token,
+    appId,
+    appToken,
+    businessId,
     phoneNumberId: phoneId,
     wabaId,
     enabled: true,

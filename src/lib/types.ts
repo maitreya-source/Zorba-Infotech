@@ -125,6 +125,7 @@ export interface TeamMember {
   phone: string;
   email?: string;
   specialization?: string; // e.g. "CCTV & Security", "Printers", "Laptops & Networking"
+  commissionPercentage?: number; // e.g. 50 (%) - applicable only for technicians
   avatar?: string; // Avatar ID from AVATAR_CATALOG (e.g. "penguin", "watermelon")
   active: boolean;
   createdAt: number;
@@ -147,6 +148,7 @@ export type TimelineStage =
   | "replacement_given_customer"
   | "replacement_received_customer"
   | "status_change"
+  | "payment_received"
   | "comment_added";
 
 export interface TimelineEvent {
@@ -277,10 +279,86 @@ export interface ServiceCall {
   isDeleted?: boolean;
   deletedAt?: number;
   deletedByStaffId?: string;
-  deletedByStaffName?: string;
+  // Payment Status Tracking
+  paymentStatus?: PaymentStatus;
+  paymentMode?: PaymentMode;
+  amountPaid?: number;
+  paymentDate?: string;
+  paymentNotes?: string;
 
   createdAt: string | number;
   updatedAt: string | number;
+}
+
+export type PaymentStatus = "due" | "paid" | "partial";
+export type PaymentMode = "cash" | "upi" | "card" | "bank_transfer" | "other";
+
+export interface TechnicianPayout {
+  id: string;
+  technicianId: string;
+  technicianName: string;
+  monthKey: string; // e.g. "2026-08"
+  amount: number;
+  date: string; // YYYY-MM-DD
+  paymentMode: PaymentMode;
+  referenceNumber?: string;
+  notes?: string;
+  createdByStaffId?: string;
+  createdByStaffName?: string;
+  createdAt: number;
+}
+
+export type QuotationStatus = "draft" | "sent" | "accepted" | "expired" | "rejected";
+
+export interface QuotationItem {
+  id: string;
+  productId?: string;
+  category: string;
+  productName: string;
+  modelNumber?: string;
+  quantity: number;
+  estimatedPrice: number;
+  totalPrice: number;
+  description?: string;
+}
+
+export interface Quotation {
+  id: string;
+  quotationNo: string; // e.g. "QT-2026-001"
+  customerId?: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  customerAddress?: string;
+  date: string; // YYYY-MM-DD
+  validUntil?: string; // YYYY-MM-DD
+  items: QuotationItem[];
+  subtotal: number;
+  discount?: number;
+  tax?: number;
+  grandTotal: number;
+  notes?: string;
+  termsAndConditions?: string;
+  isTemplate?: boolean;
+  templateId?: string;
+  templateName?: string;
+  status?: QuotationStatus;
+  createdByStaffId?: string;
+  createdByStaffName?: string;
+  createdAt: number | string;
+  updatedAt?: number | string;
+}
+
+export interface QuotationTemplate {
+  id: string;
+  name: string;
+  category?: string;
+  description?: string;
+  items: QuotationItem[];
+  defaultTerms?: string;
+  estimatedGrandTotal?: number;
+  createdAt: number | string;
+  updatedAt?: number | string;
 }
 
 export type WhatsAppCategory = "utility" | "marketing" | "authentication";

@@ -43,7 +43,7 @@ export default function SparePartTypeahead({
   );
 
   return (
-    <div ref={wrapperRef} className={`relative ${className}`}>
+    <div ref={wrapperRef} className={`relative ${isOpen ? "z-[60]" : "z-10"} ${className}`}>
       <Input
         placeholder={placeholder}
         value={value}
@@ -56,7 +56,7 @@ export default function SparePartTypeahead({
       />
 
       {isOpen && filtered.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md p-1 space-y-0.5">
+        <div className="absolute left-0 right-0 top-full z-[100] mt-1.5 max-h-56 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-1 space-y-0.5 min-w-[280px]">
           {filtered.map((item) => (
             <button
               key={item.id}

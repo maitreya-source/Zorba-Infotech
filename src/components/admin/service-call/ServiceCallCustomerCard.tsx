@@ -29,7 +29,11 @@ export default function ServiceCallCustomerCard({
   onOpenEditCustomerModal,
 }: ServiceCallCustomerCardProps) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4">
+    <div
+      data-shortcut-section="customer"
+      data-section="customer"
+      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">

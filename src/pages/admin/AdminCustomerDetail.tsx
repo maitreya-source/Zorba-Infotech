@@ -22,16 +22,25 @@ import {
   Inbox,
   XCircle,
   Truck,
+  FileText,
+  LayoutTemplate,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getCustomer, getServiceCallsForCustomer } from "@/lib/firestore";
-import type { Customer, ServiceCall, ServiceCallStatus } from "@/lib/types";
+import {
+  getCustomer,
+  getServiceCallsForCustomer,
+  getQuotationsForCustomer,
+} from "@/lib/firestore";
+import type { Customer, ServiceCall, ServiceCallStatus, Quotation } from "@/lib/types";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
 import EmailPreviewModal from "@/components/admin/EmailPreviewModal";
+import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
+import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
+import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
 
 const STATUS_BADGES: Record<
   ServiceCallStatus,
@@ -80,14 +89,22 @@ export default function AdminCustomerDetail() {
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [calls, setCalls] = useState<ServiceCall[]>([]);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Filters & State
-  const [activeTab, setActiveTab] = useState<"all" | "active" | "completed">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "active" | "completed" | "quotations">("all");
   const [search, setSearch] = useState("");
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
   const [printCall, setPrintCall] = useState<ServiceCall | null>(null);
+
+  // Quotation Modals
+  const [selectedQuoteForModal, setSelectedQuoteForModal] = useState<Quotation | null>(null);
+  const [showQuotePrint, setShowQuotePrint] = useState(false);
+  const [showQuoteWhatsApp, setShowQuoteWhatsApp] = useState(false);
+  const [showQuoteEmail, setShowQuoteEmail] = useState(false);
+
   const [whatsAppModal, setWhatsAppModal] = useState<{
     open: boolean;
     title: string;
@@ -134,12 +151,22 @@ export default function AdminCustomerDetail() {
       }
       setCustomer(cust);
 
-      // Lookup all historical service calls associated with this customer
-      const customerCalls = await getServiceCallsForCustomer(cust.id, cust.phone, cust.name);
-      setCalls(customerCalls);
+      // Lookup all historical service calls & quotations associated with this customer
+      try {
+        const [customerCalls, customerQuotes] = await Promise.all([
+          getServiceCallsForCustomer(cust.id, cust.phone, cust.name).catch(() => []),
+          getQuotationsForCustomer(cust.id, cust.phone, cust.name).catch(() => []),
+        ]);
+        setCalls(customerCalls || []);
+        setQuotations(customerQuotes || []);
+      } catch (e) {
+        console.warn("Error fetching customer calls / quotes:", e);
+        setCalls([]);
+        setQuotations([]);
+      }
     } catch (err: any) {
       console.error("Error loading customer profile:", err);
-      setError(err?.message || "Failed to load customer profile and service calls.");
+      setError(err?.message || "Failed to load customer profile.");
     } finally {
       setLoading(false);
     }
@@ -457,20 +484,28 @@ export default function AdminCustomerDetail() {
             </div>
           </div>
 
-          <div className="pt-2 border-t">
+          <div className="pt-2 border-t flex flex-col sm:flex-row gap-2">
             <Link
               to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}
-              className="w-full block"
+              className="flex-1 block"
             >
               <Button className="w-full h-10 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 cursor-pointer shadow-xs gap-1.5">
-                <Plus className="h-4 w-4" /> Create Service Call for {customer.name.split(" ")[0]}
+                <Plus className="h-4 w-4" /> New Service Call
+              </Button>
+            </Link>
+            <Link
+              to={`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`}
+              className="flex-1 block"
+            >
+              <Button variant="outline" className="w-full h-10 text-xs font-bold rounded-xl border-purple-200 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 cursor-pointer shadow-xs gap-1.5">
+                <FileText className="h-4 w-4" /> New Quotation
               </Button>
             </Link>
           </div>
         </div>
       </div>
 
-      {/* 3. Bottom Section: All Service Calls for this Customer */}
+      {/* 3. Bottom Section: All Service Calls & Quotations for this Customer */}
       <div className="space-y-3 pt-2">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Segmented Filter Pills */}
@@ -518,6 +553,21 @@ export default function AdminCustomerDetail() {
                   {completedCalls.length}
                 </span>
               </button>
+
+              <button
+                onClick={() => setActiveTab("quotations")}
+                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === "quotations"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5 text-purple-600" />
+                <span>Quotations</span>
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
+                  {quotations.length}
+                </span>
+              </button>
             </div>
           </div>
 
@@ -533,54 +583,205 @@ export default function AdminCustomerDetail() {
           </div>
         </div>
 
-        {/* Service Calls Table / List */}
-        {filteredCalls.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center shadow-xs px-4 space-y-3">
-            <Wrench className="h-10 w-10 text-slate-300 dark:text-slate-700" />
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-              {calls.length === 0
-                ? `No service calls recorded yet for ${customer.name}`
-                : "No service calls matching your active filter"}
-            </h3>
-            <p className="text-xs text-slate-500 max-w-xs">
-              {calls.length === 0
-                ? "Click the button below to register the first intake ticket for this client."
-                : "Try clearing your search query or switching tabs."}
-            </p>
-            <Link to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}>
-              <Button size="sm" className="gap-1.5 font-bold shadow-sm bg-[#2563EB] hover:bg-blue-700 text-white text-xs rounded-xl mt-2">
-                <Plus className="h-4 w-4" /> Create New Service Call
-              </Button>
-            </Link>
-          </div>
+        {/* Quotations View vs Service Calls View */}
+        {activeTab === "quotations" ? (
+          (() => {
+            const query = (search || "").toLowerCase().trim();
+            const queryDigits = query.replace(/\D/g, "");
+            const filteredQuotes = quotations.filter((q) => {
+              if (!query) return true;
+              const qNo = (q.quotationNo || "").toLowerCase();
+              const tName = (q.templateName || "").toLowerCase();
+              const notes = (q.notes || "").toLowerCase();
+              const items = Array.isArray(q.items) ? q.items : [];
+
+              const matchesNo = qNo.includes(query) || (queryDigits.length >= 1 && qNo.includes(queryDigits));
+              const matchesTemplate = tName.includes(query);
+              const matchesNotes = notes.includes(query);
+              const matchesItems = items.some((it) => {
+                if (!it) return false;
+                const pName = (it.productName || "").toLowerCase();
+                const pModel = (it.modelNumber || "").toLowerCase();
+                const pCat = (it.category || "").toLowerCase();
+                const pDesc = (it.description || "").toLowerCase();
+                return (
+                  pName.includes(query) ||
+                  pModel.includes(query) ||
+                  pCat.includes(query) ||
+                  pDesc.includes(query)
+                );
+              });
+
+              return matchesNo || matchesTemplate || matchesNotes || matchesItems;
+            });
+
+            if (filteredQuotes.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center shadow-xs px-4 space-y-3">
+                  <FileText className="h-10 w-10 text-slate-300 dark:text-slate-700" />
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    {quotations.length === 0
+                      ? `No price estimate quotations recorded yet for ${customer.name}`
+                      : "No quotations matching your search query"}
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-xs">
+                    {quotations.length === 0
+                      ? "Create an approximate price quotation for laptops, CCTV, or hardware packages."
+                      : "Try clearing your search query."}
+                  </p>
+                  <Link to={`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`}>
+                    <Button size="sm" className="gap-1.5 font-bold shadow-sm bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-xl mt-2">
+                      <Plus className="h-4 w-4" /> Create Quotation
+                    </Button>
+                  </Link>
+                </div>
+              );
+            }
+
+            return (
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left min-w-[750px]">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider bg-slate-50/60 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400">
+                        <th className="pl-6 pr-4 py-3.5">QUOTE # & DATE</th>
+                        <th className="px-4 py-3.5">ITEMS ESTIMATED</th>
+                        <th className="px-4 py-3.5">EST. GRAND TOTAL</th>
+                        <th className="pl-4 pr-6 py-3.5 text-right">DISPATCHES & ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+                      {filteredQuotes.map((q) => (
+                        <tr key={q.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="pl-6 pr-4 py-4 align-middle">
+                            <Link
+                              to={`/admin/quotations/${q.id}/edit`}
+                              className="font-bold text-blue-600 dark:text-blue-400 font-mono text-sm tracking-tight hover:underline"
+                            >
+                              {q.quotationNo}
+                            </Link>
+                            {q.templateName && (
+                              <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-0.5">
+                                {q.templateName}
+                              </div>
+                            )}
+                            <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{q.date}</span>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4 align-middle max-w-[280px]">
+                            <div className="truncate font-semibold text-slate-900 dark:text-white">
+                              {q.items?.map((it) => `${it.productName} (${it.quantity})`).join(", ")}
+                            </div>
+                            <span className="text-[11px] text-slate-500">
+                              {q.items?.length || 0} product line{q.items?.length === 1 ? "" : "s"}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-4 align-middle font-mono font-extrabold text-sm text-slate-900 dark:text-white">
+                            ₹{q.grandTotal.toLocaleString("en-IN")}
+                          </td>
+
+                          <td className="pl-4 pr-6 py-4 align-middle text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedQuoteForModal(q);
+                                  setShowQuoteWhatsApp(true);
+                                }}
+                                className="h-8 w-8 p-0 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg cursor-pointer"
+                                title="Send WhatsApp"
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedQuoteForModal(q);
+                                  setShowQuoteEmail(true);
+                                }}
+                                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer"
+                                title="Send Email"
+                              >
+                                <Mail className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedQuoteForModal(q);
+                                  setShowQuotePrint(true);
+                                }}
+                                className="h-8 w-8 p-0 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+                                title="Print Estimate"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+
+                              <Link to={`/admin/quotations/${q.id}/edit`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2.5 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                                >
+                                  <span>Edit</span>
+                                  <ChevronRight className="h-3.5 w-3.5 ml-1 text-slate-400" />
+                                </Button>
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()
         ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left min-w-[750px]">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider bg-slate-50/60 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400">
-                    <th className="pl-6 pr-4 py-3.5">TICKET NO & DATE</th>
-                    <th className="px-4 py-3.5">DEVICE & MODEL</th>
-                    <th className="px-4 py-3.5">ISSUE DESCRIPTION</th>
-                    <th className="px-4 py-3.5">STATUS</th>
-                    <th className="px-4 py-3.5">CHARGES</th>
-                    <th className="pl-4 pr-6 py-3.5 text-right">ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                  {filteredCalls.map((item) => {
-                    const displayDate = item.dateTime
-                      ? new Date(item.dateTime).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "—";
-
-                    const badge = STATUS_BADGES[item.status] || STATUS_BADGES.received;
-                    const StatusIcon = badge.icon;
-
-                    return (
+          /* Service Calls Table / List */
+          filteredCalls.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center shadow-xs px-4 space-y-3">
+              <Wrench className="h-10 w-10 text-slate-300 dark:text-slate-700" />
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                {calls.length === 0
+                  ? `No service calls recorded yet for ${customer.name}`
+                  : "No service calls matching your active filter"}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-xs">
+                {calls.length === 0
+                  ? "Click the button below to register the first intake ticket for this client."
+                  : "Try clearing your search query or switching tabs."}
+              </p>
+              <Link to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}>
+                <Button size="sm" className="gap-1.5 font-bold shadow-sm bg-[#2563EB] hover:bg-blue-700 text-white text-xs rounded-xl mt-2">
+                  <Plus className="h-4 w-4" /> Create New Service Call
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[750px]">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider bg-slate-50/60 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400">
+                      <th className="pl-6 pr-4 py-3.5">TICKET NO & DATE</th>
+                      <th className="px-4 py-3.5">DEVICE & MODEL</th>
+                      <th className="px-4 py-3.5">ISSUE DESCRIPTION</th>
+                      <th className="px-4 py-3.5">STATUS</th>
+                      <th className="px-4 py-3.5">CHARGES</th>
+                      <th className="pl-4 pr-6 py-3.5 text-right">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+                    {filteredCalls.map((item) => (
                       <tr
                         key={item.id}
                         onClick={() => navigate(`/admin/service-calls/${item.id}/edit`)}
@@ -593,78 +794,88 @@ export default function AdminCustomerDetail() {
                           </div>
                           <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            <span>{displayDate}</span>
+                            <span>
+                              {item.dateTime
+                                ? new Date(item.dateTime).toLocaleDateString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "—"}
+                            </span>
                           </div>
                         </td>
 
                         {/* Device & Model */}
                         <td className="px-4 py-4 align-middle">
-                          <div className="font-bold text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
-                            <Layers className="h-3.5 w-3.5 text-indigo-500" />
-                            <span>{item.deviceCategory}</span>
+                          <div className="font-semibold text-slate-900 dark:text-white capitalize">
+                            {item.deviceCategory || "General Device"}
                           </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                            {item.modelNumber ? `Model: ${item.modelNumber}` : "Standard Unit"}
-                            {item.serialNumber ? ` · S/N: ${item.serialNumber}` : ""}
-                          </div>
-                        </td>
-
-                        {/* Issue Description */}
-                        <td className="px-4 py-4 align-middle max-w-xs">
-                          <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2">
-                            {item.issueDescription || "No issue details recorded"}
-                          </p>
-                          {item.technicianName && (
-                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-1 block">
-                              Assigned Tech: {item.technicianName}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Status Badge */}
-                        <td className="px-4 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
-                          <Badge
-                            variant="outline"
-                            className={`text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 w-fit ${badge.className}`}
-                          >
-                            <StatusIcon className="h-3.5 w-3.5 shrink-0" />
-                            <span>{badge.label}</span>
-                          </Badge>
-                        </td>
-
-                        {/* Charges */}
-                        <td className="px-4 py-4 align-middle">
-                          <div className="font-bold font-mono text-slate-900 dark:text-white text-xs">
-                            ₹{(item.grandTotal || 0).toLocaleString("en-IN")}
-                          </div>
-                          {item.partsTotal > 0 && (
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              Parts: ₹{item.partsTotal}
+                          {item.modelNumber && (
+                            <div className="text-xs text-slate-500 font-mono mt-0.5 truncate max-w-[180px]">
+                              {item.modelNumber}
                             </div>
                           )}
                         </td>
 
-                        {/* Actions */}
-                        <td className="pl-4 pr-6 py-4 align-middle text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1.5">
+                        {/* Issue Description */}
+                        <td className="px-4 py-4 align-middle max-w-[280px]">
+                          <p className="text-slate-600 dark:text-slate-300 truncate" title={item.issueDescription}>
+                            {item.issueDescription}
+                          </p>
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="px-4 py-4 align-middle">
+                          {(() => {
+                            const badge = STATUS_BADGES[item.status] || STATUS_BADGES.received;
+                            const StatusIcon = badge.icon;
+                            return (
+                              <Badge
+                                variant="outline"
+                                className={`gap-1.5 py-1 px-2.5 text-[11px] font-bold rounded-lg border ${badge.className}`}
+                              >
+                                <StatusIcon className="h-3.5 w-3.5" />
+                                <span>{badge.label}</span>
+                              </Badge>
+                            );
+                          })()}
+                        </td>
+
+                        {/* Charges */}
+                        <td className="px-4 py-4 align-middle">
+                          <div className="font-extrabold font-mono text-slate-900 dark:text-white text-sm">
+                            {item.grandTotal !== undefined && item.grandTotal > 0
+                              ? `₹${item.grandTotal.toLocaleString("en-IN")}`
+                              : "—"}
+                          </div>
+                        </td>
+
+                        {/* Quick Actions */}
+                        <td
+                          className="pl-4 pr-6 py-4 align-middle text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleOpenTicketWhatsApp(item)}
-                              className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg cursor-pointer"
+                              onClick={() => {
+                                const badge = STATUS_BADGES[item.status] || STATUS_BADGES.received;
+                                setWhatsAppModal({
+                                  open: true,
+                                  title: `Send Update - Ticket #${item.ticketNo}`,
+                                  recipientName: customer.name,
+                                  recipientRole: "Customer",
+                                  defaultPhone: customer.phone,
+                                  defaultMessage: `Hello ${customer.name}, your service call #${item.ticketNo} status is: ${badge.label}. - Zorba Infotech`,
+                                  ticketId: item.ticketNo,
+                                });
+                              }}
+                              className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg cursor-pointer"
                               title="Send WhatsApp Update"
                             >
                               <MessageSquare className="h-4 w-4" />
-                            </Button>
-
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenTicketEmail(item)}
-                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg cursor-pointer"
-                              title="Send Email Update"
-                            >
-                              <Mail className="h-4 w-4" />
                             </Button>
 
                             <Button
@@ -690,12 +901,12 @@ export default function AdminCustomerDetail() {
                           </div>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )
         )}
       </div>
 
@@ -744,6 +955,25 @@ export default function AdminCustomerDetail() {
         defaultEmail={emailModal.defaultEmail}
         ticketId={emailModal.ticketId}
         serviceCallsList={calls}
+      />
+
+      {/* Quotation Modals */}
+      <QuotationPrintModal
+        open={showQuotePrint}
+        onOpenChange={setShowQuotePrint}
+        quotation={selectedQuoteForModal}
+      />
+
+      <QuotationWhatsAppModal
+        open={showQuoteWhatsApp}
+        onOpenChange={setShowQuoteWhatsApp}
+        quotation={selectedQuoteForModal}
+      />
+
+      <QuotationEmailModal
+        open={showQuoteEmail}
+        onOpenChange={setShowQuoteEmail}
+        quotation={selectedQuoteForModal}
       />
     </div>
   );

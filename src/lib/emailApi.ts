@@ -243,10 +243,15 @@ export function buildEmailHtml(params: GenerateEmailContentParams): string {
         </div>
 
         <!-- Footer -->
-        <div style="background-color: #f8fafc; padding: 20px 32px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">
-          <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a;">Zorba Infotech &bull; Service &amp; Support Center</p>
-          <p style="margin: 0 0 4px 0;">Shop No. 5 &amp; 6, U-Shape Market, Tagore Marg, Neemuch, Madhya Pradesh - 458441, India</p>
-          <p style="margin: 0;">Helpline: +91 99935 99730 / +91 93021 99730 / +91 94248 99730 &bull; Email: zorbainfotech@gmail.com</p>
+        <div style="background-color: #f8fafc; padding: 22px 32px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">
+          <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a; font-size: 12px;">ZORBA INFOTECH &bull; IT Solutions &amp; Service Hub</p>
+          <p style="margin: 0 0 6px 0; color: #475569;">Shop No. 5 &amp; 6, U-Shape Market, Tagore Marg, Neemuch, Madhya Pradesh - 458441, India</p>
+          <p style="margin: 0 0 4px 0; color: #1e293b;">
+            <strong>Main:</strong> +91 99935 99730 &bull; <strong>Support:</strong> +91 93021 99730 &bull; <strong>Sales:</strong> +91 94248 99730 &bull; <strong>Accounts:</strong> +91 91796 99730
+          </p>
+          <p style="margin: 0; color: #64748b;">
+            Email: <a href="mailto:zorbainfotech@gmail.com" style="color: #2563eb; text-decoration: none;">zorbainfotech@gmail.com</a> / <a href="mailto:zorba99730@gmail.com" style="color: #2563eb; text-decoration: none;">zorba99730@gmail.com</a> &bull; GSTIN: 23AATPM9267A1ZH &bull; <a href="https://www.zorbainfotech.in" style="color: #2563eb; text-decoration: none;">www.zorbainfotech.in</a>
+          </p>
         </div>
       </div>
     </body>
@@ -266,7 +271,7 @@ export function buildEmailText(params: GenerateEmailContentParams): string {
   const total = params.grandTotal !== undefined ? `₹${params.grandTotal.toLocaleString("en-IN")}` : "Under Diagnosis";
 
   if (params.templateType === "freeform" && params.customBody) {
-    return `Dear ${customer},\n\n${params.customBody}\n\nWarm regards,\nZorba Infotech Service Center\nShop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch (M.P.) - 458441\nPhone: +91 99935 99730 / +91 93021 99730\nEmail: zorbainfotech@gmail.com`;
+    return `Dear ${customer},\n\n${params.customBody}\n\nWarm regards,\nZorba Infotech Service Center\nShop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch (M.P.) - 458441\nMain: +91 99935 99730 | Support: +91 93021 99730 | Sales: +91 94248 99730\nEmail: zorbainfotech@gmail.com / zorba99730@gmail.com\nWeb: www.zorbainfotech.in`;
   }
 
   return `========================================
@@ -289,8 +294,9 @@ ${params.remarks ? `Remarks: ${params.remarks}\n\n` : ""}Thank you for choosing 
 
 Zorba Infotech Service Center
 Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch (M.P.) - 458441
-Support: +91 99935 99730 / +91 93021 99730 / +91 94248 99730
-Email: zorbainfotech@gmail.com
+Main: +91 99935 99730 | Support: +91 93021 99730 | Sales: +91 94248 99730
+Email: zorbainfotech@gmail.com / zorba99730@gmail.com
+Web: www.zorbainfotech.in
 `;
 }
 

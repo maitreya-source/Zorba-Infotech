@@ -6,16 +6,38 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Converts a string (e.g. customer name) to Title Case.
+ * Converts a string (customer name, address, product name, brand, etc.) to Title Case.
+ * Capitalizes the first letter of each word and preserves hyphenated / punctuated words.
  * Example: "maitreya mulchandani" -> "Maitreya Mulchandani"
+ * Example: "shop no. 5, u-shape market" -> "Shop No. 5, U-Shape Market"
  */
-export function toTitleCase(str: string): string {
+export function toTitleCase(str?: string | null): string {
   if (!str) return "";
-  return str
+  return String(str)
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase()
-    .replace(/(?:^|\s|[-/(,])\S/g, (char) => char.toUpperCase());
+    .replace(/(?:^|[\s\-_/(\[,.])\S/g, (char) => char.toUpperCase());
+}
+
+/**
+ * Normalizes model numbers:
+ * - NO spaces allowed (spaces converted to hyphen)
+ * - Converts to uppercase
+ * - Strips characters that are invalid for doc IDs or model numbers
+ * Example: "Latitude 5420" -> "LATITUDE-5420"
+ * Example: "t480" -> "T480"
+ * Example: "ThinkPad T480s" -> "THINKPAD-T480S"
+ */
+export function formatModelNumber(model?: string | null): string {
+  if (!model) return "";
+  return String(model)
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[/\\#?%*:"'<>|]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toUpperCase();
 }
 
 /**

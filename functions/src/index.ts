@@ -99,8 +99,16 @@ export const sendWhatsAppMessage = onCall(async (request: CallableRequest<SendWh
   }
 
   // 2. Retrieve secure server configuration
-  const token = (process.env.META_WHATSAPP_TOKEN || "").trim();
+  const appId = (process.env.META_APP_ID || "").trim();
+  const appToken = (process.env.META_APP_TOKEN || "").trim();
+  let token = (process.env.META_WHATSAPP_TOKEN || "").trim();
   const phoneId = (process.env.META_PHONE_NUMBER_ID || "").trim();
+
+  if (!token && appId && appToken) {
+    token = `${appId}|${appToken}`;
+  } else if (!token && appToken) {
+    token = appToken;
+  }
 
   if (!token || !phoneId) {
     console.error("Meta WhatsApp Cloud API credentials missing on server.");
@@ -191,8 +199,16 @@ export const fetchMetaWhatsAppTemplates = onCall(async (request: CallableRequest
   await verifyAdminCaller(request);
 
   // 2. Retrieve secure server configuration
-  const token = (process.env.META_WHATSAPP_TOKEN || "").trim();
+  const appId = (process.env.META_APP_ID || "").trim();
+  const appToken = (process.env.META_APP_TOKEN || "").trim();
+  let token = (process.env.META_WHATSAPP_TOKEN || "").trim();
   const wabaId = (process.env.META_WABA_ID || "").trim();
+
+  if (!token && appId && appToken) {
+    token = `${appId}|${appToken}`;
+  } else if (!token && appToken) {
+    token = appToken;
+  }
 
   if (!token || !wabaId) {
     throw new HttpsError(

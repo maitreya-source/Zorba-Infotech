@@ -13,6 +13,7 @@ interface ServiceCallBillingPartsCardProps {
   onServiceChargesInputChange: (val: string) => void;
   discountInput: string;
   onDiscountInputChange: (val: string) => void;
+  onOpenProductModal?: () => void;
 }
 
 export default function ServiceCallBillingPartsCard({
@@ -24,9 +25,14 @@ export default function ServiceCallBillingPartsCard({
   onServiceChargesInputChange,
   discountInput,
   onDiscountInputChange,
+  onOpenProductModal,
 }: ServiceCallBillingPartsCardProps) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+    <div
+      data-shortcut-section="product"
+      data-section="parts"
+      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
@@ -37,13 +43,24 @@ export default function ServiceCallBillingPartsCard({
           </h2>
         </div>
 
-        <button
-          type="button"
-          onClick={onAddPartRow}
-          className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
-        >
-          Add Item
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenProductModal && (
+            <button
+              type="button"
+              onClick={onOpenProductModal}
+              className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <span>+ New Product (Alt+C)</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onAddPartRow}
+            className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+          >
+            + Add Row (Alt+A)
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2.5">
