@@ -112,6 +112,18 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /quotations/{quotationId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /quotation_templates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /technician_payouts/{payoutId} {
+      allow read, write: if isAdmin();
+    }
+
     match /financial_years/{fyId}/{allSubcollections=**} {
       allow read, write: if isAdmin();
     }
