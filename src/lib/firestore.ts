@@ -2229,17 +2229,17 @@ export async function createQuotation(
 
     const sanitizedItems = (data.items || []).map((it) => ({
       ...it,
-      productName: toTitleCase(it.productName),
-      category: it.category ? toTitleCase(it.category) : "",
-      modelNumber: it.modelNumber ? formatModelNumber(it.modelNumber) : "",
-      description: it.description ? it.description.trim() : "",
+      productName: toTitleCase(it?.productName || ""),
+      category: it?.category ? toTitleCase(it.category) : "",
+      modelNumber: it?.modelNumber ? formatModelNumber(it.modelNumber) : "",
+      description: typeof it?.description === "string" ? it.description.trim() : "",
     }));
 
     const docRef = doc(collection(db, "quotations"));
     const newQuotation: Quotation = {
       id: docRef.id,
       ...data,
-      customerName: toTitleCase(data.customerName),
+      customerName: toTitleCase(data.customerName || ""),
       customerAddress: data.customerAddress ? toTitleCase(data.customerAddress) : "",
       templateName: data.templateName ? toTitleCase(data.templateName) : "",
       items: sanitizedItems,
@@ -2267,10 +2267,10 @@ export async function updateQuotation(
     if (sanitized.items && Array.isArray(sanitized.items)) {
       sanitized.items = sanitized.items.map((it: any) => ({
         ...it,
-        productName: toTitleCase(it.productName),
-        category: it.category ? toTitleCase(it.category) : "",
-        modelNumber: it.modelNumber ? formatModelNumber(it.modelNumber) : "",
-        description: it.description ? it.description.trim() : "",
+        productName: toTitleCase(it?.productName || ""),
+        category: it?.category ? toTitleCase(it.category) : "",
+        modelNumber: it?.modelNumber ? formatModelNumber(it.modelNumber) : "",
+        description: typeof it?.description === "string" ? it.description.trim() : "",
       }));
     }
 

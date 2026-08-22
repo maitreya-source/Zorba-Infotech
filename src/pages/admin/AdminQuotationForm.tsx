@@ -427,23 +427,25 @@ export default function AdminQuotationForm() {
   // Save / Submit Quotation
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!customerName.trim() || !customerPhone.trim()) {
+    const cName = (customerName || "").trim();
+    const cPhone = (customerPhone || "").trim();
+    if (!cName || !cPhone) {
       toast.error("Please search and select a Customer with Name and Phone number");
       return;
     }
 
-    const cleanItems = items
-      .filter((it) => it.productName.trim())
+    const cleanItems = (items || [])
+      .filter((it) => (it?.productName || "").trim())
       .map((it) => {
         const q = Math.max(1, Number(it.quantity) || 1);
         const p = Number(it.estimatedPrice) || 0;
         return {
           id: it.id || `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
           productId: it.productId,
-          productName: toTitleCase(it.productName),
+          productName: toTitleCase(it.productName || ""),
           category: it.category ? toTitleCase(it.category) : "General",
           modelNumber: it.modelNumber ? formatModelNumber(it.modelNumber) : undefined,
-          description: it.description?.trim() || undefined,
+          description: typeof it.description === "string" && it.description.trim() ? it.description.trim() : undefined,
           quantity: q,
           estimatedPrice: p,
           totalPrice: q * p,
@@ -460,18 +462,18 @@ export default function AdminQuotationForm() {
       const payload = {
         date,
         customerId: selectedCustomerId || `cust-${Date.now()}`,
-        customerName: toTitleCase(customerName),
-        customerPhone: customerPhone.trim(),
-        customerEmail: customerEmail.trim().toLowerCase() || undefined,
-        customerAddress: customerAddress.trim() ? toTitleCase(customerAddress) : undefined,
-        templateId,
-        templateName: templateName.trim() ? toTitleCase(templateName) : undefined,
+        customerName: toTitleCase(customerName || ""),
+        customerPhone: (customerPhone || "").trim(),
+        customerEmail: (customerEmail || "").trim().toLowerCase() || undefined,
+        customerAddress: (customerAddress || "").trim() ? toTitleCase(customerAddress) : undefined,
+        templateId: templateId || undefined,
+        templateName: (templateName || "").trim() ? toTitleCase(templateName) : undefined,
         items: cleanItems,
         subtotal,
         discount: discountNum > 0 ? discountNum : undefined,
         grandTotal,
-        termsAndConditions: termsAndConditions.trim() || DEFAULT_TERMS,
-        notes: notes.trim() || undefined,
+        termsAndConditions: (termsAndConditions || "").trim() || DEFAULT_TERMS,
+        notes: (notes || "").trim() || undefined,
         createdByStaffId: activeProfile?.id,
         createdByStaffName: activeProfile?.name ? toTitleCase(activeProfile.name) : undefined,
       };
