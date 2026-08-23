@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Layout from "@/components/layout/Layout";
 import {
   SEO,
@@ -7,6 +8,15 @@ import {
   type JobPostingData,
 } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Phone,
   MessageCircle,
@@ -16,12 +26,13 @@ import {
   Network,
   Headset,
   CheckCircle2,
+  Send,
+  Sparkles,
 } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { createJobApplication } from "@/lib/firestore";
+import { toast } from "sonner";
 
-// Roles we are hiring for. Zorba Infotech is the direct employer (placement is
-// at our own company, not a third-party agency). Work location is Neemuch;
-// candidates from across Madhya Pradesh & Rajasthan are welcome.
 const DATE_POSTED = "2026-07-23";
 const VALID_THROUGH = "2026-10-31";
 const APPLICANT_AREAS = ["Neemuch", "Madhya Pradesh", "Rajasthan"];
@@ -149,96 +160,158 @@ const faqs = [
   {
     question: "Can freshers apply for these computer jobs in Neemuch?",
     answer:
-      "Yes. Both freshers and experienced candidates are welcome for all roles. We provide on-the-job training for the right candidates.",
+      "Yes! Freshers with ITI / Diploma / Degree or practical hands-on computer knowledge are encouraged to apply. We provide comprehensive on-the-job training.",
   },
   {
-    question: "I am from another town in Madhya Pradesh or Rajasthan — can I apply?",
+    question: "What is the work location and are candidates outside Neemuch eligible?",
     answer:
-      "Yes. The work location is Neemuch (Madhya Pradesh, near the Rajasthan border), and candidates from across Madhya Pradesh and Rajasthan are welcome to apply.",
-  },
-  {
-    question: "What is the salary for these roles?",
-    answer:
-      "Salary is offered as per experience and skills. Call or WhatsApp us to discuss the details for your profile.",
+      "Work location is Neemuch, Madhya Pradesh (Shop No. 5 & 6, U-Shape Market, Tagore Marg). Candidates from Neemuch, Mandsaur, Ratlam, Chittorgarh, across MP and Rajasthan are welcome.",
   },
   {
     question: "How do I apply for a job at Zorba Infotech?",
     answer:
-      "Call or WhatsApp us on +91 99935 99730, +91 93021 99730, +91 94248 99730 or +91 91796 99730, or walk in to Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch 458441, Madhya Pradesh.",
+      "You can apply directly online through this page, call or WhatsApp our HR numbers (+91 99935 99730, +91 93021 99730), or visit our showroom with your resume.",
   },
 ];
 
 const Careers = () => {
-  const { ref, isVisible } = useScrollAnimation(0.05);
+  const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
+
+  // Online Application Modal State
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [selectedRoleTitle, setSelectedRoleTitle] = useState("Computer Hardware Technician");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [experience, setExperience] = useState("Fresher");
+  const [resumeLink, setResumeLink] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const openApplyForRole = (title: string) => {
+    setSelectedRoleTitle(title);
+    setShowApplyModal(true);
+  };
+
+  const handleOnlineApplicationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim()) {
+      toast.error("Full name is required");
+      return;
+    }
+    const cleanDigits = phone.replace(/\D/g, "");
+    if (!phone.trim() || cleanDigits.length < 10) {
+      toast.error("Please enter a valid 10-digit mobile phone number");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createJobApplication({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim() || undefined,
+        positionApplied: selectedRoleTitle,
+        experience: experience.trim(),
+        resumeLink: resumeLink.trim() || undefined,
+        message: message.trim() || undefined,
+      });
+
+      toast.success("Application submitted successfully! Our HR team will contact you shortly.");
+      setShowApplyModal(false);
+      setFullName("");
+      setPhone("");
+      setEmail("");
+      setResumeLink("");
+      setMessage("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Failed to submit application. Please call or WhatsApp us.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Layout>
       <SEO
-        title="Jobs in Neemuch, MP & Rajasthan – Computer Technician, Networking & Service Engineer | Zorba Infotech Careers"
-        description="Zorba Infotech is hiring in Neemuch (MP) & nearby Rajasthan: Computer Hardware Technician, Networking Engineer & Computer Service Engineer. Freshers & experienced welcome. Direct company jobs — call/WhatsApp to apply."
+        title="Careers & Computer Jobs in Neemuch – Zorba Infotech | Hardware & Network Engineer Vacancies"
+        description="Direct computer hardware jobs in Neemuch at Zorba Infotech. Openings for Hardware Technicians, Network Engineers & Service Engineers. Freshers & experienced welcome. Apply now!"
         path="/careers"
       />
       <BreadcrumbSchema items={[{ name: "Home", url: "/" }, { name: "Careers", url: "/careers" }]} />
-      {roles.map((role) => (
-        <JobPostingSchema key={role.job.slug} job={role.job} />
+      {roles.map((r) => (
+        <JobPostingSchema key={r.job.slug} job={r.job} />
       ))}
       <FAQSchema items={faqs} />
 
       <div className="container py-12">
-        <div
-          ref={ref}
-          className={`mx-auto max-w-4xl transition-all duration-700 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-          }`}
-        >
+        <div className="mx-auto max-w-4xl">
           {/* Header */}
-          <div className="flex items-center gap-2 text-sm font-medium text-primary">
-            <Briefcase className="h-4 w-4" />
-            We're Hiring
-          </div>
-          <h1 className="mt-2 text-3xl font-bold font-display md:text-4xl">
-            Careers &amp; Job Openings in Neemuch, MP &amp; Rajasthan
-          </h1>
-          <p className="mt-3 text-muted-foreground leading-relaxed">
-            <strong>Zorba Infotech</strong> — Neemuch's leading computer hardware dealer, IT
-            distributor &amp; authorized service center — is hiring. These are{" "}
-            <strong>direct jobs at our own company</strong> (we are the employer, not a third-party
-            placement agency). We urgently need skilled and trainee candidates for computer
-            hardware, networking and service roles. <strong>Freshers and experienced</strong>{" "}
-            candidates from Neemuch, across <strong>Madhya Pradesh</strong> and{" "}
-            <strong>Rajasthan</strong> are welcome to apply.
-          </p>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-            <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 text-primary" /> Neemuch, Madhya Pradesh
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-muted-foreground">
-              Full-time
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-muted-foreground">
-              Salary: as per experience &amp; skills
-            </span>
-          </div>
-
-          {/* Apply CTA */}
-          <div className="mt-6 rounded-2xl border bg-card p-5">
-            <h2 className="font-display text-lg font-bold">How to Apply</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Call or WhatsApp us on any number below, or walk in to our showroom.
+          <div
+            ref={headerRef}
+            className={`transition-all duration-700 ${
+              headerVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            }`}
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
+              <Briefcase className="h-3.5 w-3.5" /> We Are Hiring Direct Positions
+            </div>
+            <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight sm:text-4xl text-slate-900 dark:text-white">
+              Careers &amp; Job Openings in Neemuch, MP &amp; Rajasthan
+            </h1>
+            <p className="mt-3 text-muted-foreground leading-relaxed">
+              <strong>Zorba Infotech</strong> — Neemuch's leading computer hardware dealer, IT
+              distributor &amp; authorized service center — is hiring. These are{" "}
+              <strong>direct jobs at our own company</strong> (we are the direct employer). We urgently need skilled and trainee candidates for computer
+              hardware, networking and service roles. <strong>Freshers and experienced</strong>{" "}
+              candidates from Neemuch, across <strong>Madhya Pradesh</strong> and{" "}
+              <strong>Rajasthan</strong> are welcome to apply.
             </p>
-            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-muted-foreground text-xs">
+                <MapPin className="h-3.5 w-3.5 text-primary" /> Neemuch, Madhya Pradesh
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-muted-foreground text-xs">
+                Full-time
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-muted-foreground text-xs">
+                Salary: as per experience &amp; skills
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Apply Action Box */}
+          <div className="mt-6 rounded-2xl border bg-gradient-to-r from-blue-900/10 via-card to-card p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display text-lg font-bold">Apply Online Directly</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Submit your details in 30 seconds or reach out directly to our HR desk.
+                </p>
+              </div>
+              <Button
+                onClick={() => openApplyForRole("General Application / Any Role")}
+                className="bg-[#2563EB] hover:bg-blue-700 text-white font-bold gap-2 text-xs h-10 px-5 rounded-xl cursor-pointer shrink-0 shadow-sm"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Apply Online Now</span>
+              </Button>
+            </div>
+
+            <div className="mt-5 pt-4 border-t grid gap-2.5 sm:grid-cols-2">
               {contactNumbers.map((c) => (
-                <div key={c.number} className="flex items-center gap-2 rounded-lg border p-2.5">
-                  <span className="flex-1 text-sm">
-                    <span className="block text-xs text-muted-foreground">{c.label}</span>
-                    <span className="font-medium">
+                <div key={c.number} className="flex items-center gap-2 rounded-xl border bg-card p-2.5">
+                  <span className="flex-1 text-xs">
+                    <span className="block text-[11px] text-muted-foreground">{c.label}</span>
+                    <span className="font-semibold font-mono">
                       +91 {c.number.replace(/(\d{5})(\d{5})/, "$1 $2")}
                     </span>
                   </span>
                   <a href={`tel:+91${c.number}`}>
-                    <Button variant="outline" size="icon" aria-label={`Call ${c.label}`}>
-                      <Phone className="h-4 w-4" />
+                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" aria-label={`Call ${c.label}`}>
+                      <Phone className="h-3.5 w-3.5" />
                     </Button>
                   </a>
                   <a
@@ -248,8 +321,8 @@ const Careers = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Button variant="whatsapp" size="icon" aria-label={`WhatsApp ${c.label}`}>
-                      <MessageCircle className="h-4 w-4" />
+                    <Button variant="whatsapp" size="icon" className="h-8 w-8 rounded-lg" aria-label={`WhatsApp ${c.label}`}>
+                      <MessageCircle className="h-3.5 w-3.5" />
                     </Button>
                   </a>
                 </div>
@@ -257,13 +330,13 @@ const Careers = () => {
             </div>
           </div>
 
-          {/* Roles */}
+          {/* Roles List */}
           <div className="mt-10 space-y-6">
             {roles.map((role) => (
               <article
                 key={role.job.slug}
                 id={role.job.slug}
-                className="scroll-mt-24 rounded-2xl border bg-card p-6"
+                className="scroll-mt-24 rounded-2xl border bg-card p-6 shadow-xs"
               >
                 <div className="flex items-start gap-4">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -271,7 +344,7 @@ const Careers = () => {
                   </div>
                   <div className="flex-1">
                     <h2 className="font-display text-xl font-bold">{role.job.title}</h2>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Full-time · Neemuch, MP · Freshers &amp; experienced · Salary as per experience
                     </p>
                   </div>
@@ -279,33 +352,40 @@ const Careers = () => {
 
                 <div className="mt-5 grid gap-6 sm:grid-cols-2">
                   <div>
-                    <h3 className="text-sm font-semibold">Responsibilities</h3>
-                    <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Responsibilities</h3>
+                    <ul className="space-y-1.5 text-xs text-muted-foreground">
                       {role.responsibilities.map((r) => (
                         <li key={r} className="flex items-start gap-2">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                          {r}
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                          <span>{r}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold">Who Can Apply</h3>
-                    <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Who Can Apply</h3>
+                    <ul className="space-y-1.5 text-xs text-muted-foreground">
                       {role.requirements.map((r) => (
                         <li key={r} className="flex items-start gap-2">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-zorba-green" />
-                          {r}
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zorba-green" />
+                          <span>{r}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 </div>
 
-                <div className="mt-5 flex flex-wrap gap-3">
+                <div className="mt-6 flex flex-wrap gap-2.5 pt-4 border-t">
+                  <Button
+                    onClick={() => openApplyForRole(role.job.title)}
+                    className="bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs h-9 rounded-xl gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>Apply Online</span>
+                  </Button>
                   <a href="tel:+919993599730">
-                    <Button variant="default" className="gap-2">
-                      <Phone className="h-4 w-4" /> Call to Apply
+                    <Button variant="outline" size="sm" className="h-9 text-xs rounded-xl gap-1.5">
+                      <Phone className="h-3.5 w-3.5" /> Call HR
                     </Button>
                   </a>
                   <a
@@ -315,8 +395,8 @@ const Careers = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Button variant="whatsapp" className="gap-2">
-                      <MessageCircle className="h-4 w-4" /> WhatsApp to Apply
+                    <Button variant="whatsapp" size="sm" className="h-9 text-xs rounded-xl gap-1.5">
+                      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp HR
                     </Button>
                   </a>
                 </div>
@@ -330,14 +410,125 @@ const Careers = () => {
             <div className="mt-5 space-y-4">
               {faqs.map((f) => (
                 <div key={f.question} className="rounded-xl border bg-card p-5">
-                  <h3 className="font-semibold">{f.question}</h3>
-                  <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{f.answer}</p>
+                  <h3 className="font-semibold text-sm">{f.question}</h3>
+                  <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{f.answer}</p>
                 </div>
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Online Application Dialog */}
+      <Dialog open={showApplyModal} onOpenChange={setShowApplyModal}>
+        <DialogContent className="sm:max-w-lg p-6">
+          <DialogHeader className="border-b pb-3">
+            <DialogTitle className="flex items-center gap-2 font-display text-base text-slate-900 dark:text-white">
+              <Briefcase className="h-5 w-5 text-blue-600" />
+              <span>Apply for {selectedRoleTitle}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleOnlineApplicationSubmit} className="space-y-4 pt-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Full Name <span className="text-red-500">*</span></Label>
+                <Input
+                  required
+                  placeholder="e.g. Anand Patidar"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="h-9 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Phone / WhatsApp Number <span className="text-red-500">*</span></Label>
+                <Input
+                  required
+                  type="tel"
+                  placeholder="e.g. 98261 22334"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-9 text-xs rounded-xl font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Email Address (Optional)</Label>
+                <Input
+                  type="email"
+                  placeholder="e.g. anand@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-9 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Experience Level</Label>
+                <select
+                  value={experience}
+                  onChange={(e) => setExperience(e.target.value)}
+                  className="w-full h-9 rounded-xl border bg-background px-3 text-xs"
+                >
+                  <option value="Fresher">Fresher (Ready to Learn)</option>
+                  <option value="1-2 Years">1 - 2 Years</option>
+                  <option value="3-5 Years">3 - 5 Years</option>
+                  <option value="5+ Years">5+ Years Experience</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Resume / Bio Link (Google Drive / LinkedIn / PDF Link)</Label>
+              <Input
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={resumeLink}
+                onChange={(e) => setResumeLink(e.target.value)}
+                className="h-9 text-xs rounded-xl font-mono"
+              />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                If sharing a Google Drive or cloud document, please ensure access permissions are granted to <span className="font-semibold text-foreground">zorbainfotech@gmail.com</span> and <span className="font-semibold text-foreground">zorbasquad@gmail.com</span> (or set link access to <em>&ldquo;Anyone with the link can view&rdquo;</em>).
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Brief Introduction / Relevant Skills</Label>
+              <Textarea
+                rows={3}
+                placeholder="Tell us about your background, ITI diploma, hardware repair experience or why you want to join Zorba..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="text-xs rounded-xl resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowApplyModal(false)}
+                className="h-9 text-xs rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="h-9 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl gap-1.5"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>{submitting ? "Submitting Application..." : "Submit Application"}</span>
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

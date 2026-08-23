@@ -17,6 +17,8 @@ interface TallyShortcutOptions {
   onAltC?: (context?: { isProductSection?: boolean; isCustomerSection?: boolean }) => void;  // Create New Customer / Product / Category
   onAltA?: () => void;  // Add Service Call / Add Row
   onAltD?: () => void;  // Delete Selected Row / Entry
+  onAltP?: () => void;  // Print Job Card / Quotation
+  onAltW?: () => void;  // WhatsApp Dispatch
   onCtrlA?: () => void; // Accept / Save current screen (Ctrl + A / Cmd + A)
   onEsc?: () => void;   // Close current screen / modal
   onC?: () => void;     // Press C to continue / dismiss prompt
@@ -145,6 +147,18 @@ export function useTallyShortcuts(options: TallyShortcutOptions) {
       if (e.altKey && (e.key.toLowerCase() === "d" || e.code === "KeyD")) {
         e.preventDefault();
         opts.onAltD?.();
+        return;
+      }
+      // Alt + P -> Print Job Card / Quotation
+      if (e.altKey && (e.key.toLowerCase() === "p" || e.code === "KeyP")) {
+        e.preventDefault();
+        opts.onAltP?.();
+        return;
+      }
+      // Alt + W -> WhatsApp Dispatch
+      if (e.altKey && (e.key.toLowerCase() === "w" || e.code === "KeyW")) {
+        e.preventDefault();
+        opts.onAltW?.();
         return;
       }
     };

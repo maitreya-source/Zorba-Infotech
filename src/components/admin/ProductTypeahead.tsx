@@ -8,7 +8,7 @@ import type { Product } from "@/lib/types";
 interface ProductTypeaheadProps {
   selectedProductId?: string;
   onSelectProduct: (product: Product) => void;
-  onAddNewProduct: () => void;
+  onAddNewProduct?: () => void;
   className?: string;
   placeholder?: string;
   value?: string;
@@ -193,19 +193,21 @@ export default function ProductTypeahead({
           )}
 
           {/* Create Product CTA at bottom */}
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-1.5 mt-1">
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onAddNewProduct();
-              }}
-              className="w-full flex items-center justify-center gap-2 p-2 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Create New Catalog Product (Alt+C)</span>
-            </button>
-          </div>
+          {onAddNewProduct && (
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-1.5 mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onAddNewProduct();
+                }}
+                className="w-full flex items-center justify-center gap-2 p-2 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Create New Catalog Product (Alt+C)</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

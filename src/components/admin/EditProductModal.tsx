@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Package, Save } from "lucide-react";
+import { Package, Save, Globe, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ export default function EditProductModal({
   const [price, setPrice] = useState("");
   const [warranty, setWarranty] = useState("");
   const [description, setDescription] = useState("");
+  const [showOnWebsite, setShowOnWebsite] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -72,6 +74,7 @@ export default function EditProductModal({
         setPrice(prod.price !== null && prod.price !== undefined ? String(prod.price) : "");
         setWarranty(prod.warranty || "");
         setDescription(prod.description || "");
+        setShowOnWebsite(prod.showOnWebsite !== false);
       }
     } catch (err) {
       console.error("Failed to load product for editing:", err);
@@ -100,6 +103,7 @@ export default function EditProductModal({
         price: priceNum !== null && !isNaN(priceNum) ? priceNum : null,
         warranty: warranty.trim() ? toTitleCase(warranty) : "",
         description: description.trim(),
+        showOnWebsite,
       };
 
       await updateProduct(productId, payload);
@@ -230,6 +234,19 @@ export default function EditProductModal({
                 placeholder="Key specifications, RAM, SSD, condition, etc."
                 className="text-xs rounded-xl mt-1 bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 resize-none"
               />
+            </div>
+
+            {/* Website Visibility Toggle */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950">
+              <div>
+                <Label className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
+                  Website Listing
+                </Label>
+                <span className="text-[10px] text-muted-foreground">
+                  {showOnWebsite ? "Product is visible in public website catalog" : "Internal ERP & quotations only"}
+                </span>
+              </div>
+              <Switch checked={showOnWebsite} onCheckedChange={setShowOnWebsite} />
             </div>
 
             <DialogFooter className="p-0 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">

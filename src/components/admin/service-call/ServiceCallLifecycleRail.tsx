@@ -60,6 +60,7 @@ interface ServiceCallLifecycleRailProps {
   onOpenCustomerModal: () => void;
   onOpenCenterModal: () => void;
   onOpenCourierModal: () => void;
+  onSave?: () => void;
 }
 
 export default function ServiceCallLifecycleRail({
@@ -91,6 +92,7 @@ export default function ServiceCallLifecycleRail({
   onOpenCustomerModal,
   onOpenCenterModal,
   onOpenCourierModal,
+  onSave,
 }: ServiceCallLifecycleRailProps) {
   const handleMilestoneClick = (stage: TimelineStage) => {
     onTriggerTimelineModal(stage);
@@ -412,7 +414,8 @@ export default function ServiceCallLifecycleRail({
           </Link>
 
           <Button
-            type="submit"
+            type={onSave ? "button" : "submit"}
+            onClick={onSave}
             disabled={saving}
             className="h-10 px-5 text-xs font-bold bg-[#2563EB] hover:bg-blue-600 text-white rounded-xl shadow-glow-sm cursor-pointer"
           >
@@ -724,8 +727,9 @@ export default function ServiceCallLifecycleRail({
               </div>
 
               <Button
-                type="submit"
+                type={onSave ? "button" : "submit"}
                 form="service-call-form"
+                onClick={onSave}
                 disabled={saving}
                 className="w-full h-10 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white shadow-md shadow-blue-600/30 gap-2 transition-all justify-center cursor-pointer"
               >

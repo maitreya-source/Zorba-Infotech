@@ -29,6 +29,7 @@ import {
 import { getCouriers, deleteCourier } from "@/lib/firestore";
 import type { Courier } from "@/lib/types";
 import { formatPhoneForDisplay, generateCourierFollowUpMessage } from "@/lib/utils";
+import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import EditCourierModal from "@/components/admin/EditCourierModal";
 
@@ -58,6 +59,11 @@ export default function AdminCouriers() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useTallyShortcuts({
+    onAltC: () => setShowCreateModal(true),
+    onAltA: () => setShowCreateModal(true),
+  });
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -117,9 +123,9 @@ export default function AdminCouriers() {
           <Button
             onClick={() => setShowCreateModal(true)}
             size="sm"
-            className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white shrink-0 rounded-xl"
+            className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white shrink-0 rounded-xl cursor-pointer"
           >
-            <Plus className="h-4 w-4" /> Add Courier Partner
+            <Plus className="h-4 w-4" /> Add Courier Partner (Alt+C)
           </Button>
         </div>
       </div>

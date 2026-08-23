@@ -1,7 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
-import SparePartTypeahead from "@/components/admin/SparePartTypeahead";
+import ProductTypeahead from "@/components/admin/ProductTypeahead";
 import type { ServicePart } from "@/lib/types";
 
 interface ServiceCallBillingPartsCardProps {
@@ -66,7 +66,7 @@ export default function ServiceCallBillingPartsCard({
       <div className="space-y-2.5">
         {parts.length > 0 && (
           <div className="grid grid-cols-12 gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 px-1">
-            <div className="col-span-7">Part / Item Name (Auto-saved to Catalog)</div>
+            <div className="col-span-7">Part / Item Name (Search Products Catalog)</div>
             <div className="col-span-2">Qty</div>
             <div className="col-span-2">Unit Price (₹)</div>
             <div className="col-span-1 text-right">Total</div>
@@ -76,14 +76,18 @@ export default function ServiceCallBillingPartsCard({
         {parts.map((p, idx) => (
           <div key={p.id || idx} className="grid grid-cols-12 gap-3 items-center">
             <div className="col-span-7">
-              <SparePartTypeahead
+              <ProductTypeahead
                 value={p.name}
-                onChangeName={(name) => onUpdatePart(idx, "name", name)}
-                onSelectCatalogItem={(item) => {
-                  if (item.unitPrice > 0) {
-                    onUpdatePart(idx, "unitPrice", item.unitPrice);
+                onChange={(name) => onUpdatePart(idx, "name", name)}
+                onSelectProduct={(prod) => {
+                  const partName = prod.name + (prod.model ? ` (${prod.model})` : "");
+                  onUpdatePart(idx, "name", partName);
+                  if (prod.price && prod.price > 0) {
+                    onUpdatePart(idx, "unitPrice", prod.price);
                   }
                 }}
+                onAddNewProduct={onOpenProductModal}
+                placeholder="Search products by model, name, or type custom part..."
               />
             </div>
             <div className="col-span-2">

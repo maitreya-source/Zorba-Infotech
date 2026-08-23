@@ -46,6 +46,8 @@ const AdminWhatsAppTemplates = lazy(() => import("./pages/admin/AdminWhatsAppTem
 const AdminBackupRestore = lazy(() => import("./pages/admin/AdminBackupRestore"));
 const AdminQuotations = lazy(() => import("./pages/admin/AdminQuotations"));
 const AdminQuotationForm = lazy(() => import("./pages/admin/AdminQuotationForm"));
+const AdminInquiries = lazy(() => import("./pages/admin/AdminInquiries"));
+const AdminJobApplications = lazy(() => import("./pages/admin/AdminJobApplications"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,6 +117,8 @@ const App = () => (
                       <Route path="/admin/service-centers" element={<AdminServiceCenters />} />
                       <Route path="/admin/couriers" element={<AdminCouriers />} />
                       <Route path="/admin/reports" element={<AdminReports />} />
+                      <Route path="/admin/inquiries" element={<AdminInquiries />} />
+                      <Route path="/admin/job-applications" element={<AdminJobApplications />} />
                       <Route path="/admin/whatsapp-templates" element={<AdminWhatsAppTemplates />} />
                       <Route path="/admin/backup" element={<AdminBackupRestore />} />
                     </Route>

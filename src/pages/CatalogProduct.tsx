@@ -29,7 +29,7 @@ export default function CatalogProduct() {
     const load = async () => {
       if (!id) { navigate("/catalog"); return; }
       const [prod, cats] = await Promise.all([getProduct(id), getCategories()]);
-      if (!prod) { navigate("/catalog"); return; }
+      if (!prod || prod.showOnWebsite === false) { navigate("/catalog"); return; }
       setProduct(prod);
       setCategory(cats.find((c) => c.id === prod.categoryId) ?? null);
       setLoading(false);

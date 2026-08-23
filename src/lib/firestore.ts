@@ -40,6 +40,10 @@ import type {
   TechnicianPayout,
   PaymentStatus,
   PaymentMode,
+  Inquiry,
+  InquiryStatus,
+  JobApplication,
+  JobApplicationStatus,
 } from "./types";
 
 const FIREBASE_TIMEOUT_MS = 10000;
@@ -50,13 +54,13 @@ export function formatFirebaseError(err: any): string {
   const code = err?.code || "";
 
   if (code.includes("permission-denied") || msg.includes("permission-denied") || msg.includes("Missing or insufficient permissions")) {
-    return "Firestore Permission Denied: You do not have sufficient permissions to perform this operation. Please verify your admin account credentials.";
+    return "Permission Denied: Unable to perform this database operation. Please check your network or login permissions.";
   }
   if (code.includes("unavailable") || msg.includes("unavailable") || msg.includes("Failed to get document because the client is offline")) {
-    return "Firestore Unavailable: Check internet connection or Firebase service status.";
+    return "Database Unavailable: Check internet connection or Firebase service status.";
   }
   if (msg.includes("Operation timed out")) {
-    return "Firestore Request Timed Out (10s): Slow network or unreachable Firebase backend.";
+    return "Request Timed Out (10s): Slow network or unreachable Firebase backend.";
   }
   return msg;
 }
@@ -289,6 +293,7 @@ export async function createProduct(
     warranty: data.warranty ? toTitleCase(data.warranty) : "",
     serviceCenter: data.serviceCenter ? toTitleCase(data.serviceCenter) : "",
     description: data.description ? data.description.trim() : "",
+    showOnWebsite: data.showOnWebsite !== undefined ? data.showOnWebsite : true,
     createdAt: serverTimestamp() as any,
     updatedAt: serverTimestamp() as any,
   };
@@ -323,6 +328,7 @@ export async function updateProduct(
     if (sanitized.warranty) sanitized.warranty = toTitleCase(sanitized.warranty);
     if (sanitized.serviceCenter) sanitized.serviceCenter = toTitleCase(sanitized.serviceCenter);
     if (sanitized.description) sanitized.description = sanitized.description.trim();
+    if (sanitized.showOnWebsite !== undefined) sanitized.showOnWebsite = Boolean(sanitized.showOnWebsite);
 
     await updateDoc(
       doc(db, "products", id),
@@ -334,6 +340,23 @@ export async function updateProduct(
     invalidateProductsCache();
   } catch (err: any) {
     console.error("updateProduct error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function toggleProductWebsiteVisibility(
+  id: string,
+  showOnWebsite: boolean
+): Promise<void> {
+  try {
+    const docRef = doc(db, "products", id);
+    await updateDoc(docRef, {
+      showOnWebsite,
+      updatedAt: serverTimestamp(),
+    });
+    invalidateProductsCache();
+  } catch (err: any) {
+    console.error("toggleProductWebsiteVisibility error:", err);
     throw new Error(formatFirebaseError(err));
   }
 }
@@ -1500,10 +1523,14 @@ export async function createServiceCall(
     fyId,
     monthKey,
     ...cleanCallData,
+    customerName: data.customerName ? toTitleCase(data.customerName) : "",
+    customerPhone: data.customerPhone ? formatIndianPhoneNumber(data.customerPhone) : "",
+    customerEmail: data.customerEmail ? data.customerEmail.trim().toLowerCase() : "",
+    customerAddress: data.customerAddress ? toTitleCase(data.customerAddress) : "",
     deviceCategory: data.deviceCategory ? toTitleCase(data.deviceCategory) : "",
     modelNumber: data.modelNumber ? formatModelNumber(data.modelNumber) : "",
     handledByStaffName: data.handledByStaffName ? toTitleCase(data.handledByStaffName) : "",
-    assignedTechnicianName: data.assignedTechnicianName ? toTitleCase(data.assignedTechnicianName) : "",
+    technicianName: data.technicianName ? toTitleCase(data.technicianName) : "",
     parts: sanitizedParts,
     customerId: customerId || "cust-unknown",
     timeline: data.timeline && data.timeline.length > 0 ? data.timeline : initialTimeline,
@@ -1525,16 +1552,9 @@ export async function createServiceCall(
   batch.set(topDocRef, cleanData);
   await batch.commit();
 
-  // Auto-save model and spare parts to catalog
+  // Auto-save model to catalog
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
     saveDeviceModel(data.deviceCategory, data.modelNumber).catch(() => {});
-  }
-  if (sanitizedParts.length > 0) {
-    for (const part of sanitizedParts) {
-      if (part.name && part.name.trim()) {
-        saveSparePartToCatalog(part.name.trim(), part.unitPrice || 0, data.deviceCategory).catch(() => {});
-      }
-    }
   }
 
   return {
@@ -1590,6 +1610,10 @@ export async function updateServiceCall(
 
   const formattedData: Partial<ServiceCall> = {
     ...sanitizedUpdate,
+    ...(data.customerName ? { customerName: toTitleCase(data.customerName) } : {}),
+    ...(data.customerPhone ? { customerPhone: formatIndianPhoneNumber(data.customerPhone) } : {}),
+    ...(data.customerEmail !== undefined ? { customerEmail: data.customerEmail.trim().toLowerCase() } : {}),
+    ...(data.customerAddress !== undefined ? { customerAddress: toTitleCase(data.customerAddress) } : {}),
     fyId,
     monthKey,
     updatedAt: Date.now(),
@@ -1608,13 +1632,6 @@ export async function updateServiceCall(
 
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
     saveDeviceModel(data.deviceCategory, data.modelNumber).catch(() => {});
-  }
-  if (data.parts && data.parts.length > 0) {
-    for (const part of data.parts) {
-      if (part.name && part.name.trim()) {
-        saveSparePartToCatalog(part.name.trim(), part.unitPrice || 0, data.deviceCategory).catch(() => {});
-      }
-    }
   }
 }
 
@@ -2420,4 +2437,179 @@ export async function updateServiceCallPaymentStatus(
     throw new Error(formatFirebaseError(err));
   }
 }
+
+// ==========================================
+// Inquiries (Website Contact & Leads)
+// ==========================================
+
+export async function getInquiries(): Promise<Inquiry[]> {
+  try {
+    const q = query(collection(db, "inquiries"), orderBy("createdAt", "desc"));
+    const snap = await fetchWithTimeout(getDocs(q));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Inquiry));
+  } catch (err) {
+    console.error("getInquiries error:", err);
+    try {
+      const snap = await fetchWithTimeout(getDocs(collection(db, "inquiries")));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Inquiry));
+      return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    } catch {
+      return [];
+    }
+  }
+}
+
+export async function createInquiry(
+  data: Omit<Inquiry, "id" | "createdAt" | "updatedAt" | "status"> & { status?: InquiryStatus }
+): Promise<Inquiry> {
+  const rawPhone = (data.phone || "").trim();
+  const cleanDigits = rawPhone.replace(/\D/g, "");
+  if (!rawPhone || cleanDigits.length < 10) {
+    throw new Error("A valid 10-digit mobile phone number is mandatory to submit an inquiry.");
+  }
+
+  try {
+    const docRef = doc(collection(db, "inquiries"));
+    const formattedPhone = formatIndianPhoneNumber(rawPhone) || rawPhone;
+    const newInq: Inquiry = {
+      id: docRef.id,
+      name: toTitleCase(data.name || ""),
+      phone: formattedPhone,
+      email: (data.email || "").trim().toLowerCase() || undefined,
+      subject: data.subject ? toTitleCase(data.subject) : undefined,
+      message: (data.message || "").trim(),
+      source: data.source || "contact_page",
+      status: data.status || "pending",
+      notes: data.notes?.trim() || undefined,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await setDoc(docRef, cleanFirestoreData(newInq));
+    return newInq;
+  } catch (err: any) {
+    console.error("createInquiry error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function updateInquiryStatus(
+  id: string,
+  status: InquiryStatus,
+  notes?: string,
+  staffId?: string,
+  staffName?: string
+): Promise<void> {
+  try {
+    const docRef = doc(db, "inquiries", id);
+    const updateData: any = {
+      status,
+      updatedAt: Date.now(),
+    };
+    if (notes !== undefined) updateData.notes = notes.trim();
+    if (staffId) updateData.resolvedByStaffId = staffId;
+    if (staffName) updateData.resolvedByStaffName = staffName;
+    if (status === "completed" || status === "dismissed") updateData.resolvedAt = Date.now();
+    await setDoc(docRef, cleanFirestoreData(updateData), { merge: true });
+  } catch (err: any) {
+    console.error("updateInquiryStatus error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function deleteInquiry(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, "inquiries", id));
+  } catch (err: any) {
+    console.error("deleteInquiry error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+// ==========================================
+// Job Applications (Careers Page)
+// ==========================================
+
+export async function getJobApplications(): Promise<JobApplication[]> {
+  try {
+    const q = query(collection(db, "job_applications"), orderBy("createdAt", "desc"));
+    const snap = await fetchWithTimeout(getDocs(q));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as JobApplication));
+  } catch (err) {
+    console.error("getJobApplications error:", err);
+    try {
+      const snap = await fetchWithTimeout(getDocs(collection(db, "job_applications")));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as JobApplication));
+      return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    } catch {
+      return [];
+    }
+  }
+}
+
+export async function createJobApplication(
+  data: Omit<JobApplication, "id" | "createdAt" | "updatedAt" | "status"> & { status?: JobApplicationStatus }
+): Promise<JobApplication> {
+  const rawPhone = (data.phone || "").trim();
+  const cleanDigits = rawPhone.replace(/\D/g, "");
+  if (!rawPhone || cleanDigits.length < 10) {
+    throw new Error("A valid 10-digit mobile phone number is mandatory to apply.");
+  }
+
+  try {
+    const docRef = doc(collection(db, "job_applications"));
+    const formattedPhone = formatIndianPhoneNumber(rawPhone) || rawPhone;
+    const newApp: JobApplication = {
+      id: docRef.id,
+      fullName: toTitleCase(data.fullName || ""),
+      phone: formattedPhone,
+      email: (data.email || "").trim().toLowerCase() || undefined,
+      positionApplied: toTitleCase(data.positionApplied || "General Technician"),
+      experience: data.experience?.trim() || undefined,
+      resumeLink: data.resumeLink?.trim() || undefined,
+      message: data.message?.trim() || undefined,
+      status: data.status || "pending",
+      notes: data.notes?.trim() || undefined,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await setDoc(docRef, cleanFirestoreData(newApp));
+    return newApp;
+  } catch (err: any) {
+    console.error("createJobApplication error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function updateJobApplicationStatus(
+  id: string,
+  status: JobApplicationStatus,
+  notes?: string,
+  staffId?: string,
+  staffName?: string
+): Promise<void> {
+  try {
+    const docRef = doc(db, "job_applications", id);
+    const updateData: any = {
+      status,
+      updatedAt: Date.now(),
+    };
+    if (notes !== undefined) updateData.notes = notes.trim();
+    if (staffId) updateData.reviewedByStaffId = staffId;
+    if (staffName) updateData.reviewedByStaffName = staffName;
+    await setDoc(docRef, cleanFirestoreData(updateData), { merge: true });
+  } catch (err) {
+    console.error("updateJobApplicationStatus error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
+export async function deleteJobApplication(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, "job_applications", id));
+  } catch (err) {
+    console.error("deleteJobApplication error:", err);
+    throw new Error(formatFirebaseError(err));
+  }
+}
+
 

@@ -18,6 +18,8 @@ import {
   ArrowLeft,
   MessageSquare,
   FileText,
+  Briefcase,
+  Inbox,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
@@ -27,6 +29,8 @@ import StaffProfileSelectorModal from "@/components/admin/StaffProfileSelectorMo
 const navItems = [
   { label: "Service Calls", to: "/admin/service-calls", icon: Activity },
   { label: "Quotations", to: "/admin/quotations", icon: FileText },
+  { label: "Website Inquiries", to: "/admin/inquiries", icon: Inbox },
+  { label: "Job Applications", to: "/admin/job-applications", icon: Briefcase },
   { label: "Daily/Monthly Reports", to: "/admin/reports", icon: BarChart3 },
   { label: "WhatsApp Templates", to: "/admin/whatsapp-templates", icon: MessageSquare },
   { label: "Team & Personnel", to: "/admin/team", icon: Users },

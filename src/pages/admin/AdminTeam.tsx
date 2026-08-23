@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle, Crown, Code, ChevronRight } from "lucide-react";
+import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle, Crown, Code, ChevronRight, Lock, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +36,13 @@ import type { TeamMember, TeamRole } from "@/lib/types";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { AVATAR_CATALOG, getAvatarById } from "@/lib/avatars";
 import TechnicianCommissionModal from "@/components/admin/TechnicianCommissionModal";
+import { useStaffProfile } from "@/contexts/StaffProfileContext";
 
 export default function AdminTeam() {
   const navigate = useNavigate();
+  const { activeProfile } = useStaffProfile();
+  const isOwner = activeProfile?.role === "proprietor";
+
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,11 +56,19 @@ export default function AdminTeam() {
   const [selectedTechForModal, setSelectedTechForModal] = useState<TeamMember | null>(null);
   const [showCommissionModal, setShowCommissionModal] = useState(false);
 
+  // Reset PIN Modal State (Owner only)
+  const [resetPinMember, setResetPinMember] = useState<TeamMember | null>(null);
+  const [newPinInput, setNewPinInput] = useState("");
+  const [confirmNewPinInput, setConfirmNewPinInput] = useState("");
+  const [savingResetPin, setSavingResetPin] = useState(false);
+
   // Form State
   const [formName, setFormName] = useState("");
   const [formRole, setFormRole] = useState<TeamRole>("backoffice");
   const [formPhone, setFormPhone] = useState("");
   const [formEmail, setFormEmail] = useState("");
+  const [formPin, setFormPin] = useState("");
+  const [formConfirmPin, setFormConfirmPin] = useState("");
   const [formSpecialization, setFormSpecialization] = useState("");
   const [formCommission, setFormCommission] = useState<string>("50");
   const [formAvatar, setFormAvatar] = useState("penguin");
@@ -81,12 +93,26 @@ export default function AdminTeam() {
     loadData();
   }, []);
 
+  // Universal Alt+C shortcut to open create modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        openCreateModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const openCreateModal = () => {
     setEditingMember(null);
     setFormName("");
     setFormRole("technician");
     setFormPhone("");
     setFormEmail("");
+    setFormPin("");
+    setFormConfirmPin("");
     setFormSpecialization("");
     setFormCommission("50");
     setFormAvatar("penguin");
@@ -100,11 +126,60 @@ export default function AdminTeam() {
     setFormRole(member.role);
     setFormPhone(member.phone || "");
     setFormEmail(member.email || "");
+    setFormPin(member.pin || "");
+    setFormConfirmPin(member.pin || "");
     setFormSpecialization(member.specialization || "");
     setFormCommission(String(member.commissionPercentage ?? 50));
     setFormAvatar(member.avatar || "penguin");
     setFormActive(member.active !== false);
     setShowModal(true);
+  };
+
+  const openResetPinModal = (member: TeamMember) => {
+    setResetPinMember(member);
+    setNewPinInput("");
+    setConfirmNewPinInput("");
+  };
+
+  const handleResetPinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetPinMember) return;
+
+    if (!/^\d{5}$/.test(newPinInput)) {
+      toast.error("PIN must be exactly 5 numeric digits");
+      return;
+    }
+    if (newPinInput !== confirmNewPinInput) {
+      toast.error("Confirmation PIN does not match");
+      return;
+    }
+
+    setSavingResetPin(true);
+    try {
+      await updateTeamMember(resetPinMember.id, { pin: newPinInput.trim() });
+      toast.success(`PIN updated for ${resetPinMember.name}`);
+      setResetPinMember(null);
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update PIN");
+    } finally {
+      setSavingResetPin(false);
+    }
+  };
+
+  const handleClearPin = async () => {
+    if (!resetPinMember) return;
+    setSavingResetPin(true);
+    try {
+      await updateTeamMember(resetPinMember.id, { pin: "" });
+      toast.success(`PIN cleared for ${resetPinMember.name}. They will be prompted to set a new PIN on next login.`);
+      setResetPinMember(null);
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to clear PIN");
+    } finally {
+      setSavingResetPin(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -118,12 +193,30 @@ export default function AdminTeam() {
       return;
     }
 
+    // Role check: Only existing owners can assign/create proprietor role
+    if (formRole === "proprietor" && !isOwner) {
+      toast.error("Only current Owners can create or assign the Proprietor / Owner role.");
+      return;
+    }
+
+    // Mandatory PIN when creating new member
+    if (!editingMember) {
+      if (!/^\d{5}$/.test(formPin)) {
+        toast.error("A 5-digit numeric PIN is required for new team members.");
+        return;
+      }
+      if (formPin !== formConfirmPin) {
+        toast.error("Confirmation PIN does not match.");
+        return;
+      }
+    }
+
     const commissionNum = formRole === "technician" ? (parseFloat(formCommission) || 50) : undefined;
 
     setSaving(true);
     try {
       if (editingMember) {
-        await updateTeamMember(editingMember.id, {
+        const updatePayload: any = {
           name: formName.trim(),
           role: formRole,
           phone: formPhone.trim(),
@@ -132,7 +225,11 @@ export default function AdminTeam() {
           commissionPercentage: commissionNum,
           avatar: formAvatar,
           active: formActive,
-        });
+        };
+        if (formPin && /^\d{5}$/.test(formPin)) {
+          updatePayload.pin = formPin.trim();
+        }
+        await updateTeamMember(editingMember.id, updatePayload);
         toast.success("Team member profile updated");
       } else {
         await createTeamMember({
@@ -140,6 +237,7 @@ export default function AdminTeam() {
           role: formRole,
           phone: formPhone.trim(),
           email: formEmail.trim() || undefined,
+          pin: formPin.trim(),
           specialization: formSpecialization.trim() || undefined,
           commissionPercentage: commissionNum,
           avatar: formAvatar,
@@ -168,7 +266,7 @@ export default function AdminTeam() {
     }
   };
 
-  const getRoleBadge = (role: TeamRole, commissionPercentage?: number) => {
+  const getRoleBadge = (role: TeamRole) => {
     switch (role) {
       case "proprietor":
         return (
@@ -237,9 +335,9 @@ export default function AdminTeam() {
           <Button
             onClick={openCreateModal}
             size="sm"
-            className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white shrink-0 rounded-xl h-9 text-xs shadow-sm"
+            className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white shrink-0 rounded-xl h-9 text-xs shadow-sm cursor-pointer"
           >
-            <Plus className="h-4 w-4" /> Add Team Member
+            <Plus className="h-4 w-4" /> Add Team Member (Alt+C)
           </Button>
         </div>
       </div>
@@ -250,53 +348,59 @@ export default function AdminTeam() {
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search by name, phone, specialization…"
+              placeholder="Search by name, phone, specialization..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-xs rounded-xl w-full"
+              className="pl-8 h-9 text-xs rounded-xl"
             />
           </div>
-
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-full sm:w-40 h-9 text-xs rounded-xl">
-              <SelectValue placeholder="All Roles" />
+            <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs rounded-xl shrink-0">
+              <SelectValue placeholder="Role Filter" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="proprietor">Proprietor (Owner)</SelectItem>
-              <SelectItem value="developer">Developer (Tech)</SelectItem>
-              <SelectItem value="manager">Managers</SelectItem>
+              <SelectItem value="proprietor">Proprietor</SelectItem>
+              <SelectItem value="manager">Manager</SelectItem>
+              <SelectItem value="technician">Technician</SelectItem>
               <SelectItem value="backoffice">Back Office</SelectItem>
-              <SelectItem value="technician">Technicians</SelectItem>
+              <SelectItem value="developer">Developer</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        <div className="text-xs text-muted-foreground font-semibold">
-          Total Team Members: <span className="text-foreground font-extrabold">{filtered.length}</span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadData}
+            className="gap-1.5 text-xs h-9 rounded-xl shrink-0"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Refresh</span>
+          </Button>
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Team Table / Empty States */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-          <p className="text-xs text-muted-foreground">Loading team directory...</p>
+          <RefreshCw className="h-8 w-8 text-primary animate-spin mb-3" />
+          <p className="text-sm font-semibold">Loading team members...</p>
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
-          <p className="font-bold text-destructive text-base">Firebase Connection Error</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md">{error}</p>
-          <Button onClick={loadData} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
-            <RefreshCw className="h-3.5 w-3.5" /> Retry Connection
+        <div className="p-8 text-center bg-destructive/10 border border-destructive/20 rounded-2xl text-destructive">
+          <p className="font-bold">{error}</p>
+          <Button onClick={loadData} variant="outline" size="sm" className="mt-3 text-xs rounded-xl">
+            Retry Connection
           </Button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
-          <Users className="h-10 w-10 text-muted-foreground/40" />
-          <p className="font-bold text-foreground text-sm font-display">No Team Members Found</p>
-          <p className="text-xs text-muted-foreground max-w-sm">
-            {team.length === 0 ? "Click Add Team Member to create your first personnel profile." : "No team members match your filter criteria."}
+        <div className="p-12 text-center bg-card rounded-2xl border">
+          <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <h3 className="font-bold text-base mb-1">No team members found</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
+            No profiles match your search criteria. Add your technicians and staff coordinators to assign tickets.
           </p>
           <Button onClick={openCreateModal} size="sm" className="gap-1 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl">
             <Plus className="h-3.5 w-3.5" /> Add Team Member
@@ -312,6 +416,7 @@ export default function AdminTeam() {
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Phone & Contact</th>
                   <th className="px-4 py-3">Specialization / Scope</th>
+                  <th className="px-4 py-3">Security PIN</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -342,7 +447,7 @@ export default function AdminTeam() {
 
                     {/* Role */}
                     <td className="px-4 py-3">
-                      {getRoleBadge(member.role, member.commissionPercentage)}
+                      {getRoleBadge(member.role)}
                     </td>
 
                     {/* Phone */}
@@ -357,6 +462,19 @@ export default function AdminTeam() {
                       {member.specialization || (member.role === "manager" ? "Operations Oversight" : member.role === "backoffice" ? "Intake & Logistics" : "Hardware Repair")}
                     </td>
 
+                    {/* Security PIN Status */}
+                    <td className="px-4 py-3">
+                      {member.pin ? (
+                        <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 gap-1 text-[10px]">
+                          <Lock className="h-3 w-3" /> 5-Digit PIN Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 gap-1 text-[10px]">
+                          <KeyRound className="h-3 w-3" /> Setup Needed
+                        </Badge>
+                      )}
+                    </td>
+
                     {/* Status */}
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${member.active !== false ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
@@ -368,6 +486,21 @@ export default function AdminTeam() {
                     {/* Actions */}
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {/* Owner Reset PIN Action */}
+                        {isOwner && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/50"
+                            title="Reset 5-Digit PIN"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openResetPinModal(member);
+                            }}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -437,7 +570,9 @@ export default function AdminTeam() {
                     <SelectValue placeholder="Select Role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="proprietor">Proprietor (Owner)</SelectItem>
+                    {isOwner && (
+                      <SelectItem value="proprietor">Proprietor (Owner)</SelectItem>
+                    )}
                     <SelectItem value="developer">Developer (Tech / ERP)</SelectItem>
                     <SelectItem value="manager">Manager (Store Operations)</SelectItem>
                     <SelectItem value="backoffice">Back Office (Frontdesk / Intake)</SelectItem>
@@ -460,6 +595,46 @@ export default function AdminTeam() {
               </div>
             </div>
 
+            {/* Mandatory 5-digit PIN for new members */}
+            {!editingMember && (
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60">
+                <div>
+                  <Label className="text-xs font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1">
+                    <Lock className="h-3.5 w-3.5 text-blue-600" />
+                    <span>5-Digit PIN <span className="text-red-500">*</span></span>
+                  </Label>
+                  <Input
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={5}
+                    placeholder="5 Digits"
+                    value={formPin}
+                    onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                    required
+                    className="mt-1 h-9 text-xs rounded-xl font-mono text-center tracking-widest bg-white dark:bg-slate-900"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Confirm PIN <span className="text-red-500">*</span></span>
+                  </Label>
+                  <Input
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={5}
+                    placeholder="Re-enter PIN"
+                    value={formConfirmPin}
+                    onChange={(e) => setFormConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                    required
+                    className="mt-1 h-9 text-xs rounded-xl font-mono text-center tracking-widest bg-white dark:bg-slate-900"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Email Address (Optional)
@@ -473,7 +648,7 @@ export default function AdminTeam() {
               />
             </div>
 
-            {/* Technician Commission Input (Only applicable for role === 'technician') */}
+            {/* Technician Commission Input */}
             {formRole === "technician" && (
               <div className="space-y-1.5 p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 animate-in fade-in duration-150">
                 <div className="flex items-center justify-between">
@@ -498,9 +673,6 @@ export default function AdminTeam() {
                   />
                   <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300">%</span>
                 </div>
-                <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80 leading-relaxed">
-                  Technician receives this percentage of the total service charges collected on their completed service calls in a given month.
-                </p>
               </div>
             )}
 
@@ -577,6 +749,79 @@ export default function AdminTeam() {
                 {saving ? "Saving..." : editingMember ? "Update Profile" : "Save Team Member"}
               </Button>
             </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Owner Reset PIN Modal */}
+      <Dialog open={Boolean(resetPinMember)} onOpenChange={(open) => !open && setResetPinMember(null)}>
+        <DialogContent className="sm:max-w-sm p-6">
+          <DialogHeader className="border-b pb-3">
+            <DialogTitle className="flex items-center gap-2 font-display text-base text-slate-900 dark:text-white">
+              <KeyRound className="h-5 w-5 text-amber-500" />
+              <span>Reset 5-Digit PIN</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleResetPinSubmit} className="space-y-4 pt-2 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs">
+              <span className="font-bold text-slate-900 dark:text-white">{resetPinMember?.name}</span>
+              <p className="text-slate-500 capitalize">{resetPinMember?.role} • {resetPinMember?.phone}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                New 5-Digit PIN
+              </Label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={5}
+                autoFocus
+                placeholder="Enter 5 Digits"
+                value={newPinInput}
+                onChange={(e) => setNewPinInput(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                required
+                className="h-10 text-center font-mono text-lg tracking-widest rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Confirm New PIN
+              </Label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={5}
+                placeholder="Re-enter 5 Digits"
+                value={confirmNewPinInput}
+                onChange={(e) => setConfirmNewPinInput(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                required
+                className="h-10 text-center font-mono text-lg tracking-widest rounded-xl"
+              />
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <Button
+                type="submit"
+                disabled={savingResetPin || newPinInput.length !== 5 || newPinInput !== confirmNewPinInput}
+                className="w-full h-9 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl"
+              >
+                {savingResetPin ? "Updating..." : "Set New PIN"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearPin}
+                disabled={savingResetPin}
+                className="w-full h-8 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 rounded-xl"
+              >
+                Clear PIN (Force User Setup on Login)
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

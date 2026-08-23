@@ -9,6 +9,8 @@ import {
   Package,
   Star,
   Layers,
+  Globe,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -55,6 +57,7 @@ interface FormState {
   categoryId: string;
   inStock: boolean;
   featured: boolean;
+  showOnWebsite: boolean;
   order: string;
 }
 
@@ -71,6 +74,7 @@ const EMPTY_FORM: FormState = {
   categoryId: "",
   inStock: true,
   featured: false,
+  showOnWebsite: true,
   order: "",
 };
 
@@ -120,6 +124,7 @@ export default function AdminProductForm() {
           categoryId: product.categoryId ?? "",
           inStock: product.inStock ?? true,
           featured: product.featured ?? false,
+          showOnWebsite: product.showOnWebsite !== false,
           order: product.order != null ? String(product.order) : "",
         });
         setCustomFields(product.customFields ?? []);
@@ -246,6 +251,7 @@ export default function AdminProductForm() {
         categoryId: form.categoryId,
         inStock: form.inStock,
         featured: form.featured,
+        showOnWebsite: form.showOnWebsite,
         order: form.order !== "" ? Number(form.order) : null,
         photoUrl,
         customFields: customFields.filter((cf) => cf.key.trim()),
@@ -308,7 +314,7 @@ export default function AdminProductForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Section 0: Header Voucher Metadata (Reduced title size, aligned cells) */}
+        {/* Section 0: Header Voucher Metadata */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex items-center gap-2 flex-wrap">
@@ -344,8 +350,8 @@ export default function AdminProductForm() {
             </div>
           </div>
 
-          {/* Aligned 4-Column Metadata Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          {/* Aligned Metadata Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 pt-2 border-t border-slate-100 dark:border-slate-800">
             {/* Category Select */}
             <div>
               <div className="flex items-center justify-between">
@@ -409,9 +415,32 @@ export default function AdminProductForm() {
               <div className="mt-1 flex items-center justify-between h-9 px-3 rounded-xl bg-slate-50/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
                   <Star className={`h-3.5 w-3.5 ${form.featured ? "text-amber-500 fill-amber-500" : "text-slate-400"}`} />
-                  {form.featured ? "Featured Product" : "Standard"}
+                  {form.featured ? "Featured" : "Standard"}
                 </span>
                 <Switch checked={form.featured} onCheckedChange={(v) => set("featured", v)} />
+              </div>
+            </div>
+
+            {/* Website Visibility Toggle */}
+            <div>
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Website Visibility
+              </Label>
+              <div className="mt-1 flex items-center justify-between h-9 px-3 rounded-xl bg-slate-50/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  {form.showOnWebsite ? (
+                    <>
+                      <Globe className="h-3.5 w-3.5 text-blue-600" />
+                      <span>Visible</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="h-3.5 w-3.5 text-slate-400" />
+                      <span>ERP Only</span>
+                    </>
+                  )}
+                </span>
+                <Switch checked={form.showOnWebsite} onCheckedChange={(v) => set("showOnWebsite", v)} />
               </div>
             </div>
           </div>

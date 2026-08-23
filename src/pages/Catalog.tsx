@@ -32,7 +32,8 @@ export default function Catalog() {
     setError(null);
     try {
       const [prods, cats] = await Promise.all([getProducts(), getCategories()]);
-      setProducts(sortProducts(prods));
+      const visibleProducts = prods.filter((p) => p.showOnWebsite !== false);
+      setProducts(sortProducts(visibleProducts));
       setCategories(cats);
     } catch (err: any) {
       console.error("Firebase error in Catalog:", err);

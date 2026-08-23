@@ -16,10 +16,19 @@ import {
   TrendingUp,
   ExternalLink,
   Tag,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +45,7 @@ import {
   getQuotationTemplates,
 } from "@/lib/firestore";
 import type { Quotation, QuotationTemplate } from "@/lib/types";
+import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
 import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
 import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
@@ -52,6 +62,10 @@ export default function AdminQuotations() {
   const [dateFilter, setDateFilter] = useState<DateFilterMode>("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
 
   // Modals state
   const [activeQuoteForModal, setActiveQuoteForModal] = useState<Quotation | null>(null);
@@ -151,6 +165,34 @@ export default function AdminQuotations() {
       );
     });
   }, [quotations, dateFilter, startDate, endDate, search, todayStr, currentMonthStr]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, dateFilter, startDate, endDate, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredQuotations.length / pageSize));
+  const paginatedQuotations = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredQuotations.slice(start, start + pageSize);
+  }, [filteredQuotations, currentPage, pageSize]);
+
+  // Keyboard Shortcuts (Alt+C -> New Quotation, Alt+P -> Print First, Alt+W -> WhatsApp First)
+  useTallyShortcuts({
+    onAltC: () => navigate("/admin/quotations/new"),
+    onAltP: () => {
+      if (paginatedQuotations.length > 0) {
+        setActiveQuoteForModal(paginatedQuotations[0]);
+        setShowPrintModal(true);
+      }
+    },
+    onAltW: () => {
+      if (paginatedQuotations.length > 0) {
+        setActiveQuoteForModal(paginatedQuotations[0]);
+        setShowWhatsAppModal(true);
+      }
+    },
+  });
 
   // KPI Calculations
   const quotesTodayCount = useMemo(() => {
@@ -392,7 +434,7 @@ export default function AdminQuotations() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                {filteredQuotations.map((q) => (
+                {paginatedQuotations.map((q) => (
                   <tr key={q.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
                     {/* Quote No */}
                     <td className="px-4 py-3">
@@ -528,6 +570,56 @@ export default function AdminQuotations() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <span>Rows per page:</span>
+              <Select value={String(pageSize)} onValueChange={(val) => setPageSize(Number(val))}>
+                <SelectTrigger className="h-7 w-16 text-xs rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="ml-2">
+                Showing {filteredQuotations.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
+                {Math.min(currentPage * pageSize, filteredQuotations.length)} of {filteredQuotations.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7 rounded-lg"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7 rounded-lg"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  title="Next Page"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

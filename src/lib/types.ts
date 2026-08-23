@@ -28,8 +28,10 @@ export interface Product {
   description: string;
   photoUrl: string | null;
   categoryId: string;
+  category?: string;
   inStock: boolean;
   featured: boolean;
+  showOnWebsite?: boolean; // Controls public website catalog visibility (defaults to true)
   order: number | null;
   customFields: CustomField[];
   createdAt?: Timestamp;
@@ -58,6 +60,7 @@ export type WarrantyStatus =
 export interface ServicePart {
   id: string;
   name: string;
+  category?: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -70,6 +73,7 @@ export interface Customer {
   additionalPhones?: string[];
   email?: string;
   address?: string;
+  city?: string;
   companyName?: string;
   notes?: string;
   searchTokens?: string[];
@@ -127,6 +131,7 @@ export interface TeamMember {
   specialization?: string; // e.g. "CCTV & Security", "Printers", "Laptops & Networking"
   commissionPercentage?: number; // e.g. 50 (%) - applicable only for technicians
   avatar?: string; // Avatar ID from AVATAR_CATALOG (e.g. "penguin", "watermelon")
+  pin?: string; // 5-digit security PIN for desk profile switching (stored as plain text)
   active: boolean;
   createdAt: number;
 }
@@ -401,4 +406,43 @@ export interface WhatsAppTemplateDoc {
   createdAt: number;
   updatedAt?: number;
 }
+
+export type InquiryStatus = "pending" | "completed" | "dismissed";
+
+export interface Inquiry {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  subject?: string;
+  message: string;
+  source?: string; // e.g. "contact_page", "website_header"
+  status: InquiryStatus;
+  notes?: string;
+  resolvedByStaffId?: string;
+  resolvedByStaffName?: string;
+  resolvedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type JobApplicationStatus = "pending" | "reviewed" | "completed" | "dismissed";
+
+export interface JobApplication {
+  id: string;
+  fullName: string;
+  phone: string;
+  email?: string;
+  positionApplied: string;
+  experience?: string;
+  resumeLink?: string;
+  message?: string;
+  status: JobApplicationStatus;
+  notes?: string;
+  reviewedByStaffId?: string;
+  reviewedByStaffName?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 

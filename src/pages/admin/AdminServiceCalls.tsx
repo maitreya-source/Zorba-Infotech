@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -21,6 +21,8 @@ import {
   Send,
   XCircle,
   RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -143,6 +145,10 @@ export default function AdminServiceCalls() {
   // Interactive Header Sort: default sorted by status ascending (in_progress -> received)
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
   
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -173,17 +179,6 @@ export default function AdminServiceCalls() {
   useEffect(() => {
     loadData();
   }, []);
-
-  // Keyboard Shortcuts handler
-  useTallyShortcuts({
-    onAltA: () => navigate("/admin/service-calls/new"),
-    onAltC: () => setShowCustomerModal(true),
-    onAltD: () => {
-      if (sorted.length > 0) {
-        setDeleteId(sorted[0].id);
-      }
-    },
-  });
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -392,6 +387,33 @@ export default function AdminServiceCalls() {
       </th>
     );
   };
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, statusFilter, fyFilter, activeTab, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const paginatedCalls = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, currentPage, pageSize]);
+
+  // Keyboard Shortcuts handler
+  useTallyShortcuts({
+    onAltC: () => navigate("/admin/service-calls/new"),
+    onAltA: () => navigate("/admin/service-calls/new"),
+    onAltP: () => {
+      if (paginatedCalls.length > 0) {
+        setPrintCall(paginatedCalls[0]);
+      }
+    },
+    onAltD: () => {
+      if (paginatedCalls.length > 0) {
+        setDeleteId(paginatedCalls[0].id);
+      }
+    },
+  });
 
   return (
     <div className="p-2 md:p-4 space-y-4 max-w-[1440px] mx-auto text-xs">
@@ -659,7 +681,7 @@ export default function AdminServiceCalls() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                {sorted.map((item) => {
+                {paginatedCalls.map((item) => {
                   const displayDate = item.dateTime
                     ? new Date(item.dateTime).toLocaleDateString("en-IN", {
                         day: "numeric",
@@ -842,6 +864,56 @@ export default function AdminServiceCalls() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <span>Rows per page:</span>
+              <Select value={String(pageSize)} onValueChange={(val) => setPageSize(Number(val))}>
+                <SelectTrigger className="h-7 w-16 text-xs rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="ml-2">
+                Showing {sorted.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
+                {Math.min(currentPage * pageSize, sorted.length)} of {sorted.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7 rounded-lg"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7 rounded-lg"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  title="Next Page"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

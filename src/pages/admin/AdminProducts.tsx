@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Plus, Pencil, Trash2, Package, Star, Search, RefreshCw } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Plus, Pencil, Trash2, Package, Star, Search, RefreshCw, Globe, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,17 +22,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getProducts, getCategories, deleteProduct, deleteProductPhoto } from "@/lib/firestore";
+import {
+  getProducts,
+  getCategories,
+  deleteProduct,
+  deleteProductPhoto,
+  toggleProductWebsiteVisibility,
+} from "@/lib/firestore";
 import type { Product, Category } from "@/lib/types";
+import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 
 export default function AdminProducts() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
+  const [visibilityFilter, setVisibilityFilter] = useState<"all" | "website" | "erp">("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -53,6 +63,31 @@ export default function AdminProducts() {
     load();
   }, []);
 
+  useTallyShortcuts({
+    onAltC: () => navigate("/admin/products/new"),
+    onAltA: () => navigate("/admin/products/new"),
+  });
+
+  const handleToggleVisibility = async (productId: string, currentVal: boolean | undefined) => {
+    const nextVal = currentVal === false ? true : false;
+    setTogglingId(productId);
+    try {
+      await toggleProductWebsiteVisibility(productId, nextVal);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === productId ? { ...p, showOnWebsite: nextVal } : p))
+      );
+      toast.success(
+        nextVal
+          ? "Product is now visible on public website"
+          : "Product hidden from website (Internal/ERP only)"
+      );
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update website visibility");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
@@ -71,6 +106,12 @@ export default function AdminProducts() {
   const filtered = products
     .filter((p) => {
       const matchesCat = catFilter === "all" || p.categoryId === catFilter;
+      const isVisible = p.showOnWebsite !== false;
+      const matchesVisibility =
+        visibilityFilter === "all" ||
+        (visibilityFilter === "website" && isVisible) ||
+        (visibilityFilter === "erp" && !isVisible);
+
       const q = search.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -78,7 +119,7 @@ export default function AdminProducts() {
         (p.model && p.model.toLowerCase().includes(q)) ||
         (p.brand && p.brand.toLowerCase().includes(q)) ||
         (p.itemCode && p.itemCode.toLowerCase().includes(q));
-      return matchesCat && matchesSearch;
+      return matchesCat && matchesVisibility && matchesSearch;
     })
     .sort((a, b) => {
       if (a.featured !== b.featured) return a.featured ? -1 : 1;
@@ -107,9 +148,9 @@ export default function AdminProducts() {
           <Link to="/admin/products/new">
             <Button
               size="sm"
-              className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0"
+              className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
             >
-              <Plus className="h-4 w-4" /> Add Product
+              <Plus className="h-4 w-4" /> Add Product (Alt+C)
             </Button>
           </Link>
         </div>
@@ -117,7 +158,7 @@ export default function AdminProducts() {
 
       {/* Filter / Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 w-full max-w-md">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 w-full max-w-xl">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -129,7 +170,7 @@ export default function AdminProducts() {
           </div>
 
           <Select value={catFilter} onValueChange={setCatFilter}>
-            <SelectTrigger className="w-full sm:w-44 h-9 text-xs rounded-xl">
+            <SelectTrigger className="w-full sm:w-40 h-9 text-xs rounded-xl">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent className="max-h-56">
@@ -139,6 +180,17 @@ export default function AdminProducts() {
                   {cat.name}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={visibilityFilter} onValueChange={(v: any) => setVisibilityFilter(v)}>
+            <SelectTrigger className="w-full sm:w-36 h-9 text-xs rounded-xl">
+              <SelectValue placeholder="All Visibility" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Visibility</SelectItem>
+              <SelectItem value="website">🌐 Visible on Web</SelectItem>
+              <SelectItem value="erp">🔒 ERP Only</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -169,7 +221,7 @@ export default function AdminProducts() {
           <p className="text-xs text-muted-foreground max-w-sm">
             {products.length === 0
               ? "No products added to catalog yet. Click Add Product to create your first stock item."
-              : "Try adjusting your search query or category filter."}
+              : "Try adjusting your search query, category, or visibility filter."}
           </p>
           <Link to="/admin/products/new">
             <Button size="sm" className="gap-1 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl">
@@ -187,6 +239,7 @@ export default function AdminProducts() {
                   <th className="px-4 py-3">Category</th>
                   <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3">Stock Status</th>
+                  <th className="px-4 py-3">Website Listing</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -250,6 +303,36 @@ export default function AdminProducts() {
                       >
                         {product.inStock ? "In Stock" : "Out of Stock"}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        disabled={togglingId === product.id}
+                        onClick={() => handleToggleVisibility(product.id, product.showOnWebsite)}
+                        title="Click to toggle website catalog visibility"
+                        className="cursor-pointer transition-transform active:scale-95 text-left"
+                      >
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5 transition-colors ${
+                            product.showOnWebsite !== false
+                              ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50 hover:bg-blue-100"
+                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          {product.showOnWebsite !== false ? (
+                            <>
+                              <Globe className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                              <span>Visible</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="h-3 w-3 text-slate-400" />
+                              <span>ERP Only</span>
+                            </>
+                          )}
+                        </Badge>
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">

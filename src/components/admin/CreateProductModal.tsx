@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { PackagePlus, Plus, Layers } from "lucide-react";
+import { PackagePlus, Plus, Layers, Globe, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,7 @@ export default function CreateProductModal({
   const [price, setPrice] = useState("");
   const [warranty, setWarranty] = useState("");
   const [description, setDescription] = useState("");
+  const [showOnWebsite, setShowOnWebsite] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Quick category creation
@@ -77,6 +79,7 @@ export default function CreateProductModal({
       setPrice("");
       setWarranty("");
       setDescription("");
+      setShowOnWebsite(true);
       if (defaultCategoryId) setCategoryId(defaultCategoryId);
     }
   }, [open, defaultCategoryId, defaultCategoryName]);
@@ -137,6 +140,7 @@ export default function CreateProductModal({
         categoryId,
         inStock: true,
         featured: false,
+        showOnWebsite,
         order: null,
         customFields: [],
       });
@@ -280,6 +284,19 @@ export default function CreateProductModal({
                 rows={2}
                 className="text-xs rounded-xl resize-none"
               />
+            </div>
+
+            {/* Website Visibility Toggle */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950">
+              <div>
+                <Label className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
+                  Website Listing
+                </Label>
+                <span className="text-[10px] text-muted-foreground">
+                  {showOnWebsite ? "Product is visible in public website catalog" : "Internal ERP & quotations only"}
+                </span>
+              </div>
+              <Switch checked={showOnWebsite} onCheckedChange={setShowOnWebsite} />
             </div>
 
             <DialogFooter className="p-0 pt-2 gap-2">

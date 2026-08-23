@@ -27,6 +27,8 @@ import {
   Crown,
   Code,
   Tag,
+  Lock,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -337,6 +339,55 @@ export default function AdminTeamMemberDetail() {
     }
   };
 
+  const isOwner = activeProfile?.role === "proprietor";
+
+  // Reset PIN State
+  const [showResetPinModal, setShowResetPinModal] = useState(false);
+  const [newPinInput, setNewPinInput] = useState("");
+  const [confirmNewPinInput, setConfirmNewPinInput] = useState("");
+  const [savingResetPin, setSavingResetPin] = useState(false);
+
+  const handleResetPinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!member) return;
+
+    if (!/^\d{5}$/.test(newPinInput)) {
+      toast.error("PIN must be exactly 5 numeric digits");
+      return;
+    }
+    if (newPinInput !== confirmNewPinInput) {
+      toast.error("Confirmation PIN does not match");
+      return;
+    }
+
+    setSavingResetPin(true);
+    try {
+      await updateTeamMember(member.id, { pin: newPinInput.trim() });
+      toast.success(`PIN updated for ${member.name}`);
+      setMember((prev) => (prev ? { ...prev, pin: newPinInput.trim() } : null));
+      setShowResetPinModal(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update PIN");
+    } finally {
+      setSavingResetPin(false);
+    }
+  };
+
+  const handleClearPin = async () => {
+    if (!member) return;
+    setSavingResetPin(true);
+    try {
+      await updateTeamMember(member.id, { pin: "" });
+      toast.success(`PIN cleared for ${member.name}. User will be prompted to setup on next login.`);
+      setMember((prev) => (prev ? { ...prev, pin: undefined } : null));
+      setShowResetPinModal(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to clear PIN");
+    } finally {
+      setSavingResetPin(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-slate-500">
@@ -400,6 +451,23 @@ export default function AdminTeamMemberDetail() {
         </div>
 
         <div className="flex items-center gap-2">
+          {isOwner && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setNewPinInput("");
+                setConfirmNewPinInput("");
+                setShowResetPinModal(true);
+              }}
+              className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer shadow-2xs text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+            >
+              <KeyRound className="h-3.5 w-3.5" />
+              <span>Reset 5-Digit PIN</span>
+            </Button>
+          )}
+
           <Button
             type="button"
             variant="outline"
@@ -1062,6 +1130,79 @@ export default function AdminTeamMemberDetail() {
                 {savingPayout ? "Recording..." : "Save Payout"}
               </Button>
             </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Owner Reset PIN Modal */}
+      <Dialog open={showResetPinModal} onOpenChange={setShowResetPinModal}>
+        <DialogContent className="sm:max-w-sm p-6">
+          <DialogHeader className="border-b pb-3">
+            <DialogTitle className="flex items-center gap-2 font-display text-base text-slate-900 dark:text-white">
+              <KeyRound className="h-5 w-5 text-amber-500" />
+              <span>Reset 5-Digit PIN</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleResetPinSubmit} className="space-y-4 pt-2 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs">
+              <span className="font-bold text-slate-900 dark:text-white">{member?.name}</span>
+              <p className="text-slate-500 capitalize">{member?.role} • {member?.phone}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                New 5-Digit PIN
+              </Label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={5}
+                autoFocus
+                placeholder="Enter 5 Digits"
+                value={newPinInput}
+                onChange={(e) => setNewPinInput(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                required
+                className="h-10 text-center font-mono text-lg tracking-widest rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Confirm New PIN
+              </Label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={5}
+                placeholder="Re-enter 5 Digits"
+                value={confirmNewPinInput}
+                onChange={(e) => setConfirmNewPinInput(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                required
+                className="h-10 text-center font-mono text-lg tracking-widest rounded-xl"
+              />
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <Button
+                type="submit"
+                disabled={savingResetPin || newPinInput.length !== 5 || newPinInput !== confirmNewPinInput}
+                className="w-full h-9 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl"
+              >
+                {savingResetPin ? "Updating..." : "Set New PIN"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearPin}
+                disabled={savingResetPin}
+                className="w-full h-8 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 rounded-xl"
+              >
+                Clear PIN (Force User Setup on Login)
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

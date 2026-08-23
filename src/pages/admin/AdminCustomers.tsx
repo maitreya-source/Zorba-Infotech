@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getCustomers, deleteCustomer } from "@/lib/firestore";
 import type { Customer } from "@/lib/types";
+import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import ImportCustomersModal from "@/components/admin/ImportCustomersModal";
@@ -48,6 +49,11 @@ export default function AdminCustomers() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useTallyShortcuts({
+    onAltC: () => setShowCreateModal(true),
+    onAltA: () => setShowCreateModal(true),
+  });
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -103,7 +109,7 @@ export default function AdminCustomers() {
               size="sm"
               className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
             >
-              <UserPlus className="h-4 w-4" /> Add Customer
+              <UserPlus className="h-4 w-4" /> Add Customer (Alt+C)
             </Button>
           </div>
         </div>

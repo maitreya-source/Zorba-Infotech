@@ -259,6 +259,8 @@ export default function AdminQuotationForm() {
     },
     onC: showEscPrompt ? () => setShowEscPrompt(false) : undefined,
     onAltA: () => handleAddItemRow(),
+    onAltP: () => handleOpenPrintModal(),
+    onAltW: () => handleOpenWhatsAppModal(),
     onAltC: (context) => {
       if (context?.isProductSection) {
         setShowProductModal(true);
@@ -267,6 +269,30 @@ export default function AdminQuotationForm() {
       }
     },
   });
+
+  const handleOpenPrintModal = () => {
+    if (!isEditing) {
+      if (!(customerName || "").trim() || !(customerPhone || "").trim()) {
+        toast.error("Please select a customer and save the quotation before printing.");
+        return;
+      }
+      toast.info("Please save the quotation before printing.");
+      return;
+    }
+    setShowPrintModal(true);
+  };
+
+  const handleOpenWhatsAppModal = () => {
+    if (!(customerPhone || "").trim()) {
+      toast.error("Customer phone number is required to send quotation via WhatsApp.");
+      return;
+    }
+    if (!isEditing) {
+      toast.info("Please save the quotation first before sending via WhatsApp.");
+      return;
+    }
+    setShowWhatsAppModal(true);
+  };
 
   // Customer Select Handler
   const handleSelectCustomer = (cust: Customer) => {
@@ -581,22 +607,22 @@ export default function AdminQuotationForm() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setShowPrintModal(true)}
+            onClick={handleOpenPrintModal}
             className="h-8 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 gap-1.5 cursor-pointer shadow-2xs"
           >
             <Printer className="h-3.5 w-3.5" />
-            <span>Print</span>
+            <span>Print (Alt+P)</span>
           </Button>
 
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setShowWhatsAppModal(true)}
+            onClick={handleOpenWhatsAppModal}
             className="h-8 text-xs font-bold rounded-xl border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 gap-1.5 cursor-pointer shadow-2xs"
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            <span>WhatsApp</span>
+            <span>WhatsApp (Alt+W)</span>
           </Button>
 
           <Button

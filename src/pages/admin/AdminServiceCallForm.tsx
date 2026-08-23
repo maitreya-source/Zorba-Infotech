@@ -458,6 +458,38 @@ export default function AdminServiceCallForm() {
         });
       });
     } else {
+      // Clean reset for new ticket creation so no discarded/previous state leaks
+      setTimeline([]);
+      setSelectedCustomerId("");
+      setCustomerName("");
+      setCustomerPhone("");
+      setCustomerEmail("");
+      setCustomerAddress("");
+      setDeviceCategory("Laptop");
+      setModelNumber("");
+      setSerialNumber("");
+      setQuantity(1);
+      setIssueDescription("");
+      setDateOfPurchase("");
+      setBillNumber("");
+      setSelectedServiceCenterId("");
+      setServiceCenterName("");
+      setSelectedAddressId("");
+      setServiceCenterAddress("");
+      setRmaNumber("");
+      setCourierName("Trackon Courier");
+      setCourierChargesInput("0");
+      setSelectedTechnicianId("");
+      setTechnicianName("");
+      setOnsiteAddress("");
+      setParts([]);
+      setServiceChargesInput("0");
+      setDiscountInput("0");
+      setInternalComments("");
+      setPaymentStatus("due");
+      setAmountPaid(0);
+      setPaymentNotes("");
+
       const fyMeta = getFinancialYear(dateTime || new Date());
       peekNextTicketNumber(fyMeta.fyId, fyMeta.monthKey)
         .then((nextNo) => {
@@ -608,39 +640,6 @@ export default function AdminServiceCallForm() {
     navigate("/admin/service-calls");
   };
 
-  // Keyboard Shortcuts Hook
-  useTallyShortcuts({
-    onCtrlA: () => handleSubmit(),
-    onEsc: handleEsc,
-    onC: showEscQuitPrompt
-      ? () => {
-          setShowEscQuitPrompt(false);
-        }
-      : undefined,
-    onAltC: (context) => {
-      if (context?.isProductSection) {
-        setShowProductModal(true);
-      } else {
-        setShowCustomerModal(true);
-      }
-    },
-    onAltA: () => handleAddPartRow(),
-    onCtrlF2: () => {
-      if (dateInputRef.current) {
-        dateInputRef.current.focus();
-        if (typeof dateInputRef.current.showPicker === "function") {
-          dateInputRef.current.showPicker();
-        }
-      }
-    },
-    onF5: () => triggerTimelineModal("replacement_received_customer"),
-    onF6: () => triggerTimelineModal("replacement_sent_service_center"),
-    onF8: () => triggerTimelineModal("replacement_received_service_center"),
-    onF9: () => {
-      triggerTimelineModal("replacement_given_customer");
-    },
-  });
-
   const triggerTimelineModal = (stage: TimelineEvent["stage"]) => {
     setQuickTimelineStage(stage);
     setShowQuickTimelineModal(true);
@@ -733,7 +732,7 @@ export default function AdminServiceCallForm() {
     setTimeline((prev) => [...prev, newEvent]);
     setStatus(eventData.status);
 
-    if (id) {
+    if (id && isEditing) {
       await addTimelineEvent(id, newEvent).catch(() => {});
     }
   };
@@ -762,7 +761,7 @@ export default function AdminServiceCallForm() {
   };
 
   // Calculation (0 parts is valid)
-  const cleanParts = parts.filter((p) => p.name.trim().length > 0);
+  const cleanParts = (parts || []).filter((p) => (p?.name || "").trim().length > 0);
   const partsTotal = cleanParts.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
   const serviceChargesNum = Number(serviceChargesInput) || 0;
   const courierChargesNum = Number(courierChargesInput) || 0;
@@ -773,11 +772,15 @@ export default function AdminServiceCallForm() {
   // Submit Handler
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!customerName.trim() || !customerPhone.trim()) {
+    const cName = (customerName || "").trim();
+    const cPhone = (customerPhone || "").trim();
+    const issueDesc = (issueDescription || "").trim();
+
+    if (!cName || !cPhone) {
       toast.error("Please enter Customer Name and Phone Number");
       return;
     }
-    if (!issueDescription.trim()) {
+    if (!issueDesc) {
       toast.error("Please describe the Issue / Task");
       return;
     }
@@ -791,21 +794,21 @@ export default function AdminServiceCallForm() {
         type,
         dateTime,
         customerId: selectedCustomerId || `cust-${Date.now()}`,
-        customerName: toTitleCase(customerName),
-        customerPhone: formatIndianPhoneNumber(customerPhone),
-        customerEmail: customerEmail.trim() || undefined,
-        customerAddress: customerAddress.trim() || undefined,
+        customerName: toTitleCase(cName),
+        customerPhone: formatIndianPhoneNumber(cPhone),
+        customerEmail: (customerEmail || "").trim() || undefined,
+        customerAddress: (customerAddress || "").trim() || undefined,
         deviceCategory,
-        modelNumber: modelNumber.trim() || undefined,
-        serialNumber: serialNumber.trim() || undefined,
+        modelNumber: (modelNumber || "").trim() || undefined,
+        serialNumber: (serialNumber || "").trim() || undefined,
         quantity: Number(quantity) || 1,
-        issueDescription: issueDescription.trim(),
+        issueDescription: issueDesc,
         warrantyStatus,
         status,
 
         // Purchase details
-        dateOfPurchase: dateOfPurchase.trim() || undefined,
-        billNumber: billNumber.trim() || undefined,
+        dateOfPurchase: (dateOfPurchase || "").trim() || undefined,
+        billNumber: (billNumber || "").trim() || undefined,
 
         // Backoffice handled staff (Auto-attributed to active desk profile)
         handledByStaffId: effectiveStaffId,
@@ -813,27 +816,27 @@ export default function AdminServiceCallForm() {
 
         // Service center
         serviceCenterId: selectedServiceCenterId || undefined,
-        serviceCenterName: serviceCenterName.trim() || undefined,
+        serviceCenterName: (serviceCenterName || "").trim() || undefined,
         serviceCenterAddressId: selectedAddressId || undefined,
-        serviceCenterAddress: serviceCenterAddress.trim() || undefined,
-        rmaNumber: rmaNumber.trim() || undefined,
-        courierName: courierName.trim() || undefined,
+        serviceCenterAddress: (serviceCenterAddress || "").trim() || undefined,
+        rmaNumber: (rmaNumber || "").trim() || undefined,
+        courierName: (courierName || "").trim() || undefined,
         courierCharges: type === "company_service_center" ? courierChargesNum : undefined,
 
         // Technician
         technicianId: selectedTechnicianId || undefined,
-        technicianName: technicianName.trim() || undefined,
+        technicianName: (technicianName || "").trim() || undefined,
 
         // Onsite
-        onsiteAddress: type === "onsite_visit" ? onsiteAddress.trim() : undefined,
+        onsiteAddress: type === "onsite_visit" ? (onsiteAddress || "").trim() : undefined,
 
         parts: cleanParts,
         partsTotal,
         serviceCharges: serviceChargesNum,
         discount: discountNum > 0 ? discountNum : undefined,
         grandTotal,
-        internalComments: internalComments.trim() || undefined,
-        notes: internalComments.trim() || undefined,
+        internalComments: (internalComments || "").trim() || undefined,
+        notes: (internalComments || "").trim() || undefined,
         timeline,
 
         // Payment status
@@ -841,7 +844,7 @@ export default function AdminServiceCallForm() {
         paymentMode: paymentStatus === "paid" || paymentStatus === "partial" ? paymentMode : undefined,
         amountPaid: paymentStatus === "paid" || paymentStatus === "partial" ? (amountPaid || grandTotal) : 0,
         paymentDate: paymentStatus === "paid" || paymentStatus === "partial" ? (paymentDate || dateTime) : undefined,
-        paymentNotes: paymentNotes.trim() || undefined,
+        paymentNotes: (paymentNotes || "").trim() || undefined,
       };
 
       if (isEditing && id) {
@@ -874,10 +877,27 @@ export default function AdminServiceCallForm() {
     }
   };
 
+  // Print & WhatsApp Triggers (Guard against unsaved state)
+  const handleOpenPrintModal = () => {
+    if (!isEditing) {
+      if (!(customerName || "").trim() || !(customerPhone || "").trim() || !(issueDescription || "").trim()) {
+        toast.error("Please fill Customer Name, Phone, and Issue, and save the ticket before printing.");
+        return;
+      }
+      toast.info("Please save the ticket before printing.");
+      return;
+    }
+    setShowPrintModal(true);
+  };
+
   // WhatsApp Message Preview Triggers (Opens editable preview modal with pre-compiled text)
   const handleOpenCustomerWhatsApp = () => {
-    if (!customerPhone && !customerName) {
+    if (!(customerPhone || "").trim() && !(customerName || "").trim()) {
       toast.error("Customer information is missing");
+      return;
+    }
+    if (!isEditing) {
+      toast.info("Please save the ticket first before sending WhatsApp updates.");
       return;
     }
     const compiled = generateWhatsAppMessage({
@@ -990,6 +1010,41 @@ export default function AdminServiceCallForm() {
       templateName: "zorba_courier_delivery_inquiry",
     });
   };
+
+  // Keyboard Shortcuts Hook
+  useTallyShortcuts({
+    onCtrlA: () => handleSubmit(),
+    onEsc: handleEsc,
+    onC: showEscQuitPrompt
+      ? () => {
+          setShowEscQuitPrompt(false);
+        }
+      : undefined,
+    onAltC: (context) => {
+      if (context?.isProductSection) {
+        setShowProductModal(true);
+      } else {
+        setShowCustomerModal(true);
+      }
+    },
+    onAltA: () => handleAddPartRow(),
+    onAltP: () => handleOpenPrintModal(),
+    onAltW: () => handleOpenCustomerWhatsApp(),
+    onCtrlF2: () => {
+      if (dateInputRef.current) {
+        dateInputRef.current.focus();
+        if (typeof dateInputRef.current.showPicker === "function") {
+          dateInputRef.current.showPicker();
+        }
+      }
+    },
+    onF5: () => triggerTimelineModal("replacement_received_customer"),
+    onF6: () => triggerTimelineModal("replacement_sent_service_center"),
+    onF8: () => triggerTimelineModal("replacement_received_service_center"),
+    onF9: () => {
+      triggerTimelineModal("replacement_given_customer");
+    },
+  });
 
   return (
     <div className="space-y-4 max-w-[1440px] mx-auto pb-16 text-xs">
@@ -1245,11 +1300,12 @@ export default function AdminServiceCallForm() {
         onOpenServiceCenterWhatsApp={handleOpenServiceCenterWhatsApp}
         onOpenCourierPickupWhatsApp={handleOpenCourierPickupWhatsApp}
         onOpenCourierDeliveryWhatsApp={handleOpenCourierDeliveryWhatsApp}
-        onOpenPrintModal={() => setShowPrintModal(true)}
+        onOpenPrintModal={handleOpenPrintModal}
         onOpenDeleteModal={() => setShowDeleteModal(true)}
         onOpenCustomerModal={() => setShowCustomerModal(true)}
         onOpenCenterModal={() => setShowCenterModal(true)}
         onOpenCourierModal={() => setShowCourierModal(true)}
+        onSave={() => handleSubmit()}
       />
 
       {/* WhatsApp Message Preview & Dispatch Modal */}

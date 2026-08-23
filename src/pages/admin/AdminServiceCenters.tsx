@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getServiceCenters, deleteServiceCenter } from "@/lib/firestore";
 import type { ServiceCenter } from "@/lib/types";
+import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import EditServiceCenterModal from "@/components/admin/EditServiceCenterModal";
 
@@ -44,6 +45,11 @@ export default function AdminServiceCenters() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useTallyShortcuts({
+    onAltC: () => setShowCreateModal(true),
+    onAltA: () => setShowCreateModal(true),
+  });
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -87,9 +93,9 @@ export default function AdminServiceCenters() {
           <Button
             onClick={() => setShowCreateModal(true)}
             size="sm"
-            className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white shrink-0 rounded-xl"
+            className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white shrink-0 rounded-xl cursor-pointer"
           >
-            <Plus className="h-4 w-4" /> Add Service Center
+            <Plus className="h-4 w-4" /> Add Service Center (Alt+C)
           </Button>
         </div>
       </div>
