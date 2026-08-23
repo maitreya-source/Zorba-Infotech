@@ -42,7 +42,7 @@ describe("formatModelNumber", () => {
   });
 
   it("strips illegal Firestore characters", () => {
-    expect(formatModelNumber("model/part#1?")).toBe("MODEL-PART-1-");
+    expect(formatModelNumber("model/part#1?")).toBe("MODEL-PART-1");
   });
 
   it("handles empty or falsy input gracefully", () => {

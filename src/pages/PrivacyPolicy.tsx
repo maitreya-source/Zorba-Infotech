@@ -35,7 +35,7 @@ const PrivacyPolicy = () => {
           <div className="rounded-2xl border bg-card p-8 md:p-10 space-y-8">
             <div>
               <p className="text-muted-foreground leading-relaxed">
-                Zorba Infotech ("we", "our", or "us") operates the website zorbainfotech.lovable.app. This
+                Zorba Infotech ("we", "our", or "us") operates the website www.zorbainfotech.in. This
                 page informs you of our policies regarding the collection, use, and disclosure of personal
                 information when you use our website or services.
               </p>

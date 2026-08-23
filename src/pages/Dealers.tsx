@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import Layout from "@/components/layout/Layout";
 import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Truck, Package, Shield, MessageCircle, Send } from "lucide-react";
 import { whatsappLink } from "@/lib/contact";
+import { createInquiry } from "@/lib/firestore";
 
 const benefits = [
   { icon: TrendingUp, title: "Best Wholesale Pricing", desc: "Competitive margins on 500+ products from all major brands." },
@@ -14,18 +16,46 @@ const benefits = [
 
 const Dealers = () => {
   const [form, setForm] = useState({ name: "", business: "", phone: "", city: "", message: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const persistLead = async () => {
+    try {
+      await createInquiry({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        message: `[Dealer Inquiry - Business: ${form.business || "N/A"}, City: ${form.city || "N/A"}] ${form.message.trim()}`,
+        status: "pending",
+        source: "dealers_page",
+      });
+    } catch (err) {
+      console.error("Failed to record dealer inquiry:", err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name.trim() || !form.phone.trim()) {
+      toast.error("Please provide your name and contact phone number.");
+      return;
+    }
+    setSubmitting(true);
+    await persistLead();
+    setSubmitting(false);
+    toast.success("Dealer inquiry registered! Connecting to WhatsApp...");
     const text = `Dealer Inquiry:\nName: ${form.name}\nBusiness: ${form.business}\nPhone: ${form.phone}\nCity: ${form.city}\nMessage: ${form.message}`;
     window.open(whatsappLink(text), "_blank", "noopener,noreferrer");
   };
 
-  const handleEmail = () => {
+  const handleEmail = async () => {
+    if (!form.name.trim() || !form.phone.trim()) {
+      toast.error("Please provide your name and contact phone number.");
+      return;
+    }
+    await persistLead();
     const subject = `Dealer Inquiry from ${form.name}`;
     const body = `Name: ${form.name}\nBusiness: ${form.business}\nPhone: ${form.phone}\nCity: ${form.city}\nMessage: ${form.message}`;
     window.open(`mailto:zorbainfotech@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);

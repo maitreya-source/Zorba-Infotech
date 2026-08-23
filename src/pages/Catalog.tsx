@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Package, Search, Star } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { SEO } from "@/components/SEO";
@@ -20,12 +20,29 @@ function sortProducts(products: Product[]): Product[] {
 
 export default function Catalog() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState("all");
-  const [search, setSearch] = useState("");
+  
+  const categoryFromUrl = searchParams.get("category");
+  const searchFromUrl = searchParams.get("search") || searchParams.get("q");
+
+  const [activeCategory, setActiveCategory] = useState(categoryFromUrl || "all");
+  const [search, setSearch] = useState(searchFromUrl || "");
+
+  useEffect(() => {
+    if (categoryFromUrl) {
+      setActiveCategory(categoryFromUrl);
+    }
+  }, [categoryFromUrl]);
+
+  useEffect(() => {
+    if (searchFromUrl !== null && searchFromUrl !== undefined) {
+      setSearch(searchFromUrl);
+    }
+  }, [searchFromUrl]);
 
   const loadData = async () => {
     setLoading(true);
