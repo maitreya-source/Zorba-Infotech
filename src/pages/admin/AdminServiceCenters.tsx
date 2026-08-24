@@ -11,8 +11,8 @@ import {
   List,
   Mail,
   Phone,
-  ExternalLink,
-  ChevronRight,
+  CheckCircle2,
+  Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
   FirebaseErrorState,
   SearchFilterBar,
   LoadingScreen,
+  StatCard,
 } from "@/components/common";
 import { getServiceCenters, deleteServiceCenter } from "@/lib/firestore";
 import type { ServiceCenter } from "@/lib/types";
@@ -94,6 +95,27 @@ export default function AdminServiceCenters() {
     return Array.from(citySet).sort();
   }, [centers]);
 
+  // KPI Metrics
+  const stats = useMemo(() => {
+    const totalAddresses = centers.reduce(
+      (sum, sc) => sum + (sc.addresses?.length || 0),
+      0
+    );
+    const totalPocs = centers.reduce(
+      (sum, sc) => sum + (sc.pocs?.length || 0),
+      0
+    );
+    const withWhatsApp = centers.filter((sc) => Boolean(sc.whatsappPhone)).length;
+
+    return {
+      total: centers.length,
+      cities: availableCities.length,
+      addresses: totalAddresses,
+      pocs: totalPocs,
+      withWhatsApp,
+    };
+  }, [centers, availableCities]);
+
   const filtered = useMemo(() => {
     return centers.filter((sc) => {
       const q = search.toLowerCase().trim();
@@ -136,7 +158,7 @@ export default function AdminServiceCenters() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto text-xs">
-      {/* Hero Header */}
+      {/* 1. Header Banner */}
       <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 text-white shadow-md">
         <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
 
@@ -160,7 +182,46 @@ export default function AdminServiceCenters() {
         </div>
       </div>
 
-      {/* Filter / Search bar */}
+      {/* 2. KPI Summary Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        <div className="bg-card border rounded-2xl p-4 shadow-xs">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            Total Service Centers
+          </div>
+          <div className="text-xl md:text-2xl font-extrabold text-foreground font-display mt-1">
+            {stats.total}
+          </div>
+        </div>
+
+        <div className="bg-card border rounded-2xl p-4 shadow-xs">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            Hub Cities Covered
+          </div>
+          <div className="text-xl md:text-2xl font-extrabold text-blue-600 dark:text-blue-400 font-display mt-1">
+            {stats.cities}
+          </div>
+        </div>
+
+        <div className="bg-card border rounded-2xl p-4 shadow-xs">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            Dispatch Addresses
+          </div>
+          <div className="text-xl md:text-2xl font-extrabold text-amber-600 dark:text-amber-400 font-display mt-1">
+            {stats.addresses}
+          </div>
+        </div>
+
+        <div className="bg-card border rounded-2xl p-4 shadow-xs">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            WhatsApp Connected
+          </div>
+          <div className="text-xl md:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-display mt-1">
+            {stats.withWhatsApp}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Search & Filter Bar */}
       <SearchFilterBar
         value={search}
         onChange={setSearch}
@@ -206,7 +267,7 @@ export default function AdminServiceCenters() {
         </div>
       </SearchFilterBar>
 
-      {/* Main Content: Table or Grid */}
+      {/* 4. Main Directory Content */}
       {loading ? (
         <div className="bg-card rounded-2xl border p-6">
           <LoadingScreen
@@ -235,16 +296,16 @@ export default function AdminServiceCenters() {
           onAction={() => setShowCreateModal(true)}
         />
       ) : viewMode === "table" ? (
-        /* Modern Structured Table View */
+        /* Standard Admin Directory Table */
         <div className="rounded-2xl border bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="border-b bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="px-4 py-3">Service Center / Brand</th>
-                  <th className="px-4 py-3">Hub &amp; Dispatch Addresses</th>
-                  <th className="px-4 py-3">Contacts / POCs</th>
-                  <th className="px-4 py-3">Follow-up WhatsApp</th>
+                  <th className="px-4 py-3 min-w-[220px]">Service Center / OEM</th>
+                  <th className="px-4 py-3 min-w-[280px]">Dispatch &amp; Hub Addresses</th>
+                  <th className="px-4 py-3 min-w-[200px]">Contacts / POCs</th>
+                  <th className="px-4 py-3 min-w-[160px]">Follow-up WhatsApp</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -255,9 +316,9 @@ export default function AdminServiceCenters() {
                     className="hover:bg-blue-50/40 dark:hover:bg-slate-900/50 transition-colors group"
                   >
                     {/* Service Center Name & Email */}
-                    <td className="px-4 py-3.5 align-top min-w-[200px]">
+                    <td className="px-4 py-3 align-top">
                       <div className="flex items-start gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-[#2563EB] dark:bg-blue-950/60 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800/80">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-[#2563EB] dark:bg-blue-950/60 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800/80 mt-0.5">
                           <Building2 className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
@@ -269,60 +330,64 @@ export default function AdminServiceCenters() {
                               href={`mailto:${sc.email}`}
                               className="text-[11px] text-slate-500 hover:text-primary flex items-center gap-1 mt-0.5"
                             >
-                              <Mail className="h-3 w-3 text-slate-400" />
+                              <Mail className="h-3 w-3 text-slate-400 shrink-0" />
                               <span className="truncate">{sc.email}</span>
                             </a>
                           ) : (
-                            <span className="text-[10px] text-slate-400">OEM Service Hub</span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                              Authorized OEM Hub
+                            </span>
                           )}
                         </div>
                       </div>
                     </td>
 
                     {/* Addresses */}
-                    <td className="px-4 py-3.5 align-top max-w-sm">
+                    <td className="px-4 py-3 align-top">
                       <div className="space-y-1.5">
                         {sc.addresses && sc.addresses.length > 0 ? (
                           sc.addresses.map((addr, idx) => (
                             <div
                               key={addr.id || idx}
-                              className="flex items-start gap-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 p-2 border border-slate-200/60 dark:border-slate-800/80 text-[11px]"
+                              className="flex items-start gap-2 text-[11px] leading-relaxed"
                             >
-                              <MapPin className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
-                              <div className="leading-snug">
-                                <span className="font-bold text-slate-900 dark:text-white mr-1">
-                                  {addr.city || "Hub"}:
-                                </span>
-                                <span className="text-slate-600 dark:text-slate-300">
-                                  {addr.address}
-                                </span>
-                              </div>
+                              <Badge
+                                variant="outline"
+                                className="h-5 px-1.5 text-[10px] font-bold uppercase shrink-0 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/60"
+                              >
+                                {addr.city || "Hub"}
+                              </Badge>
+                              <span className="text-slate-600 dark:text-slate-300">
+                                {addr.address}
+                              </span>
                             </div>
                           ))
                         ) : (
-                          <span className="text-slate-400 italic">No addresses added</span>
+                          <span className="text-slate-400 italic">No address registered</span>
                         )}
                       </div>
                     </td>
 
                     {/* POCs */}
-                    <td className="px-4 py-3.5 align-top max-w-xs">
+                    <td className="px-4 py-3 align-top">
                       {sc.pocs && sc.pocs.length > 0 ? (
                         <div className="space-y-1">
                           {sc.pocs.map((poc, idx) => (
                             <div
                               key={poc.id || idx}
-                              className="inline-flex items-center gap-1.5 rounded-md bg-blue-50/70 dark:bg-blue-950/40 px-2 py-1 text-[11px] text-blue-800 dark:text-blue-200 border border-blue-100 dark:border-blue-900/60 mr-1 mb-1 font-medium"
+                              className="flex items-center gap-1.5 text-[11px]"
                             >
-                              <User className="h-3 w-3 text-blue-500" />
-                              <span>{poc.name}</span>
+                              <User className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                {poc.name}
+                              </span>
                               {poc.designation && (
-                                <span className="text-[10px] text-blue-600 dark:text-blue-400">
+                                <span className="text-[10px] text-slate-500">
                                   ({poc.designation})
                                 </span>
                               )}
                               {poc.phone && (
-                                <span className="font-mono text-[10px] text-slate-600 dark:text-slate-400 pl-0.5">
+                                <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400">
                                   • {poc.phone}
                                 </span>
                               )}
@@ -335,7 +400,7 @@ export default function AdminServiceCenters() {
                     </td>
 
                     {/* WhatsApp Follow-up */}
-                    <td className="px-4 py-3.5 align-top">
+                    <td className="px-4 py-3 align-top">
                       {sc.whatsappPhone ? (
                         <Button
                           onClick={() => openWhatsApp(sc.whatsappPhone!, sc.name)}
@@ -353,7 +418,7 @@ export default function AdminServiceCenters() {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-3.5 text-right align-top">
+                    <td className="px-4 py-3 text-right align-top">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
@@ -449,17 +514,17 @@ export default function AdminServiceCenters() {
                   {sc.addresses?.map((addr, idx) => (
                     <div
                       key={addr.id || idx}
-                      className="flex items-start gap-1.5 bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800/80 text-[11px]"
+                      className="flex items-start gap-2 bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800/80 text-[11px]"
                     >
-                      <MapPin className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
-                      <div className="leading-snug">
-                        <strong className="text-slate-900 dark:text-slate-200 block">
-                          {addr.city || "Dispatch Hub"}
-                        </strong>
-                        <span className="text-slate-600 dark:text-slate-400">
-                          {addr.address}
-                        </span>
-                      </div>
+                      <Badge
+                        variant="outline"
+                        className="h-5 px-1.5 text-[10px] font-bold uppercase shrink-0 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/60"
+                      >
+                        {addr.city || "Hub"}
+                      </Badge>
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {addr.address}
+                      </span>
                     </div>
                   ))}
                 </div>
