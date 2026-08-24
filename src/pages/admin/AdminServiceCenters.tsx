@@ -345,7 +345,7 @@ export default function AdminServiceCenters() {
                               <span>{sc.name}</span>
                               <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
                             </div>
-                            {sc.email ? (
+                            {sc.email && (
                               <a
                                 href={`mailto:${sc.email}`}
                                 onClick={(e) => e.stopPropagation()}
@@ -354,10 +354,6 @@ export default function AdminServiceCenters() {
                                 <Mail className="h-3 w-3 text-slate-400 shrink-0" />
                                 <span className="truncate">{sc.email}</span>
                               </a>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 block mt-0.5">
-                                Authorized OEM Hub
-                              </span>
                             )}
                           </div>
                         </div>
@@ -583,13 +579,15 @@ export default function AdminServiceCenters() {
         <WhatsAppPreviewModal
           open={Boolean(whatsappTarget)}
           onOpenChange={(open) => !open && setWhatsAppTarget(null)}
-          title={`Send WhatsApp API Notice – ${whatsappTarget.name}`}
+          title={`Send WhatsApp Follow-up – ${whatsappTarget.name}`}
           recipientName={whatsappTarget.name}
           recipientRole="Authorized Service Center"
           defaultPhone={whatsappTarget.phone}
+          targetModule="service_centers"
+          templateName="zorba_service_center_followup"
           defaultMessage={`Hi ${whatsappTarget.name} Support Team, this is Zorba Infotech Neemuch following up on our service dispatch / RMA status.`}
           onSent={() => {
-            toast.success("WhatsApp message sent successfully via API");
+            toast.success("WhatsApp follow-up sent successfully via API");
             setWhatsAppTarget(null);
           }}
         />
