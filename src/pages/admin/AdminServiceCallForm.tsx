@@ -48,6 +48,7 @@ import {
   peekNextTicketNumber,
   updateServiceCallPaymentStatus,
 } from "@/lib/firestore";
+import { LoadingScreen } from "@/components/common";
 import {
   toTitleCase,
   formatIndianPhoneNumber,
@@ -264,6 +265,7 @@ export default function AdminServiceCallForm() {
   const [showQuickTimelineModal, setShowQuickTimelineModal] = useState(false);
   const [showEventsListModal, setShowEventsListModal] = useState(false);
 
+  const [dataLoading, setDataLoading] = useState<boolean>(Boolean(id));
   const [saving, setSaving] = useState(false);
   const [paymentSaving, setPaymentSaving] = useState(false);
 
@@ -368,96 +370,106 @@ export default function AdminServiceCallForm() {
   // Fetch Existing Service Call if editing, or peek upcoming Ticket Number if creating
   useEffect(() => {
     if (id) {
-      getServiceCall(id).then((sc) => {
-        if (!sc) {
-          toast.error("Service Call not found");
-          navigate("/admin/service-calls");
-          return;
-        }
-        setTicketNo(sc.ticketNo || sc.id || id || "");
-        setType(sc.type);
-        setDateTime(sc.dateTime);
-        setSelectedCustomerId(sc.customerId || "");
-        setCustomerName(sc.customerName || "");
-        setCustomerPhone(sc.customerPhone || "");
-        setCustomerEmail(sc.customerEmail || "");
-        setCustomerAddress(sc.customerAddress || "");
+      setDataLoading(true);
+      getServiceCall(id)
+        .then((sc) => {
+          if (!sc) {
+            toast.error("Service Call not found");
+            navigate("/admin/service-calls");
+            return;
+          }
+          setTicketNo(sc.ticketNo || sc.id || id || "");
+          setType(sc.type);
+          setDateTime(sc.dateTime);
+          setSelectedCustomerId(sc.customerId || "");
+          setCustomerName(sc.customerName || "");
+          setCustomerPhone(sc.customerPhone || "");
+          setCustomerEmail(sc.customerEmail || "");
+          setCustomerAddress(sc.customerAddress || "");
 
-        setDeviceCategory(sc.deviceCategory);
-        setModelNumber(sc.modelNumber || "");
-        setSerialNumber(sc.serialNumber || "");
-        setQuantity(sc.quantity || 1);
-        setIssueDescription(sc.issueDescription);
+          setDeviceCategory(sc.deviceCategory);
+          setModelNumber(sc.modelNumber || "");
+          setSerialNumber(sc.serialNumber || "");
+          setQuantity(sc.quantity || 1);
+          setIssueDescription(sc.issueDescription);
 
-        setDateOfPurchase(sc.dateOfPurchase || "");
-        setBillNumber(sc.billNumber || "");
+          setDateOfPurchase(sc.dateOfPurchase || "");
+          setBillNumber(sc.billNumber || "");
 
-        if (sc.handledByStaffId) {
-          setHandledByStaffId(sc.handledByStaffId);
-          setHandledByStaffName(sc.handledByStaffName || "");
-        }
+          if (sc.handledByStaffId) {
+            setHandledByStaffId(sc.handledByStaffId);
+            setHandledByStaffName(sc.handledByStaffName || "");
+          }
 
-        setWarrantyStatus(sc.warrantyStatus);
-        setStatus(sc.status);
+          setWarrantyStatus(sc.warrantyStatus);
+          setStatus(sc.status);
 
-        // Service center
-        setSelectedServiceCenterId(sc.serviceCenterId || "");
-        setServiceCenterName(sc.serviceCenterName || "");
-        setSelectedAddressId(sc.serviceCenterAddressId || "");
-        setServiceCenterAddress(sc.serviceCenterAddress || "");
-        setRmaNumber(sc.rmaNumber || "");
-        setCourierName(sc.courierName || "Trackon Courier");
-        setCourierChargesInput(String(sc.courierCharges || 0));
+          // Service center
+          setSelectedServiceCenterId(sc.serviceCenterId || "");
+          setServiceCenterName(sc.serviceCenterName || "");
+          setSelectedAddressId(sc.serviceCenterAddressId || "");
+          setServiceCenterAddress(sc.serviceCenterAddress || "");
+          setRmaNumber(sc.rmaNumber || "");
+          setCourierName(sc.courierName || "Trackon Courier");
+          setCourierChargesInput(String(sc.courierCharges || 0));
 
-        // Technician
-        setSelectedTechnicianId(sc.technicianId || "");
-        setTechnicianName(sc.technicianName || "");
+          // Technician
+          setSelectedTechnicianId(sc.technicianId || "");
+          setTechnicianName(sc.technicianName || "");
 
-        setOnsiteAddress(sc.onsiteAddress || "");
+          setOnsiteAddress(sc.onsiteAddress || "");
 
-        setParts(sc.parts || []);
-        setServiceChargesInput(String(sc.serviceCharges || 0));
-        setDiscountInput(String(sc.discount || 0));
-        setInternalComments(sc.internalComments || sc.notes || "");
-        setTimeline(sc.timeline || []);
+          setParts(sc.parts || []);
+          setServiceChargesInput(String(sc.serviceCharges || 0));
+          setDiscountInput(String(sc.discount || 0));
+          setInternalComments(sc.internalComments || sc.notes || "");
+          setTimeline(sc.timeline || []);
 
-        setPaymentStatus(sc.paymentStatus || "due");
-        if (sc.paymentMode) setPaymentMode(sc.paymentMode);
-        if (sc.amountPaid !== undefined) setAmountPaid(sc.amountPaid);
-        if (sc.paymentDate) setPaymentDate(sc.paymentDate);
-        if (sc.paymentNotes) setPaymentNotes(sc.paymentNotes);
+          setPaymentStatus(sc.paymentStatus || "due");
+          if (sc.paymentMode) setPaymentMode(sc.paymentMode);
+          if (sc.amountPaid !== undefined) setAmountPaid(sc.amountPaid);
+          if (sc.paymentDate) setPaymentDate(sc.paymentDate);
+          if (sc.paymentNotes) setPaymentNotes(sc.paymentNotes);
 
-        initialSnapshotRef.current = JSON.stringify({
-          type: sc.type,
-          dateTime: sc.dateTime,
-          selectedCustomerId: sc.customerId || "",
-          customerName: (sc.customerName || "").trim(),
-          customerPhone: (sc.customerPhone || "").trim(),
-          customerEmail: (sc.customerEmail || "").trim(),
-          customerAddress: (sc.customerAddress || "").trim(),
-          deviceCategory: sc.deviceCategory,
-          modelNumber: (sc.modelNumber || "").trim(),
-          serialNumber: (sc.serialNumber || "").trim(),
-          quantity: Number(sc.quantity) || 1,
-          issueDescription: (sc.issueDescription || "").trim(),
-          warrantyStatus: sc.warrantyStatus,
-          status: sc.status,
-          dateOfPurchase: (sc.dateOfPurchase || "").trim(),
-          billNumber: (sc.billNumber || "").trim(),
-          selectedServiceCenterId: sc.serviceCenterId || "",
-          selectedAddressId: sc.serviceCenterAddressId || "",
-          courierName: sc.courierName || "Trackon Courier",
-          courierChargesInput: String(sc.courierCharges || 0),
-          selectedTechnicianId: sc.technicianId || "",
-          onsiteAddress: (sc.onsiteAddress || "").trim(),
-          parts: sc.parts || [],
-          serviceChargesInput: String(sc.serviceCharges || 0),
-          discountInput: String(sc.discount || 0),
-          internalComments: (sc.internalComments || sc.notes || "").trim(),
-          paymentStatus: sc.paymentStatus || "due",
+          initialSnapshotRef.current = JSON.stringify({
+            type: sc.type,
+            dateTime: sc.dateTime,
+            selectedCustomerId: sc.customerId || "",
+            customerName: (sc.customerName || "").trim(),
+            customerPhone: (sc.customerPhone || "").trim(),
+            customerEmail: (sc.customerEmail || "").trim(),
+            customerAddress: (sc.customerAddress || "").trim(),
+            deviceCategory: sc.deviceCategory,
+            modelNumber: (sc.modelNumber || "").trim(),
+            serialNumber: (sc.serialNumber || "").trim(),
+            quantity: Number(sc.quantity) || 1,
+            issueDescription: (sc.issueDescription || "").trim(),
+            warrantyStatus: sc.warrantyStatus,
+            status: sc.status,
+            dateOfPurchase: (sc.dateOfPurchase || "").trim(),
+            billNumber: (sc.billNumber || "").trim(),
+            selectedServiceCenterId: sc.serviceCenterId || "",
+            selectedAddressId: sc.serviceCenterAddressId || "",
+            courierName: sc.courierName || "Trackon Courier",
+            courierChargesInput: String(sc.courierCharges || 0),
+            selectedTechnicianId: sc.technicianId || "",
+            onsiteAddress: (sc.onsiteAddress || "").trim(),
+            parts: sc.parts || [],
+            serviceChargesInput: String(sc.serviceCharges || 0),
+            discountInput: String(sc.discount || 0),
+            internalComments: (sc.internalComments || sc.notes || "").trim(),
+            paymentStatus: sc.paymentStatus || "due",
+          });
+        })
+        .catch((err) => {
+          console.error("Error loading service call:", err);
+          toast.error("Failed to load service call details");
+        })
+        .finally(() => {
+          setDataLoading(false);
         });
-      });
     } else {
+      setDataLoading(false);
       // Clean reset for new ticket creation so no discarded/previous state leaks
       setTimeline([]);
       setSelectedCustomerId("");
@@ -1045,6 +1057,18 @@ export default function AdminServiceCallForm() {
       triggerTimelineModal("replacement_given_customer");
     },
   });
+
+  if (dataLoading) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-8 max-w-5xl mx-auto shadow-xs my-6">
+        <LoadingScreen
+          fullScreen={false}
+          title="Loading Service Call..."
+          subtitle="Retrieving ticket record from database..."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 max-w-[1440px] mx-auto pb-16 text-xs">

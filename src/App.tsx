@@ -26,14 +26,16 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Lazy-loaded Admin CRM routes
+// Core Admin CRM layout and service call routes (direct imports for instant zero-flash transitions)
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminServiceCalls from "./pages/admin/AdminServiceCalls";
+import AdminServiceCallForm from "./pages/admin/AdminServiceCallForm";
+
+// Lazy-loaded secondary Admin CRM routes
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
-const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
 const AdminProductForm = lazy(() => import("./pages/admin/AdminProductForm"));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories"));
-const AdminServiceCalls = lazy(() => import("./pages/admin/AdminServiceCalls"));
-const AdminServiceCallForm = lazy(() => import("./pages/admin/AdminServiceCallForm"));
 const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetail = lazy(() => import("./pages/admin/AdminCustomerDetail"));
 const AdminImportCustomers = lazy(() => import("./pages/admin/AdminImportCustomers"));
