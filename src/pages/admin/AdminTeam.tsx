@@ -22,15 +22,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  FirebaseErrorState,
+  LoadingScreen,
+} from "@/components/common";
 import { getTeamMembers, createTeamMember, updateTeamMember, deleteTeamMember } from "@/lib/firestore";
 import type { TeamMember, TeamRole } from "@/lib/types";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
@@ -384,28 +380,24 @@ export default function AdminTeam() {
 
       {/* Team Table / Empty States */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <RefreshCw className="h-8 w-8 text-primary animate-spin mb-3" />
-          <p className="text-sm font-semibold">Loading team members...</p>
+        <div className="bg-card rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="Team Directory" subtitle="Loading staff profiles..." />
         </div>
       ) : error ? (
-        <div className="p-8 text-center bg-destructive/10 border border-destructive/20 rounded-2xl text-destructive">
-          <p className="font-bold">{error}</p>
-          <Button onClick={loadData} variant="outline" size="sm" className="mt-3 text-xs rounded-xl">
-            Retry Connection
-          </Button>
-        </div>
+        <FirebaseErrorState
+          error={error}
+          onRetry={loadData}
+          title="Team Directory Error"
+        />
       ) : filtered.length === 0 ? (
-        <div className="p-12 text-center bg-card rounded-2xl border">
-          <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-          <h3 className="font-bold text-base mb-1">No team members found</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
-            No profiles match your search criteria. Add your technicians and staff coordinators to assign tickets.
-          </p>
-          <Button onClick={openCreateModal} size="sm" className="gap-1 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl">
-            <Plus className="h-3.5 w-3.5" /> Add Team Member
-          </Button>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No team members found"
+          description="No profiles match your search criteria. Add your technicians and staff coordinators to assign tickets."
+          actionLabel="Add Team Member"
+          actionIcon={Plus}
+          onAction={openCreateModal}
+        />
       ) : (
         <div className="rounded-2xl border bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
@@ -827,25 +819,14 @@ export default function AdminTeam() {
       </Dialog>
 
       {/* Delete Confirmation Alert */}
-      <AlertDialog open={Boolean(deleteId)} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Delete Team Member?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">
-              This will remove the team member profile from the directory. Past service tickets will maintain historical logs.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete Member
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={Boolean(deleteId)}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Team Member?"
+        description="This will remove the team member profile from the directory. Past service tickets will maintain historical logs."
+        confirmLabel="Delete Member"
+        onConfirm={handleDelete}
+      />
 
       {/* Technician Monthly Tasks & Commission Payroll Modal */}
       <TechnicianCommissionModal

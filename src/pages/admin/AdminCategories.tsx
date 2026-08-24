@@ -12,15 +12,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  SearchFilterBar,
+  LoadingScreen,
+} from "@/components/common";
 import {
   Select,
   SelectContent,
@@ -191,42 +187,32 @@ export default function AdminCategories() {
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search categories or descriptions…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs rounded-xl w-full"
-          />
-        </div>
-
-        <div className="text-xs text-muted-foreground font-semibold">
-          Total Categories: <span className="text-foreground font-extrabold">{filtered.length}</span>
-        </div>
-      </div>
+      <SearchFilterBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search categories or descriptions…"
+        count={filtered.length}
+        countLabel="Total Categories"
+      />
 
       {/* Main Categories Cards Grid / Table */}
       {loading ? (
-        <div className="flex justify-center py-20 bg-card rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        <div className="bg-card rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="Master Categories" subtitle="Loading category structures..." />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-card py-16 text-center p-6 space-y-3">
-          <Layers className="h-10 w-10 text-muted-foreground/40" />
-          <p className="font-bold text-sm text-foreground">No Categories Found</p>
-          <p className="text-xs text-muted-foreground max-w-sm">
-            {categories.length === 0
+        <EmptyState
+          icon={Layers}
+          title="No Categories Found"
+          description={
+            categories.length === 0
               ? "Click Seed Defaults to populate standard categories, or click Add Category."
-              : "Try adjusting your search query."}
-          </p>
-          {categories.length === 0 && (
-            <Button onClick={handleSeed} disabled={seeding} size="sm" className="gap-1 text-xs">
-              <RefreshCw className={`h-3.5 w-3.5 ${seeding ? "animate-spin" : ""}`} /> {seeding ? "Seeding..." : "Seed Default Categories"}
-            </Button>
-          )}
-        </div>
+              : "Try adjusting your search query."
+          }
+          actionLabel={categories.length === 0 ? "Seed Default Categories" : "Add Category"}
+          actionIcon={categories.length === 0 ? RefreshCw : Plus}
+          onAction={categories.length === 0 ? handleSeed : openAdd}
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {filtered.map((cat) => {
@@ -395,22 +381,14 @@ export default function AdminCategories() {
       </Dialog>
 
       {/* Delete Confirmation Alert */}
-      <AlertDialog open={Boolean(deleteId)} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Delete Category?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">
-              Are you sure you want to remove this category? Products and historical service calls using it will retain their text.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={Boolean(deleteId)}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Category?"
+        description="Are you sure you want to remove this category? Products and historical service calls using it will retain their text."
+        confirmLabel="Delete Category"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

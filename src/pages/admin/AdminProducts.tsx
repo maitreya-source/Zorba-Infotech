@@ -13,15 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  FirebaseErrorState,
+  TablePagination,
+  SearchFilterBar,
+  LoadingScreen,
+} from "@/components/common";
 import {
   getProductsPaginated,
   getCategories,
@@ -31,7 +29,6 @@ import {
 } from "@/lib/firestore";
 import type { Product, Category } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
-import LoadingScreen from "@/components/common/LoadingScreen";
 
 export default function AdminProducts() {
   const navigate = useNavigate();
@@ -193,48 +190,38 @@ export default function AdminProducts() {
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 w-full max-w-xl">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search by model, name, brand, code…"
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9 h-9 text-xs rounded-xl w-full"
-            />
-          </div>
+      <SearchFilterBar
+        value={search}
+        onChange={handleSearchChange}
+        placeholder="Search by model, name, brand, code…"
+        count={products.length}
+        countLabel="Current Page"
+      >
+        <Select value={catFilter} onValueChange={(v) => setCatFilter(v)}>
+          <SelectTrigger className="w-full sm:w-40 h-9 text-xs rounded-xl">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent className="max-h-56">
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id}>
+                {cat.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-          <Select value={catFilter} onValueChange={(v) => setCatFilter(v)}>
-            <SelectTrigger className="w-full sm:w-40 h-9 text-xs rounded-xl">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent className="max-h-56">
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={visibilityFilter} onValueChange={(v: any) => setVisibilityFilter(v)}>
-            <SelectTrigger className="w-full sm:w-36 h-9 text-xs rounded-xl">
-              <SelectValue placeholder="All Visibility" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Visibility</SelectItem>
-              <SelectItem value="website">🌐 Visible on Web</SelectItem>
-              <SelectItem value="erp">🔒 ERP Only</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="text-xs text-muted-foreground font-semibold">
-          Current Page Items: <span className="text-foreground font-extrabold">{products.length}</span>
-        </div>
-      </div>
+        <Select value={visibilityFilter} onValueChange={(v: any) => setVisibilityFilter(v)}>
+          <SelectTrigger className="w-full sm:w-36 h-9 text-xs rounded-xl">
+            <SelectValue placeholder="All Visibility" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Visibility</SelectItem>
+            <SelectItem value="website">🌐 Visible on Web</SelectItem>
+            <SelectItem value="erp">🔒 ERP Only</SelectItem>
+          </SelectContent>
+        </Select>
+      </SearchFilterBar>
 
       {/* Table / Loading / Error */}
       {loading ? (
@@ -242,28 +229,24 @@ export default function AdminProducts() {
           <LoadingScreen fullScreen={false} title="Products Catalog" subtitle="Loading products inventory..." />
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
-          <p className="font-bold text-destructive text-base">Error Loading Products</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md">{error}</p>
-          <Button onClick={() => load(pageNumber)} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
-            <RefreshCw className="h-3.5 w-3.5" /> Retry
-          </Button>
-        </div>
+        <FirebaseErrorState
+          error={error}
+          onRetry={() => load(pageNumber)}
+          title="Catalog Sync Error"
+        />
       ) : products.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
-          <Package className="h-10 w-10 text-muted-foreground/40" />
-          <p className="font-bold text-foreground text-sm">No Products Found</p>
-          <p className="text-xs text-muted-foreground max-w-sm">
-            {search || catFilter !== "all" || visibilityFilter !== "all"
+        <EmptyState
+          icon={Package}
+          title="No Products Found"
+          description={
+            search || catFilter !== "all" || visibilityFilter !== "all"
               ? "Try adjusting your search query, category, or visibility filter."
-              : "No products added to catalog yet. Click Add Product to create your first stock item."}
-          </p>
-          <Link to="/admin/products/new">
-            <Button size="sm" className="gap-1 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl">
-              <Plus className="h-3.5 w-3.5" /> Add Product
-            </Button>
-          </Link>
-        </div>
+              : "No products added to catalog yet. Click Add Product to create your first stock item."
+          }
+          actionLabel="Add Product"
+          actionIcon={Plus}
+          onAction={() => navigate("/admin/products/new")}
+        />
       ) : (
         <div className="rounded-2xl border bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
@@ -400,76 +383,31 @@ export default function AdminProducts() {
 
       {/* Pagination Footer */}
       {!loading && !error && products.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 text-xs text-muted-foreground font-medium">
-          <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
-            <Select
-              value={String(pageSize)}
-              onValueChange={(val) => setPageSize(Number(val))}
-            >
-              <SelectTrigger className="h-8 w-18 text-xs rounded-xl bg-card">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="15">15</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="pl-2">
-              Showing {products.length} items {search ? `matching "${search}"` : `(Page ${pageNumber})`}
-            </span>
-          </div>
-
-          {!search && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevPage}
-                disabled={pageNumber <= 1 || loading}
-                className="h-8 text-xs rounded-xl gap-1 cursor-pointer"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" /> Previous
-              </Button>
-              <span className="px-2 font-bold text-foreground">
-                Page {pageNumber}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={!hasMore || loading}
-                className="h-8 text-xs rounded-xl gap-1 cursor-pointer"
-              >
-                Next <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <TablePagination
+          pageNumber={pageNumber}
+          currentItemsCount={products.length}
+          hasMore={hasMore}
+          isLoading={loading}
+          label="products"
+          onPageChange={(newPage) => {
+            if (newPage > pageNumber) {
+              handleNextPage();
+            } else {
+              handlePrevPage();
+            }
+          }}
+        />
       )}
 
       {/* Delete Confirmation Alert */}
-      <AlertDialog open={Boolean(deleteId)} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Delete Product?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">
-              This will permanently delete this product and remove its image from storage. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete Product
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={Boolean(deleteId)}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Product?"
+        description="This will permanently delete this product and remove its image from storage. This action cannot be undone."
+        confirmLabel="Delete Product"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

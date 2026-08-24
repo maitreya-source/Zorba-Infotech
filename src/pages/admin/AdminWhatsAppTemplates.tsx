@@ -33,15 +33,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  LoadingScreen,
+} from "@/components/common";
 import {
   getWhatsAppTemplates,
   createWhatsAppTemplate,
@@ -348,25 +343,22 @@ export default function AdminWhatsAppTemplates() {
 
       {/* 3. Templates Grid */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-          <p className="text-xs text-slate-500 font-semibold">Loading WhatsApp template registry...</p>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="WhatsApp Templates" subtitle="Loading template registry..." />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-white dark:bg-slate-900 py-16 text-center shadow-xs px-4 space-y-3">
-          <MessageSquare className="h-10 w-10 text-slate-300 dark:text-slate-700" />
-          <h3 className="font-bold text-sm text-slate-900 dark:text-white">No Service Templates Found</h3>
-          <p className="text-xs text-slate-500 max-w-xs">
-            {templates.length === 0
+        <EmptyState
+          icon={MessageSquare}
+          title="No Service Templates Found"
+          description={
+            templates.length === 0
               ? "No WhatsApp templates exist yet. Click the sync button to populate all standard master templates."
-              : "No templates match your search query."}
-          </p>
-          {templates.length === 0 && (
-            <Button onClick={handleSyncToMeta} disabled={syncing} size="sm" className="gap-1.5 font-bold shadow-sm bg-[#2563EB] hover:bg-blue-700 text-white text-xs rounded-xl mt-2">
-              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sync Service Call Templates
-            </Button>
-          )}
-        </div>
+              : "No templates match your search query."
+          }
+          actionLabel={templates.length === 0 ? "Sync Service Call Templates" : undefined}
+          actionIcon={templates.length === 0 ? RefreshCw : undefined}
+          onAction={templates.length === 0 ? handleSyncToMeta : undefined}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           {filtered.map((tpl) => (
@@ -576,25 +568,14 @@ export default function AdminWhatsAppTemplates() {
       </Dialog>
 
       {/* 5. Delete Confirmation Dialog */}
-      <AlertDialog open={Boolean(deleteId)} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent className="rounded-2xl border-slate-200 dark:border-slate-800 text-xs">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-bold">Delete WhatsApp Template?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-slate-500">
-              Are you sure you want to remove this template from your registry?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="text-xs rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteTemplate}
-              className="text-xs font-bold rounded-xl bg-red-600 hover:bg-red-700 text-white cursor-pointer"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={Boolean(deleteId)}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete WhatsApp Template?"
+        description="Are you sure you want to remove this template from your registry?"
+        confirmLabel="Delete Template"
+        onConfirm={handleDeleteTemplate}
+      />
 
       {/* 6. Test WhatsApp API Dialog */}
       <Dialog open={testModalOpen} onOpenChange={setTestModalOpen}>

@@ -41,7 +41,11 @@ import EmailPreviewModal from "@/components/admin/EmailPreviewModal";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
 import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
 import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
-import LoadingScreen from "@/components/common/LoadingScreen";
+import {
+  EmptyState,
+  StatCard,
+  LoadingScreen,
+} from "@/components/common";
 
 const STATUS_BADGES: Record<
   ServiceCallStatus,
@@ -613,24 +617,22 @@ export default function AdminCustomerDetail() {
 
             if (filteredQuotes.length === 0) {
               return (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center shadow-xs px-4 space-y-3">
-                  <FileText className="h-10 w-10 text-slate-300 dark:text-slate-700" />
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                    {quotations.length === 0
+                <EmptyState
+                  icon={FileText}
+                  title={
+                    quotations.length === 0
                       ? `No price estimate quotations recorded yet for ${customer.name}`
-                      : "No quotations matching your search query"}
-                  </h3>
-                  <p className="text-xs text-slate-500 max-w-xs">
-                    {quotations.length === 0
+                      : "No quotations matching your search query"
+                  }
+                  description={
+                    quotations.length === 0
                       ? "Create an approximate price quotation for laptops, CCTV, or hardware packages."
-                      : "Try clearing your search query."}
-                  </p>
-                  <Link to={`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`}>
-                    <Button size="sm" className="gap-1.5 font-bold shadow-sm bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-xl mt-2">
-                      <Plus className="h-4 w-4" /> Create Quotation
-                    </Button>
-                  </Link>
-                </div>
+                      : "Try clearing your search query."
+                  }
+                  actionLabel="Create Quotation"
+                  actionIcon={Plus}
+                  onAction={() => navigate(`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`)}
+                />
               );
             }
 
@@ -744,24 +746,22 @@ export default function AdminCustomerDetail() {
         ) : (
           /* Service Calls Table / List */
           filteredCalls.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center shadow-xs px-4 space-y-3">
-              <Wrench className="h-10 w-10 text-slate-300 dark:text-slate-700" />
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                {calls.length === 0
+            <EmptyState
+              icon={Wrench}
+              title={
+                calls.length === 0
                   ? `No service calls recorded yet for ${customer.name}`
-                  : "No service calls matching your active filter"}
-              </h3>
-              <p className="text-xs text-slate-500 max-w-xs">
-                {calls.length === 0
-                  ? "Click the button below to register the first intake ticket for this client."
-                  : "Try clearing your search query or switching tabs."}
-              </p>
-              <Link to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}>
-                <Button size="sm" className="gap-1.5 font-bold shadow-sm bg-[#2563EB] hover:bg-blue-700 text-white text-xs rounded-xl mt-2">
-                  <Plus className="h-4 w-4" /> Create New Service Call
-                </Button>
-              </Link>
-            </div>
+                  : "No service calls matching your active filter"
+              }
+              description={
+                calls.length === 0
+                  ? "Register the first intake ticket for this client."
+                  : "Try clearing your search query or switching tabs."
+              }
+              actionLabel="Create New Service Call"
+              actionIcon={Plus}
+              onAction={() => navigate(`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`)}
+            />
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
               <div className="overflow-x-auto">

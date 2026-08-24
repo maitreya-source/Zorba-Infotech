@@ -42,15 +42,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  FirebaseErrorState,
+  TablePagination,
+  LoadingScreen,
+} from "@/components/common";
 import { getServiceCalls, deleteServiceCall, restoreServiceCall, updateServiceCall, getFinancialYears } from "@/lib/firestore";
 import type { ServiceCall, ServiceCallStatus, FinancialYearDoc } from "@/lib/types";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
@@ -58,7 +55,6 @@ import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryMo
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import ShortcutsHelpModal from "@/components/admin/ShortcutsHelpModal";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
-import LoadingScreen from "@/components/common/LoadingScreen";
 
 type SortField = "status" | "ticket" | "customer" | "device" | "charges";
 type SortDirection = "asc" | "desc";
@@ -639,33 +635,24 @@ export default function AdminServiceCalls() {
           <LoadingScreen fullScreen={false} title="Service Calls" subtitle="Loading repair job cards..." />
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4 shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-3">
-            <Wrench className="h-6 w-6" />
-          </div>
-          <p className="font-extrabold text-destructive text-lg font-display">Firebase Connection Error</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-md">{error}</p>
-          <Button onClick={() => loadData()} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
-            <RefreshCw className="h-3.5 w-3.5" /> Retry Connection
-          </Button>
-        </div>
+        <FirebaseErrorState
+          error={error}
+          onRetry={() => loadData()}
+          title="Service Calls Sync Error"
+        />
       ) : sorted.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-20 text-center shadow-xs px-4">
-          <Wrench className="h-12 w-12 text-slate-300 dark:text-slate-700 mb-3" />
-          <p className="font-bold text-base font-display text-slate-900 dark:text-white">
-            No {activeTab === "active" ? "Active" : activeTab === "inactive" ? "Inactive" : "Trash / Archived"} Service Calls Found
-          </p>
-          <p className="text-xs text-slate-500 mt-1 max-w-xs">
-            {calls.length === 0
-              ? "Click \"New Service Call\" to record your first ticket."
-              : "There are currently no records matching your active filters."}
-          </p>
-          <Link to="/admin/service-calls/new" className="mt-4">
-            <Button size="sm" className="gap-1.5 font-bold shadow-sm bg-[#2563EB] hover:bg-blue-700 text-white text-xs rounded-xl">
-              <Plus className="h-4 w-4" /> Create New Service Call
-            </Button>
-          </Link>
-        </div>
+        <EmptyState
+          icon={Wrench}
+          title={`No ${activeTab === "active" ? "Active" : activeTab === "inactive" ? "Completed / Delivered" : "Trash / Archived"} Service Calls Found`}
+          description={
+            calls.length === 0
+              ? "Click \"Create New Service Call\" to record your first ticket."
+              : "There are currently no repair tickets matching your active filter criteria."
+          }
+          actionLabel="Create New Service Call"
+          actionIcon={Plus}
+          onAction={() => navigate("/admin/service-calls/new")}
+        />
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
@@ -867,54 +854,13 @@ export default function AdminServiceCalls() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500">
-            <div className="flex items-center gap-2">
-              <span>Rows per page:</span>
-              <Select value={String(pageSize)} onValueChange={(val) => setPageSize(Number(val))}>
-                <SelectTrigger className="h-7 w-16 text-xs rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <span className="ml-2">
-                Showing {sorted.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
-                {Math.min(currentPage * pageSize, sorted.length)} of {sorted.length}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs">
-                Page {currentPage} of {totalPages}
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  title="Previous Page"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  title="Next Page"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          <TablePagination
+            pageNumber={currentPage}
+            currentItemsCount={paginatedCalls.length}
+            hasMore={currentPage < totalPages}
+            label="service calls"
+            onPageChange={(newPage) => setCurrentPage(newPage)}
+          />
         </div>
       )}
 
@@ -925,25 +871,15 @@ export default function AdminServiceCalls() {
       <JobCardPrintModal serviceCall={printCall} open={!!printCall} onOpenChange={(open) => !open && setPrintCall(null)} />
 
       {/* Delete / Move to Trash Confirmation Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Move Service Call to Trash?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This ticket will be moved to the <strong>Trash / Archived</strong> tab and hidden from active lists. You can restore it back anytime.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold"
-            >
-              Move to Trash
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Move Service Call to Trash?"
+        description="This ticket will be moved to the Trash / Archived tab and hidden from active lists. You can restore it back anytime."
+        confirmLabel="Move to Trash"
+        variant="warning"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

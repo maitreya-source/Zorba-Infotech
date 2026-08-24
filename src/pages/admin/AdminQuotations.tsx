@@ -30,15 +30,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  TablePagination,
+  StatCard,
+  LoadingScreen,
+} from "@/components/common";
 import {
   getQuotations,
   deleteQuotation,
@@ -50,7 +47,6 @@ import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
 import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
 import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
 import QuotationTemplateModal from "@/components/admin/QuotationTemplateModal";
-import LoadingScreen from "@/components/common/LoadingScreen";
 
 type DateFilterMode = "all" | "today" | "this_month" | "custom";
 
@@ -260,56 +256,39 @@ export default function AdminQuotations() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Total Quotes */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-            Total Quotations
-          </span>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-              {quotations.length}
-            </span>
-            <span className="text-[10px] text-slate-500">records</span>
-          </div>
-        </div>
-
-        {/* Quotes This Month */}
-        <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60">
-          <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-            This Month
-          </span>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-blue-950 dark:text-blue-100 font-mono">
-              {quotesMonthCount}
-            </span>
-            <span className="text-[10px] text-blue-600 dark:text-blue-400">issued</span>
-          </div>
-        </div>
-
-        {/* Filtered Total Value */}
-        <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60">
-          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-            Estimated Total (Filtered)
-          </span>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-emerald-950 dark:text-emerald-100 font-mono">
-              ₹{totalPipeline.toLocaleString("en-IN")}
-            </span>
-          </div>
-        </div>
-
-        {/* Reusable Templates */}
-        <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-900/60">
-          <span className="text-[11px] font-semibold text-purple-700 dark:text-purple-300">
-            Active Templates
-          </span>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-purple-950 dark:text-purple-100 font-mono">
-              {templates.length}
-            </span>
-            <span className="text-[10px] text-purple-600 dark:text-purple-400">packages</span>
-          </div>
-        </div>
+        <StatCard
+          title="Total Quotations"
+          value={quotations.length}
+          subtitle="All records"
+          icon={FileText}
+          iconClassName="text-slate-600 dark:text-slate-400"
+          iconBgClassName="bg-slate-100 dark:bg-slate-800"
+        />
+        <StatCard
+          title="This Month"
+          value={quotesMonthCount}
+          subtitle="Issued this month"
+          icon={Calendar}
+          iconClassName="text-blue-600 dark:text-blue-400"
+          iconBgClassName="bg-blue-50 dark:bg-blue-950/50"
+        />
+        <StatCard
+          title="Estimated Pipeline"
+          value={`₹${totalPipeline.toLocaleString("en-IN")}`}
+          subtitle="Active filter total"
+          icon={DollarSign}
+          iconClassName="text-emerald-600 dark:text-emerald-400"
+          iconBgClassName="bg-emerald-50 dark:bg-emerald-950/50"
+        />
+        <StatCard
+          title="Active Templates"
+          value={templates.length}
+          subtitle="Pre-configured packages"
+          icon={LayoutTemplate}
+          iconClassName="text-purple-600 dark:text-purple-400"
+          iconBgClassName="bg-purple-50 dark:bg-purple-950/50"
+          onClick={() => setShowTemplateModal(true)}
+        />
       </div>
 
       {/* Filter and Date Range Control Bar */}
@@ -403,22 +382,18 @@ export default function AdminQuotations() {
           <LoadingScreen fullScreen={false} title="Quotations Registry" subtitle="Loading price estimates..." />
         </div>
       ) : filteredQuotations.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
-          <FileText className="h-10 w-10 text-muted-foreground/40" />
-          <p className="font-bold text-foreground text-sm font-display">No Quotations Found</p>
-          <p className="text-xs text-muted-foreground max-w-sm">
-            {quotations.length === 0
+        <EmptyState
+          icon={FileText}
+          title="No Quotations Found"
+          description={
+            quotations.length === 0
               ? "Click Create Quotation to generate your first price estimate for a customer."
-              : "No quotations match the active date or search criteria."}
-          </p>
-          <Button
-            onClick={() => navigate("/admin/quotations/new")}
-            size="sm"
-            className="gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
-          >
-            <Plus className="h-3.5 w-3.5" /> Create Quotation
-          </Button>
-        </div>
+              : "No quotations match the active date or search criteria."
+          }
+          actionLabel="Create Quotation"
+          actionIcon={Plus}
+          onAction={() => navigate("/admin/quotations/new")}
+        />
       ) : (
         <div className="rounded-2xl border bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
@@ -573,79 +548,25 @@ export default function AdminQuotations() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500">
-            <div className="flex items-center gap-2">
-              <span>Rows per page:</span>
-              <Select value={String(pageSize)} onValueChange={(val) => setPageSize(Number(val))}>
-                <SelectTrigger className="h-7 w-16 text-xs rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <span className="ml-2">
-                Showing {filteredQuotations.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
-                {Math.min(currentPage * pageSize, filteredQuotations.length)} of {filteredQuotations.length}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs">
-                Page {currentPage} of {totalPages}
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  title="Previous Page"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  title="Next Page"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          <TablePagination
+            pageNumber={currentPage}
+            currentItemsCount={paginatedQuotations.length}
+            hasMore={currentPage < totalPages}
+            label="quotations"
+            onPageChange={(newPage) => setCurrentPage(newPage)}
+          />
         </div>
       )}
 
       {/* Delete Confirmation Alert Dialog */}
-      <AlertDialog open={Boolean(deleteQuoteId)} onOpenChange={(open) => !open && setDeleteQuoteId(null)}>
-        <AlertDialogContent className="rounded-3xl border-slate-200 dark:border-slate-800">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-extrabold text-slate-900 dark:text-white">
-              Delete Quotation Record?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-slate-500">
-              Are you sure you want to permanently delete this quotation? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="h-8 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={Boolean(deleteQuoteId)}
+        onOpenChange={(open) => !open && setDeleteQuoteId(null)}
+        title="Delete Quotation Record?"
+        description="Are you sure you want to permanently delete this quotation? This action cannot be undone."
+        confirmLabel="Delete Quotation"
+        onConfirm={handleDeleteConfirm}
+      />
 
       {/* Print Modal */}
       <QuotationPrintModal

@@ -49,6 +49,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  LoadingScreen,
+  EmptyState,
+  StatCard,
+} from "@/components/common";
+import {
   getTeamMember,
   updateTeamMember,
   getServiceCallsForTechnician,
@@ -553,91 +558,46 @@ export default function AdminTeamMemberDetail() {
       {/* Technician Commission Financial KPI Summary Cards */}
       {isTechnician && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          {/* Completed Jobs */}
-          <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60">
-            <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-              Completed Jobs ({monthLabel.split(" ")[0]})
-            </span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-blue-900 dark:text-blue-100 font-mono">
-                {allCompletedCalls.length}
-              </span>
-              <span className="text-[10px] text-blue-600 dark:text-blue-400">tickets</span>
-            </div>
-            <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5 font-semibold">
-              {completedPaidCalls.length} Paid • {completedPaymentDueCalls.length} Due
-            </div>
-          </div>
-
-          {/* Paid Service Charges */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-              Paid Service Charges
-            </span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-                ₹{paidServiceCharges.toLocaleString("en-IN")}
-              </span>
-            </div>
-            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
-              Collected from customers
-            </div>
-          </div>
-
-          {/* Payable Commission */}
-          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/60">
-            <span className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
-              Payable Comm. ({commissionRate}%)
-            </span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-indigo-900 dark:text-indigo-100 font-mono">
-                ₹{commissionEarned.toLocaleString("en-IN")}
-              </span>
-            </div>
-            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5">
-              On collected charges
-            </div>
-          </div>
-
-          {/* Withheld Commission (Pending customer payment) */}
-          <div className="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60">
-            <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">
-              Commission Withheld
-            </span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-rose-900 dark:text-rose-100 font-mono">
-                ₹{commissionWithheld.toLocaleString("en-IN")}
-              </span>
-            </div>
-            <div className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5 font-bold">
-              {completedPaymentDueCalls.length} unpaid by customer
-            </div>
-          </div>
-
-          {/* Net Balance Due */}
-          <div className={`p-3.5 rounded-2xl border ${
-            balanceDue > 0
-              ? "bg-amber-50/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800"
-              : "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800"
-          }`}>
-            <div className="flex items-center justify-between">
-              <span className={`text-[11px] font-bold ${
-                balanceDue > 0 ? "text-amber-800 dark:text-amber-300" : "text-emerald-800 dark:text-emerald-300"
-              }`}>
-                {balanceDue > 0 ? "Net Payable to Tech" : "Settled / Fully Paid"}
-              </span>
-            </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className={`text-2xl font-extrabold font-mono ${
-                balanceDue > 0 ? "text-amber-950 dark:text-amber-100" : "text-emerald-950 dark:text-emerald-100"
-              }`}>
-                ₹{Math.abs(balanceDue).toLocaleString("en-IN")}
-              </span>
-            </div>
-            <div className="text-[10px] text-slate-500 mt-0.5">
-              After ₹{totalPaid.toLocaleString("en-IN")} paid
-            </div>
-          </div>
+          <StatCard
+            title={`Completed Jobs (${monthLabel.split(" ")[0]})`}
+            value={allCompletedCalls.length}
+            subtitle={`${completedPaidCalls.length} Paid • ${completedPaymentDueCalls.length} Due`}
+            icon={Wrench}
+            iconClassName="text-blue-600 dark:text-blue-400"
+            iconBgClassName="bg-blue-50 dark:bg-blue-950/50"
+          />
+          <StatCard
+            title="Paid Service Charges"
+            value={`₹${paidServiceCharges.toLocaleString("en-IN")}`}
+            subtitle="Collected from customers"
+            icon={Receipt}
+            iconClassName="text-slate-600 dark:text-slate-400"
+            iconBgClassName="bg-slate-100 dark:bg-slate-800"
+          />
+          <StatCard
+            title={`Payable Comm. (${commissionRate}%)`}
+            value={`₹${commissionEarned.toLocaleString("en-IN")}`}
+            subtitle="On collected charges"
+            icon={DollarSign}
+            iconClassName="text-indigo-600 dark:text-indigo-400"
+            iconBgClassName="bg-indigo-50 dark:bg-indigo-950/50"
+          />
+          <StatCard
+            title="Commission Withheld"
+            value={`₹${commissionWithheld.toLocaleString("en-IN")}`}
+            subtitle={`${completedPaymentDueCalls.length} unpaid by customer`}
+            icon={AlertCircle}
+            iconClassName="text-rose-600 dark:text-rose-400"
+            iconBgClassName="bg-rose-50 dark:bg-rose-950/50"
+          />
+          <StatCard
+            title={balanceDue > 0 ? "Net Payable to Tech" : "Settled / Fully Paid"}
+            value={`₹${Math.abs(balanceDue).toLocaleString("en-IN")}`}
+            subtitle={`After ₹${totalPaid.toLocaleString("en-IN")} paid`}
+            icon={Wallet}
+            iconClassName={balanceDue > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}
+            iconBgClassName={balanceDue > 0 ? "bg-amber-50 dark:bg-amber-950/50" : "bg-emerald-50 dark:bg-emerald-950/50"}
+          />
         </div>
       )}
 
@@ -848,9 +808,14 @@ export default function AdminTeamMemberDetail() {
           /* Monthly Payouts Ledger */
           <div className="space-y-3">
             {payouts.length === 0 ? (
-              <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400">
-                No payout transactions recorded for {monthLabel}. Click Record Monthly Payout to log a payment.
-              </div>
+              <EmptyState
+                icon={Wallet}
+                title="No Payout Records"
+                description={`No payout transactions recorded for ${monthLabel}. Click Record Monthly Payout to log a payment.`}
+                actionLabel="Record Monthly Payout"
+                actionIcon={Plus}
+                onAction={() => setShowRecordPayoutModal(true)}
+              />
             ) : (
               <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
                 <table className="w-full text-left border-collapse">

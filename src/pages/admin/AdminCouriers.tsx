@@ -17,22 +17,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  FirebaseErrorState,
+  SearchFilterBar,
+  LoadingScreen,
+  WhatsAppChatButton,
+} from "@/components/common";
 import { getCouriers, deleteCourier } from "@/lib/firestore";
 import type { Courier } from "@/lib/types";
 import { formatPhoneForDisplay, generateCourierFollowUpMessage } from "@/lib/utils";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import EditCourierModal from "@/components/admin/EditCourierModal";
-import LoadingScreen from "@/components/common/LoadingScreen";
 
 export default function AdminCouriers() {
   const [couriers, setCouriers] = useState<Courier[]>([]);
@@ -132,21 +129,13 @@ export default function AdminCouriers() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search by courier name, phone, contact person…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs rounded-xl w-full"
-          />
-        </div>
-
-        <div className="text-xs text-muted-foreground font-semibold">
-          Total Partners: <span className="text-foreground font-extrabold">{filtered.length}</span>
-        </div>
-      </div>
+      <SearchFilterBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search by courier name, phone, contact person…"
+        count={filtered.length}
+        countLabel="Total Partners"
+      />
 
       {/* Couriers Cards Grid */}
       {loading ? (
@@ -154,21 +143,24 @@ export default function AdminCouriers() {
           <LoadingScreen fullScreen={false} title="Logistics & Couriers" subtitle="Loading courier partners..." />
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
-          <p className="font-bold text-destructive text-base">Error Loading Couriers</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-md">{error}</p>
-          <Button onClick={() => loadData()} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
-            <RefreshCw className="h-3.5 w-3.5" /> Retry
-          </Button>
-        </div>
+        <FirebaseErrorState
+          error={error}
+          onRetry={() => loadData()}
+          title="Error Loading Couriers"
+        />
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
-          <Truck className="h-10 w-10 text-muted-foreground/50" />
-          <p className="font-bold text-foreground text-sm">No Courier Partners Found</p>
-          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-1 text-xs">
-            <Plus className="h-3.5 w-3.5" /> Add Courier Partner
-          </Button>
-        </div>
+        <EmptyState
+          icon={Truck}
+          title="No Courier Partners Found"
+          description={
+            search
+              ? `No courier partners match "${search}".`
+              : "Add your first courier partner to manage dispatch and tracking."
+          }
+          actionLabel="Add Courier Partner"
+          actionIcon={Plus}
+          onAction={() => setShowCreateModal(true)}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((c) => (
@@ -274,22 +266,14 @@ export default function AdminCouriers() {
       />
 
       {/* Delete Confirmation Alert */}
-      <AlertDialog open={Boolean(deleteId)} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Delete Courier Partner?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">
-              Are you sure you want to remove this courier partner? Historical service call records will retain the courier name.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={Boolean(deleteId)}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Courier Partner?"
+        description="Are you sure you want to remove this courier partner? Historical service call records will retain the courier name."
+        confirmLabel="Delete Courier"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

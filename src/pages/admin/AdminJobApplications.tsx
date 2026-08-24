@@ -28,6 +28,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  EmptyState,
+  TablePagination,
+  LoadingScreen,
+} from "@/components/common";
+import {
   getJobApplications,
   updateJobApplicationStatus,
   deleteJobApplication,
@@ -247,20 +252,19 @@ export default function AdminJobApplications() {
 
       {/* Table Content */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <RefreshCw className="h-8 w-8 text-blue-500 animate-spin mb-3" />
-          <p className="text-xs font-semibold">Loading job applications...</p>
+        <div className="bg-card rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="Job Applications" subtitle="Loading candidate profiles..." />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="p-12 text-center bg-card rounded-2xl border space-y-2">
-          <Briefcase className="h-10 w-10 text-slate-400 mx-auto opacity-40" />
-          <h3 className="font-bold text-base">No job applications found</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            {search
+        <EmptyState
+          icon={Briefcase}
+          title="No job applications found"
+          description={
+            search
               ? "No applications matched your search keyword."
-              : "When candidates apply from the website careers page, their submissions will appear here."}
-          </p>
-        </div>
+              : "When candidates apply from the website careers page, their submissions will appear here."
+          }
+        />
       ) : (
         <div className="rounded-2xl border bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
@@ -386,52 +390,13 @@ export default function AdminJobApplications() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="p-3 border-t bg-slate-50/50 dark:bg-slate-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="text-slate-500">
-              Showing {(currentPage - 1) * pageSize + 1} to{" "}
-              {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} candidates
-            </div>
-
-            <div className="flex items-center gap-2">
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="h-8 rounded-lg border bg-background px-2 text-xs"
-              >
-                <option value={10}>10 / page</option>
-                <option value={15}>15 / page</option>
-                <option value={25}>25 / page</option>
-                <option value={50}>50 / page</option>
-              </select>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="h-8 w-8 rounded-lg"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="px-2 font-mono font-semibold">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="h-8 w-8 rounded-lg"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          <TablePagination
+            pageNumber={currentPage}
+            currentItemsCount={paginatedApps.length}
+            hasMore={currentPage < totalPages}
+            label="candidates"
+            onPageChange={(newPage) => setCurrentPage(newPage)}
+          />
         </div>
       )}
 

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatCard, EmptyState } from "@/components/common";
 import { getServiceCallsForMonth, getFinancialYear } from "@/lib/firestore";
 import type { ServiceCall } from "@/lib/types";
 
@@ -133,51 +134,38 @@ export default function AdminReports() {
 
       {/* Metrics Grid (Hidden during print) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:hidden">
-        <div className="rounded-2xl border bg-card p-4 space-y-1 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-            <span>Total Revenue</span>
-            <DollarSign className="h-4 w-4 text-emerald-500" />
-          </div>
-          <p className="text-xl font-extrabold font-display text-foreground">
-            ₹{totalRevenue.toLocaleString("en-IN")}
-          </p>
-          <div className="text-[11px] text-muted-foreground">
-            Parts ₹{totalPartsRevenue} + Service ₹{totalServiceCharges}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-card p-4 space-y-1 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-            <span>Total Calls</span>
-            <Wrench className="h-4 w-4 text-blue-500" />
-          </div>
-          <p className="text-xl font-extrabold font-display text-foreground">{totalCalls}</p>
-          <div className="text-[11px] text-muted-foreground">
-            {completedCalls} Completed · {activeCalls} Active
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-card p-4 space-y-1 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-            <span>In-House Service</span>
-            <Wrench className="h-4 w-4 text-blue-500" />
-          </div>
-          <p className="text-xl font-extrabold font-display text-blue-600 dark:text-blue-400">{inHouseCount}</p>
-          <div className="text-[11px] text-muted-foreground">Refills & Shop Repairs</div>
-        </div>
-
-        <div className="rounded-2xl border bg-card p-4 space-y-1 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-            <span>Service Center & Onsite</span>
-            <Building2 className="h-4 w-4 text-purple-500" />
-          </div>
-          <p className="text-xl font-extrabold font-display text-purple-600 dark:text-purple-400">
-            {serviceCenterCount + onsiteCount}
-          </p>
-          <div className="text-[11px] text-muted-foreground">
-            {serviceCenterCount} Service Center · {onsiteCount} Visits
-          </div>
-        </div>
+        <StatCard
+          title="Total Revenue"
+          value={`₹${totalRevenue.toLocaleString("en-IN")}`}
+          subtitle={`Parts ₹${totalPartsRevenue} + Service ₹${totalServiceCharges}`}
+          icon={DollarSign}
+          iconClassName="text-emerald-600 dark:text-emerald-400"
+          iconBgClassName="bg-emerald-50 dark:bg-emerald-950/50"
+        />
+        <StatCard
+          title="Total Calls"
+          value={totalCalls}
+          subtitle={`${completedCalls} Completed · ${activeCalls} Active`}
+          icon={Wrench}
+          iconClassName="text-blue-600 dark:text-blue-400"
+          iconBgClassName="bg-blue-50 dark:bg-blue-950/50"
+        />
+        <StatCard
+          title="In-House Service"
+          value={inHouseCount}
+          subtitle="Refills & Shop Repairs"
+          icon={Wrench}
+          iconClassName="text-cyan-600 dark:text-cyan-400"
+          iconBgClassName="bg-cyan-50 dark:bg-cyan-950/50"
+        />
+        <StatCard
+          title="Service Center & Onsite"
+          value={serviceCenterCount + onsiteCount}
+          subtitle={`${serviceCenterCount} Center · ${onsiteCount} Visits`}
+          icon={Building2}
+          iconClassName="text-purple-600 dark:text-purple-400"
+          iconBgClassName="bg-purple-50 dark:bg-purple-950/50"
+        />
       </div>
 
       {/* Daily Breakdown Table */}
@@ -190,9 +178,11 @@ export default function AdminReports() {
         </div>
 
         {dailyList.length === 0 ? (
-          <div className="py-12 text-center text-muted-foreground text-xs">
-            No service calls recorded for {selectedMonth}.
-          </div>
+          <EmptyState
+            icon={Calendar}
+            title="No Monthly Records"
+            description={`No service calls or billing activity recorded for ${selectedMonth}.`}
+          />
         ) : (
           <div className="space-y-4">
             {dailyList.map((day) => (

@@ -4,21 +4,17 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  FirebaseErrorState,
+  SearchFilterBar,
+  LoadingScreen,
+} from "@/components/common";
 import { getServiceCenters, deleteServiceCenter } from "@/lib/firestore";
 import type { ServiceCenter } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import EditServiceCenterModal from "@/components/admin/EditServiceCenterModal";
-import LoadingScreen from "@/components/common/LoadingScreen";
 
 export default function AdminServiceCenters() {
   const [centers, setCenters] = useState<ServiceCenter[]>([]);
@@ -102,21 +98,13 @@ export default function AdminServiceCenters() {
       </div>
 
       {/* Filter / Search bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search by center name, city, address, phone…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs rounded-xl w-full"
-          />
-        </div>
-
-        <div className="text-xs text-muted-foreground font-semibold">
-          Total Centers: <span className="text-foreground font-extrabold">{filtered.length}</span>
-        </div>
-      </div>
+      <SearchFilterBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search by center name, city, address, phone…"
+        count={filtered.length}
+        countLabel="Total Centers"
+      />
 
       {/* Main Grid / Table */}
       {loading ? (
@@ -124,21 +112,24 @@ export default function AdminServiceCenters() {
           <LoadingScreen fullScreen={false} title="Authorized Service Centers" subtitle="Loading service center directories..." />
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
-          <p className="font-bold text-destructive text-base">Error Loading Data</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-md">{error}</p>
-          <Button onClick={() => loadData()} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
-            <RefreshCw className="h-3.5 w-3.5" /> Retry
-          </Button>
-        </div>
+        <FirebaseErrorState
+          error={error}
+          onRetry={() => loadData()}
+          title="Error Loading Service Centers"
+        />
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
-          <Building2 className="h-10 w-10 text-muted-foreground/50" />
-          <p className="font-bold text-foreground text-sm">No Service Centers Found</p>
-          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-1 text-xs">
-            <Plus className="h-3.5 w-3.5" /> Add Service Center
-          </Button>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="No Service Centers Found"
+          description={
+            search
+              ? `No service centers match "${search}".`
+              : "Add your first authorized service center to route repair jobs."
+          }
+          actionLabel="Add Service Center"
+          actionIcon={Plus}
+          onAction={() => setShowCreateModal(true)}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((sc) => (
@@ -233,22 +224,14 @@ export default function AdminServiceCenters() {
       />
 
       {/* Delete Confirmation Alert */}
-      <AlertDialog open={Boolean(deleteId)} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Delete Service Center?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">
-              Are you sure you want to remove this service center? Past service call logs will retain the historical name.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={Boolean(deleteId)}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Service Center?"
+        description="Are you sure you want to remove this service center? Past service call logs will retain the historical name."
+        confirmLabel="Delete Center"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

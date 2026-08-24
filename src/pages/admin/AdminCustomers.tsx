@@ -5,29 +5,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ConfirmDeleteDialog,
+  EmptyState,
+  FirebaseErrorState,
+  TablePagination,
+  SearchFilterBar,
+  LoadingScreen,
+} from "@/components/common";
 import { getCustomersPaginated, searchCustomers, deleteCustomer } from "@/lib/firestore";
 import type { Customer } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import ImportCustomersModal from "@/components/admin/ImportCustomersModal";
-import LoadingScreen from "@/components/common/LoadingScreen";
 
 export default function AdminCustomers() {
   const navigate = useNavigate();
@@ -176,21 +166,13 @@ export default function AdminCustomers() {
       </div>
 
       {/* Filter / Search bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, phone, company…"
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9 h-9 text-xs rounded-xl w-full"
-          />
-        </div>
-
-        <div className="text-xs text-muted-foreground font-semibold">
-          Current Page Items: <span className="text-foreground font-extrabold">{customers.length}</span>
-        </div>
-      </div>
+      <SearchFilterBar
+        value={search}
+        onChange={handleSearchChange}
+        placeholder="Search by customer name, phone, company, email…"
+        count={customers.length}
+        countLabel="Current Page"
+      />
 
       {/* Main Directory Table */}
       {loading ? (
@@ -198,24 +180,24 @@ export default function AdminCustomers() {
           <LoadingScreen fullScreen={false} title="Customer Directory" subtitle="Loading customer accounts..." />
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
-          <p className="font-bold text-destructive text-base">Firebase Connection Error</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md">{error}</p>
-          <Button onClick={() => loadData(pageNumber)} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
-            <RefreshCw className="h-3.5 w-3.5" /> Retry Connection
-          </Button>
-        </div>
+        <FirebaseErrorState
+          error={error}
+          onRetry={() => loadData(pageNumber)}
+          title="Customer Sync Error"
+        />
       ) : customers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
-          <Users className="h-10 w-10 text-muted-foreground/40" />
-          <p className="font-bold text-foreground text-sm font-display">No Customers Found</p>
-          <p className="text-xs text-muted-foreground max-w-sm">
-            {search ? `No customers match "${search}".` : "Click Add Customer to create your first client profile."}
-          </p>
-          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-1 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl">
-            <UserPlus className="h-3.5 w-3.5" /> Add Customer
-          </Button>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No Customers Found"
+          description={
+            search
+              ? `No customers match "${search}".`
+              : "Click Add Customer to create your first client profile."
+          }
+          actionLabel="Add Customer"
+          actionIcon={UserPlus}
+          onAction={() => setShowCreateModal(true)}
+        />
       ) : (
         <div className="rounded-2xl border bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
@@ -341,54 +323,20 @@ export default function AdminCustomers() {
 
       {/* Pagination Footer */}
       {!loading && !error && customers.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 text-xs text-muted-foreground font-medium">
-          <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
-            <Select
-              value={String(pageSize)}
-              onValueChange={(val) => setPageSize(Number(val))}
-            >
-              <SelectTrigger className="h-8 w-18 text-xs rounded-xl bg-card">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="15">15</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="pl-2">
-              Showing {customers.length} records {search ? `matching "${search}"` : `(Page ${pageNumber})`}
-            </span>
-          </div>
-
-          {!search && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevPage}
-                disabled={pageNumber <= 1 || loading}
-                className="h-8 text-xs rounded-xl gap-1 cursor-pointer"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" /> Previous
-              </Button>
-              <span className="px-2 font-bold text-foreground">
-                Page {pageNumber}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={!hasMore || loading}
-                className="h-8 text-xs rounded-xl gap-1 cursor-pointer"
-              >
-                Next <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <TablePagination
+          pageNumber={pageNumber}
+          currentItemsCount={customers.length}
+          hasMore={hasMore}
+          isLoading={loading}
+          label="customers"
+          onPageChange={(newPage) => {
+            if (newPage > pageNumber) {
+              handleNextPage();
+            } else {
+              handlePrevPage();
+            }
+          }}
+        />
       )}
 
       {/* Inline Modals */}
@@ -410,25 +358,14 @@ export default function AdminCustomers() {
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Customer Profile?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to remove this customer profile? Past service calls will retain their historical customer records.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete Customer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Customer Profile?"
+        description="Are you sure you want to remove this customer profile? Past service calls will retain their historical customer records."
+        confirmLabel="Delete Customer"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
