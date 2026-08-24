@@ -1,9 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserPlus, Users, Trash2, Search, Phone, Mail, MapPin, Building, RefreshCw, FileSpreadsheet, Pencil, Activity, ChevronRight } from "lucide-react";
+import { UserPlus, Users, Trash2, Search, Phone, Mail, MapPin, Building, RefreshCw, FileSpreadsheet, Pencil, Activity, ChevronRight, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,12 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getCustomers, deleteCustomer } from "@/lib/firestore";
+import { getCustomersPaginated, searchCustomers, deleteCustomer } from "@/lib/firestore";
 import type { Customer } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import ImportCustomersModal from "@/components/admin/ImportCustomersModal";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 export default function AdminCustomers() {
   const navigate = useNavigate();
@@ -27,17 +35,33 @@ export default function AdminCustomers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [docHistory, setDocHistory] = useState<any[]>([]); // stack of lastDocs for pagination
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
 
-  const loadData = async () => {
+  const searchTimerRef = useRef<any>(null);
+
+  const loadData = async (targetPage = 1, lastDocRef?: any) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getCustomers();
-      setCustomers(data);
+      if (search.trim()) {
+        const results = await searchCustomers(search.trim(), 50);
+        setCustomers(results);
+        setHasMore(false);
+      } else {
+        const res = await getCustomersPaginated({
+          pageSize,
+          lastDoc: lastDocRef,
+        });
+        setCustomers(res.items);
+        setHasMore(res.hasMore);
+      }
     } catch (err: any) {
       console.error("Firebase error in AdminCustomers:", err);
       setError(err?.message || "Unable to connect to Firebase to load customer directory.");
@@ -47,8 +71,55 @@ export default function AdminCustomers() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    setPageNumber(1);
+    setDocHistory([]);
+    loadData(1, undefined);
+  }, [pageSize]);
+
+  // Debounced search handling
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPageNumber(1);
+    setDocHistory([]);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        if (!val.trim()) {
+          const res = await getCustomersPaginated({ pageSize });
+          setCustomers(res.items);
+          setHasMore(res.hasMore);
+        } else {
+          const results = await searchCustomers(val.trim(), 50);
+          setCustomers(results);
+          setHasMore(false);
+        }
+      } catch (err: any) {
+        setError(err?.message || "Search error");
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+  };
+
+  const handleNextPage = async () => {
+    if (!hasMore || loading) return;
+    const lastDoc = customers.length > 0 ? (customers[customers.length - 1] as any) : undefined;
+    const nextDocHistory = [...docHistory, lastDoc];
+    setDocHistory(nextDocHistory);
+    setPageNumber((prev) => prev + 1);
+    loadData(pageNumber + 1, lastDoc);
+  };
+
+  const handlePrevPage = async () => {
+    if (pageNumber <= 1 || loading) return;
+    const prevHistory = [...docHistory];
+    prevHistory.pop(); // remove current
+    const prevDoc = prevHistory.length > 0 ? prevHistory[prevHistory.length - 1] : undefined;
+    setDocHistory(prevHistory);
+    setPageNumber((prev) => prev - 1);
+    loadData(pageNumber - 1, prevDoc);
+  };
 
   useTallyShortcuts({
     onAltC: () => setShowCreateModal(true),
@@ -61,23 +132,12 @@ export default function AdminCustomers() {
       await deleteCustomer(deleteId);
       toast.success("Customer profile deleted");
       setDeleteId(null);
-      loadData();
+      loadData(pageNumber, docHistory.length > 0 ? docHistory[docHistory.length - 1] : undefined);
     } catch {
       toast.error("Failed to delete customer");
     }
   };
 
-  const filtered = customers.filter((c) => {
-    const q = search.toLowerCase().trim();
-    return (
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      c.phone.toLowerCase().includes(q) ||
-      (c.email && c.email.toLowerCase().includes(q)) ||
-      (c.companyName && c.companyName.toLowerCase().includes(q)) ||
-      (c.address && c.address.toLowerCase().includes(q))
-    );
-  });
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto text-xs">
@@ -122,36 +182,35 @@ export default function AdminCustomers() {
           <Input
             placeholder="Search by name, phone, company…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9 h-9 text-xs rounded-xl w-full"
           />
         </div>
 
         <div className="text-xs text-muted-foreground font-semibold">
-          Total Customers: <span className="text-foreground font-extrabold">{filtered.length}</span>
+          Current Page Items: <span className="text-foreground font-extrabold">{customers.length}</span>
         </div>
       </div>
 
       {/* Main Directory Table */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-          <p className="text-xs text-muted-foreground">Loading customer directory...</p>
+        <div className="bg-card rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="Customer Directory" subtitle="Loading customer accounts..." />
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
           <p className="font-bold text-destructive text-base">Firebase Connection Error</p>
           <p className="text-sm text-muted-foreground mt-1 max-w-md">{error}</p>
-          <Button onClick={() => loadData()} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
+          <Button onClick={() => loadData(pageNumber)} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
             <RefreshCw className="h-3.5 w-3.5" /> Retry Connection
           </Button>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : customers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
           <Users className="h-10 w-10 text-muted-foreground/40" />
           <p className="font-bold text-foreground text-sm font-display">No Customers Found</p>
           <p className="text-xs text-muted-foreground max-w-sm">
-            {customers.length === 0 ? "Click Add Customer to create your first client profile." : "No customers match your search criteria."}
+            {search ? `No customers match "${search}".` : "Click Add Customer to create your first client profile."}
           </p>
           <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-1 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl">
             <UserPlus className="h-3.5 w-3.5" /> Add Customer
@@ -171,7 +230,7 @@ export default function AdminCustomers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((cust) => (
+                {customers.map((cust) => (
                   <tr
                     key={cust.id}
                     onClick={(e) => {
@@ -280,22 +339,74 @@ export default function AdminCustomers() {
         </div>
       )}
 
+      {/* Pagination Footer */}
+      {!loading && !error && customers.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 text-xs text-muted-foreground font-medium">
+          <div className="flex items-center gap-2">
+            <span>Rows per page:</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => setPageSize(Number(val))}
+            >
+              <SelectTrigger className="h-8 w-18 text-xs rounded-xl bg-card">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="pl-2">
+              Showing {customers.length} records {search ? `matching "${search}"` : `(Page ${pageNumber})`}
+            </span>
+          </div>
+
+          {!search && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={pageNumber <= 1 || loading}
+                className="h-8 text-xs rounded-xl gap-1 cursor-pointer"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Previous
+              </Button>
+              <span className="px-2 font-bold text-foreground">
+                Page {pageNumber}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={!hasMore || loading}
+                className="h-8 text-xs rounded-xl gap-1 cursor-pointer"
+              >
+                Next <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Inline Modals */}
       <CreateCustomerModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
-        onCreated={loadData}
+        onCreated={() => loadData(1, undefined)}
       />
       <EditCustomerModal
         customer={editCustomer}
         open={!!editCustomer}
         onOpenChange={(open) => !open && setEditCustomer(null)}
-        onUpdated={loadData}
+        onUpdated={() => loadData(pageNumber, docHistory.length > 0 ? docHistory[docHistory.length - 1] : undefined)}
       />
       <ImportCustomersModal
         open={showImportModal}
         onOpenChange={setShowImportModal}
-        onImportComplete={loadData}
+        onImportComplete={() => loadData(1, undefined)}
       />
 
       {/* Delete Confirmation Dialog */}

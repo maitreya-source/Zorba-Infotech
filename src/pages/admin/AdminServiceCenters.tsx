@@ -18,6 +18,7 @@ import type { ServiceCenter } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import EditServiceCenterModal from "@/components/admin/EditServiceCenterModal";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 export default function AdminServiceCenters() {
   const [centers, setCenters] = useState<ServiceCenter[]>([]);
@@ -119,9 +120,8 @@ export default function AdminServiceCenters() {
 
       {/* Main Grid / Table */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-          <p className="text-xs text-muted-foreground">Loading service centers...</p>
+        <div className="bg-card rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="Authorized Service Centers" subtitle="Loading service center directories..." />
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">

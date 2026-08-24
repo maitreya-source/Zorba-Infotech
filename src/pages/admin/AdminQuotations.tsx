@@ -50,6 +50,7 @@ import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
 import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
 import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
 import QuotationTemplateModal from "@/components/admin/QuotationTemplateModal";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 type DateFilterMode = "all" | "today" | "this_month" | "custom";
 
@@ -398,9 +399,8 @@ export default function AdminQuotations() {
 
       {/* Main Quotations Table */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-          <p className="text-xs text-muted-foreground">Loading quotations catalog...</p>
+        <div className="bg-card rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="Quotations Registry" subtitle="Loading price estimates..." />
         </div>
       ) : filteredQuotations.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">

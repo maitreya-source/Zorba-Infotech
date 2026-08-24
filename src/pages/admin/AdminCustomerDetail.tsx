@@ -41,6 +41,7 @@ import EmailPreviewModal from "@/components/admin/EmailPreviewModal";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
 import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
 import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 const STATUS_BADGES: Record<
   ServiceCallStatus,
@@ -262,12 +263,7 @@ export default function AdminCustomerDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-28 text-center">
-        <div className="h-9 w-9 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-3" />
-        <p className="text-xs font-semibold text-slate-500">Loading customer profile & service calls lookup...</p>
-      </div>
-    );
+    return <LoadingScreen fullScreen={false} title="Customer Profile" subtitle="Loading customer account & service history..." />;
   }
 
   if (error || !customer) {

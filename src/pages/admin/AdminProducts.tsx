@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Package, Star, Search, RefreshCw, Globe, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Star, Search, RefreshCw, Globe, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  getProducts,
+  getProductsPaginated,
   getCategories,
   deleteProduct,
   deleteProductPhoto,
@@ -31,6 +31,7 @@ import {
 } from "@/lib/firestore";
 import type { Product, Category } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 export default function AdminProducts() {
   const navigate = useNavigate();
@@ -41,16 +42,32 @@ export default function AdminProducts() {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [visibilityFilter, setVisibilityFilter] = useState<"all" | "website" | "erp">("all");
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [docHistory, setDocHistory] = useState<any[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const load = async () => {
+  const searchTimerRef = useRef<any>(null);
+
+  const load = async (targetPage = 1, lastDocRef?: any) => {
     setLoading(true);
     setError(null);
     try {
-      const [prods, cats] = await Promise.all([getProducts(), getCategories()]);
-      setProducts(prods);
-      setCategories(cats);
+      const [res, cats] = await Promise.all([
+        getProductsPaginated({
+          pageSize,
+          lastDoc: lastDocRef,
+          categoryId: catFilter !== "all" ? catFilter : undefined,
+          visibilityFilter,
+          search: search.trim(),
+        }),
+        categories.length === 0 ? getCategories() : Promise.resolve(categories),
+      ]);
+      setProducts(res.items);
+      setHasMore(res.hasMore);
+      if (categories.length === 0) setCategories(cats);
     } catch (err: any) {
       console.error("Firebase connection error in AdminProducts:", err);
       setError(err?.message || "Firebase connection error. Could not connect to database.");
@@ -60,8 +77,52 @@ export default function AdminProducts() {
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    setPageNumber(1);
+    setDocHistory([]);
+    load(1, undefined);
+  }, [catFilter, visibilityFilter, pageSize]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPageNumber(1);
+    setDocHistory([]);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await getProductsPaginated({
+          pageSize,
+          categoryId: catFilter !== "all" ? catFilter : undefined,
+          visibilityFilter,
+          search: val.trim(),
+        });
+        setProducts(res.items);
+        setHasMore(res.hasMore);
+      } catch (err: any) {
+        setError(err?.message || "Failed to search products");
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+  };
+
+  const handleNextPage = async () => {
+    if (!hasMore || loading) return;
+    const lastDoc = products.length > 0 ? (products[products.length - 1] as any) : undefined;
+    setDocHistory((prev) => [...prev, lastDoc]);
+    setPageNumber((prev) => prev + 1);
+    load(pageNumber + 1, lastDoc);
+  };
+
+  const handlePrevPage = async () => {
+    if (pageNumber <= 1 || loading) return;
+    const prevHistory = [...docHistory];
+    prevHistory.pop();
+    const prevDoc = prevHistory.length > 0 ? prevHistory[prevHistory.length - 1] : undefined;
+    setDocHistory(prevHistory);
+    setPageNumber((prev) => prev - 1);
+    load(pageNumber - 1, prevDoc);
+  };
 
   useTallyShortcuts({
     onAltC: () => navigate("/admin/products/new"),
@@ -95,7 +156,7 @@ export default function AdminProducts() {
       await deleteProduct(deleteId);
       toast.success("Product deleted successfully");
       setDeleteId(null);
-      load();
+      load(pageNumber, docHistory.length > 0 ? docHistory[docHistory.length - 1] : undefined);
     } catch {
       toast.error("Failed to delete product");
     }
@@ -103,31 +164,6 @@ export default function AdminProducts() {
 
   const catMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
-  const filtered = products
-    .filter((p) => {
-      const matchesCat = catFilter === "all" || p.categoryId === catFilter;
-      const isVisible = p.showOnWebsite !== false;
-      const matchesVisibility =
-        visibilityFilter === "all" ||
-        (visibilityFilter === "website" && isVisible) ||
-        (visibilityFilter === "erp" && !isVisible);
-
-      const q = search.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        (p.model && p.model.toLowerCase().includes(q)) ||
-        (p.brand && p.brand.toLowerCase().includes(q)) ||
-        (p.itemCode && p.itemCode.toLowerCase().includes(q));
-      return matchesCat && matchesVisibility && matchesSearch;
-    })
-    .sort((a, b) => {
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
-      if (a.order != null && b.order != null) return a.order - b.order;
-      if (a.order != null) return -1;
-      if (b.order != null) return 1;
-      return (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0);
-    });
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto text-xs">
@@ -164,12 +200,12 @@ export default function AdminProducts() {
             <Input
               placeholder="Search by model, name, brand, code…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9 h-9 text-xs rounded-xl w-full"
             />
           </div>
 
-          <Select value={catFilter} onValueChange={setCatFilter}>
+          <Select value={catFilter} onValueChange={(v) => setCatFilter(v)}>
             <SelectTrigger className="w-full sm:w-40 h-9 text-xs rounded-xl">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
@@ -196,32 +232,31 @@ export default function AdminProducts() {
         </div>
 
         <div className="text-xs text-muted-foreground font-semibold">
-          Total Products: <span className="text-foreground font-extrabold">{filtered.length}</span>
+          Current Page Items: <span className="text-foreground font-extrabold">{products.length}</span>
         </div>
       </div>
 
       {/* Table / Loading / Error */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-          <p className="text-xs text-muted-foreground">Loading products catalog...</p>
+        <div className="bg-card rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="Products Catalog" subtitle="Loading products inventory..." />
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">
           <p className="font-bold text-destructive text-base">Error Loading Products</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-md">{error}</p>
-          <Button onClick={() => load()} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
+          <p className="text-sm text-muted-foreground mt-1 max-w-md">{error}</p>
+          <Button onClick={() => load(pageNumber)} className="mt-4 gap-2 text-xs" variant="outline" size="sm">
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border text-center p-6 space-y-3">
           <Package className="h-10 w-10 text-muted-foreground/40" />
           <p className="font-bold text-foreground text-sm">No Products Found</p>
           <p className="text-xs text-muted-foreground max-w-sm">
-            {products.length === 0
-              ? "No products added to catalog yet. Click Add Product to create your first stock item."
-              : "Try adjusting your search query, category, or visibility filter."}
+            {search || catFilter !== "all" || visibilityFilter !== "all"
+              ? "Try adjusting your search query, category, or visibility filter."
+              : "No products added to catalog yet. Click Add Product to create your first stock item."}
           </p>
           <Link to="/admin/products/new">
             <Button size="sm" className="gap-1 text-xs font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl">
@@ -244,7 +279,7 @@ export default function AdminProducts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((product) => (
+                {products.map((product) => (
                   <tr key={product.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -340,7 +375,7 @@ export default function AdminProducts() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -348,7 +383,7 @@ export default function AdminProducts() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive cursor-pointer"
                           onClick={() => setDeleteId(product.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -360,6 +395,58 @@ export default function AdminProducts() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Pagination Footer */}
+      {!loading && !error && products.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 text-xs text-muted-foreground font-medium">
+          <div className="flex items-center gap-2">
+            <span>Rows per page:</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => setPageSize(Number(val))}
+            >
+              <SelectTrigger className="h-8 w-18 text-xs rounded-xl bg-card">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="pl-2">
+              Showing {products.length} items {search ? `matching "${search}"` : `(Page ${pageNumber})`}
+            </span>
+          </div>
+
+          {!search && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={pageNumber <= 1 || loading}
+                className="h-8 text-xs rounded-xl gap-1 cursor-pointer"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Previous
+              </Button>
+              <span className="px-2 font-bold text-foreground">
+                Page {pageNumber}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={!hasMore || loading}
+                className="h-8 text-xs rounded-xl gap-1 cursor-pointer"
+              >
+                Next <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Activity,
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
+import { syncCustomerIndex, invalidateCustomersCache } from "@/lib/firestore";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import StaffProfileSelectorModal from "@/components/admin/StaffProfileSelectorModal";
 
@@ -51,7 +52,13 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Sync customer index in background only for authenticated admin staff
+  useEffect(() => {
+    syncCustomerIndex();
+  }, []);
+
   const handleSignOut = async () => {
+    invalidateCustomersCache();
     await signOut();
     navigate("/admin", { replace: true });
   };

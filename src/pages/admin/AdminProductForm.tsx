@@ -43,6 +43,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { Category, CustomField } from "@/lib/types";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 interface FormState {
   name: string;
@@ -276,12 +277,7 @@ export default function AdminProductForm() {
   handleSubmitRef.current = handleSubmit;
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-        <p className="text-xs text-muted-foreground">Loading product details...</p>
-      </div>
-    );
+    return <LoadingScreen fullScreen={false} title="Product Editor" subtitle="Loading product specifications..." />;
   }
 
   return (

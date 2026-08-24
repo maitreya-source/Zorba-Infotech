@@ -58,6 +58,7 @@ import QuotationTemplateModal from "@/components/admin/QuotationTemplateModal";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
 import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
 import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
+import LoadingScreen from "@/components/common/LoadingScreen";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { formatIndianPhoneNumber } from "@/lib/utils";
 
@@ -551,12 +552,7 @@ export default function AdminQuotationForm() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-slate-500">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-        <p className="text-xs">Loading quotation generator...</p>
-      </div>
-    );
+    return <LoadingScreen fullScreen={false} title="Quotation Generator" subtitle="Loading customer & pricing configurations..." />;
   }
 
   return (

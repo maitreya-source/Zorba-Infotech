@@ -1,22 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Package, Search, Star } from "lucide-react";
+import { Package, Search, Star, Loader2 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
-import { getProducts, getCategories } from "@/lib/firestore";
+import { Button } from "@/components/ui/button";
+import { getPublicProducts, getCategories } from "@/lib/firestore";
 import { getIcon } from "@/lib/icons";
 import type { Product, Category } from "@/lib/types";
-
-function sortProducts(products: Product[]): Product[] {
-  return [...products].sort((a, b) => {
-    if (a.featured !== b.featured) return a.featured ? -1 : 1;
-    if (a.order != null && b.order != null) return a.order - b.order;
-    if (a.order != null) return -1;
-    if (b.order != null) return 1;
-    return (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0);
-  });
-}
 
 export default function Catalog() {
   const navigate = useNavigate();
@@ -24,6 +15,9 @@ export default function Catalog() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [lastDoc, setLastDoc] = useState<any>(undefined);
   const [error, setError] = useState<string | null>(null);
   
   const categoryFromUrl = searchParams.get("category");
@@ -31,6 +25,7 @@ export default function Catalog() {
 
   const [activeCategory, setActiveCategory] = useState(categoryFromUrl || "all");
   const [search, setSearch] = useState(searchFromUrl || "");
+  const searchDebounceRef = useRef<any>(null);
 
   useEffect(() => {
     if (categoryFromUrl) {
@@ -44,40 +39,67 @@ export default function Catalog() {
     }
   }, [searchFromUrl]);
 
-  const loadData = async () => {
+  // Load categories once
+  useEffect(() => {
+    getCategories()
+      .then((cats) => setCategories(cats))
+      .catch((err) => console.error("Error loading categories:", err));
+  }, []);
+
+  const loadInitialProducts = async (cat: string, queryStr: string) => {
     setLoading(true);
     setError(null);
     try {
-      const [prods, cats] = await Promise.all([getProducts(), getCategories()]);
-      const visibleProducts = prods.filter((p) => p.showOnWebsite !== false);
-      setProducts(sortProducts(visibleProducts));
-      setCategories(cats);
+      const res = await getPublicProducts({
+        categoryId: cat !== "all" ? cat : undefined,
+        search: queryStr.trim(),
+        pageSize: 24,
+      });
+      setProducts(res.items);
+      setHasMore(res.hasMore);
+      setLastDoc(res.lastDoc);
     } catch (err: any) {
       console.error("Firebase error in Catalog:", err);
-      setError(err?.message || "Failed to load catalog from Firebase.");
+      setError(err?.message || "Failed to load catalog.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const handleLoadMore = async () => {
+    if (!hasMore || loadingMore || !lastDoc) return;
+    setLoadingMore(true);
+    try {
+      const res = await getPublicProducts({
+        categoryId: activeCategory !== "all" ? activeCategory : undefined,
+        search: search.trim(),
+        pageSize: 24,
+        lastDoc,
+      });
+      setProducts((prev) => [...prev, ...res.items]);
+      setHasMore(res.hasMore);
+      setLastDoc(res.lastDoc);
+    } catch (err: any) {
+      console.error("Error loading more products:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
+  useEffect(() => {
+    loadInitialProducts(activeCategory, search);
+  }, [activeCategory]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      loadInitialProducts(activeCategory, val);
+    }, 300);
+  };
 
   const catMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
-  const filtered = products.filter((p) => {
-    const matchesCat = activeCategory === "all" || p.categoryId === activeCategory;
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.brand?.toLowerCase().includes(q) ||
-      p.model?.toLowerCase().includes(q) ||
-      p.description?.toLowerCase().includes(q);
-    return matchesCat && matchesSearch;
-  });
 
   return (
     <Layout>
@@ -105,7 +127,7 @@ export default function Catalog() {
               type="text"
               placeholder="Search products…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full rounded-xl border border-primary-foreground/20 bg-primary-foreground/10 pl-10 pr-4 py-2.5 text-sm text-primary-foreground placeholder:text-primary-foreground/40 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary-foreground/30"
             />
           </div>
@@ -158,32 +180,32 @@ export default function Catalog() {
             <p className="font-bold text-destructive text-lg">Firebase Connection Error</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md">{error}</p>
             <button
-              onClick={() => loadData()}
+              onClick={() => loadInitialProducts(activeCategory, search)}
               className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               Retry Connection
             </button>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Package className="h-16 w-16 text-muted-foreground/20 mb-4" />
             <p className="text-lg font-semibold">No products found</p>
             <p className="text-sm text-muted-foreground mt-1">
-              {products.length === 0
-                ? "No products have been added yet. Check back soon!"
-                : "Try a different search or category."}
+              {search
+                ? `No products match "${search}".`
+                : "No products in this category yet. Check back soon!"}
             </p>
           </div>
         ) : (
           <>
             <p className="text-sm text-muted-foreground mb-6">
-              {filtered.length} product{filtered.length !== 1 ? "s" : ""}
+              Showing {products.length} product{products.length !== 1 ? "s" : ""}
               {activeCategory !== "all" && ` in ${catMap[activeCategory] ?? "this category"}`}
               {search && ` matching "${search}"`}
             </p>
 
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filtered.map((product) => (
+              {products.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -192,6 +214,27 @@ export default function Catalog() {
                 />
               ))}
             </div>
+
+            {/* Load More Button */}
+            {hasMore && (
+              <div className="mt-10 flex justify-center">
+                <Button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  variant="outline"
+                  size="lg"
+                  className="rounded-xl px-8 font-semibold gap-2 border-primary/20 hover:bg-primary/5 cursor-pointer shadow-xs"
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading more products...
+                    </>
+                  ) : (
+                    "Load More Products"
+                  )}
+                </Button>
+              </div>
+            )}
           </>
         )}
       </section>

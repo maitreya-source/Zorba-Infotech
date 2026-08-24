@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Phone, Check, Plus, Loader2, User, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { searchCustomers } from "@/lib/firestore";
+import { searchCustomers, getCustomer } from "@/lib/firestore";
 import type { Customer } from "@/lib/types";
 
 interface CustomerTypeaheadProps {
@@ -81,11 +81,23 @@ export default function CustomerTypeahead({
     setIsOpen(true);
   };
 
-  const handleSelect = (cust: Customer) => {
+  const handleSelect = async (cust: Customer) => {
     setSearchQuery(cust.name);
     if (onChange) onChange(cust.name);
     onSelectCustomer(cust);
     setIsOpen(false);
+
+    // If full address/details not present in slim index, fetch on demand in background
+    if (!cust.address && cust.id) {
+      try {
+        const full = await getCustomer(cust.id);
+        if (full) {
+          onSelectCustomer(full);
+        }
+      } catch (err) {
+        console.warn("Could not fetch full customer profile:", err);
+      }
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

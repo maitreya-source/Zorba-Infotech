@@ -58,11 +58,9 @@ const queryClient = new QueryClient({
   },
 });
 
-const RouteFallback = () => (
-  <div className="flex min-h-[50vh] items-center justify-center">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-  </div>
-);
+import LoadingScreen from "@/components/common/LoadingScreen";
+
+const RouteFallback = () => <LoadingScreen fullScreen={true} subtitle="Loading page..." />;
 
 const App = () => (
   <HelmetProvider>

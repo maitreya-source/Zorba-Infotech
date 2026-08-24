@@ -8,30 +8,32 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getServiceCalls } from "@/lib/firestore";
+import { getServiceCallsForMonth, getFinancialYear } from "@/lib/firestore";
 import type { ServiceCall } from "@/lib/types";
 
 export default function AdminReports() {
   const monthInputRef = useRef<HTMLInputElement>(null);
   const [calls, setCalls] = useState<ServiceCall[]>([]);
+  const [loading, setLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
 
   useEffect(() => {
-    getServiceCalls()
-      .then((data) => setCalls(data));
-  }, []);
+    setLoading(true);
+    const fyId = getFinancialYear(selectedMonth + "-01").fyId;
+    getServiceCallsForMonth(fyId, selectedMonth)
+      .then((data) => setCalls(data))
+      .catch((err) => {
+        console.error("Error loading monthly report:", err);
+        setCalls([]);
+      })
+      .finally(() => setLoading(false));
+  }, [selectedMonth]);
 
-  // Filter calls based on selected period
-  const filteredCalls = calls.filter((c) => {
-    if (!c.dateTime) return true;
-    const callDate = new Date(c.dateTime);
-    if (isNaN(callDate.getTime())) return true;
-    const yearMonth = `${callDate.getFullYear()}-${String(callDate.getMonth() + 1).padStart(2, "0")}`;
-    return yearMonth === selectedMonth;
-  });
+  // Filter calls for this month
+  const filteredCalls = calls;
 
   // Calculate Key Metrics
   const totalCalls = filteredCalls.length;

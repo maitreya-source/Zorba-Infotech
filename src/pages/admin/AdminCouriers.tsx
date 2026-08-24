@@ -32,6 +32,7 @@ import { formatPhoneForDisplay, generateCourierFollowUpMessage } from "@/lib/uti
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import EditCourierModal from "@/components/admin/EditCourierModal";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 export default function AdminCouriers() {
   const [couriers, setCouriers] = useState<Courier[]>([]);
@@ -149,9 +150,8 @@ export default function AdminCouriers() {
 
       {/* Couriers Cards Grid */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-          <p className="text-xs text-muted-foreground">Loading courier partners...</p>
+        <div className="bg-card rounded-2xl border p-6">
+          <LoadingScreen fullScreen={false} title="Logistics & Couriers" subtitle="Loading courier partners..." />
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4">

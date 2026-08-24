@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
+import LoadingScreen from "@/components/common/LoadingScreen";
 import { SEO } from "@/components/SEO";
 import {
   ShieldAlert,
@@ -58,11 +59,7 @@ export default function AdminLogin() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-      </div>
-    );
+    return <LoadingScreen fullScreen={true} subtitle="Authenticating session..." />;
   }
 
   // Handle case where user is signed in but not authorized as admin

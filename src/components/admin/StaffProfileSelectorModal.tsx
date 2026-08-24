@@ -13,6 +13,7 @@ import { getTeamMembers, createTeamMember, updateTeamMember } from "@/lib/firest
 import type { TeamMember, TeamRole } from "@/lib/types";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { AVATAR_CATALOG } from "@/lib/avatars";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 interface StaffProfileSelectorModalProps {
   open: boolean;
@@ -356,10 +357,7 @@ export default function StaffProfileSelectorModal({
             /* VIEW 2: Staff Profiles Grid */
             <div className="space-y-8">
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mb-3" />
-                  <p className="text-xs text-slate-400">Loading staff profiles...</p>
-                </div>
+                <LoadingScreen fullScreen={false} title="Staff Identity" subtitle="Loading desk profiles..." />
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 justify-center">
                   {team.map((member) => {

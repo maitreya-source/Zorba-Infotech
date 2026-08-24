@@ -58,6 +58,7 @@ import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryMo
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import ShortcutsHelpModal from "@/components/admin/ShortcutsHelpModal";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import LoadingScreen from "@/components/common/LoadingScreen";
 
 type SortField = "status" | "ticket" | "customer" | "device" | "charges";
 type SortDirection = "asc" | "desc";
@@ -634,9 +635,8 @@ export default function AdminServiceCalls() {
 
       {/* 4. Main Table Card Container */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="h-9 w-9 animate-spin rounded-full border-4 border-[#2563EB] border-t-transparent mb-3" />
-          <p className="text-xs text-slate-500 font-medium">Connecting to Firebase...</p>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6">
+          <LoadingScreen fullScreen={false} title="Service Calls" subtitle="Loading repair job cards..." />
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border bg-destructive/5 border-destructive/20 py-16 text-center px-4 shadow-sm">
