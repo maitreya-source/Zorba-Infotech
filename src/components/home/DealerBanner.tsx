@@ -8,12 +8,7 @@ const DealerBanner = () => {
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 py-10 md:py-14 text-white shadow-inner">
-      <div
-        ref={ref}
-        className={`container relative z-10 transition-all duration-700 ${
-          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
-      >
+      <div className="container relative z-10">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-400/30 px-3.5 py-1 text-xs font-bold text-amber-300 tracking-wide uppercase mb-3.5 shadow-xs">
             For Dealers &amp; Bulk Buyers

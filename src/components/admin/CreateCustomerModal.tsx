@@ -140,7 +140,7 @@ export default function CreateCustomerModal({
             </Label>
             <Input
               id="cust-name"
-              placeholder="e.g. Sharma Rajesh (LastName FirstName)"
+              placeholder="e.g. LastName FirstName"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required

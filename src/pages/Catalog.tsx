@@ -5,6 +5,7 @@ import Layout from "@/components/layout/Layout";
 import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import LoadingScreen from "@/components/common/LoadingScreen";
 import { getPublicProducts, getCategories } from "@/lib/firestore";
 import { getIcon } from "@/lib/icons";
 import type { Product, Category } from "@/lib/types";
@@ -118,7 +119,7 @@ export default function Catalog() {
           </span>
           <h1 className="text-3xl font-bold font-display md:text-4xl">Product Catalog</h1>
           <p className="mt-3 text-primary-foreground/80 max-w-xl mx-auto">
-            Browse our latest products with live pricing and availability.
+            Browse our catalog and inquire directly for wholesale &amp; retail pricing.
           </p>
 
           <div className="mt-6 max-w-md mx-auto relative">
@@ -172,9 +173,11 @@ export default function Catalog() {
       {/* Products grid */}
       <section className="container py-10">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          </div>
+          <LoadingScreen
+            fullScreen={false}
+            title="Product Catalog"
+            subtitle="Loading products & inventory..."
+          />
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-16 text-center border rounded-2xl bg-destructive/5 border-destructive/20 px-4">
             <p className="font-bold text-destructive text-lg">Firebase Connection Error</p>

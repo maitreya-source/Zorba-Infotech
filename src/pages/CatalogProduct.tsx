@@ -6,6 +6,7 @@ import {
   Package,
   ExternalLink,
   MessageCircle,
+  MessageSquare,
   CheckCircle2,
   XCircle,
   Star,
@@ -14,6 +15,7 @@ import {
 import Layout from "@/components/layout/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
+import { QuickInquiryDialog, LoadingScreen } from "@/components/common";
 import { getProduct, getCategories } from "@/lib/firestore";
 import type { Product, Category } from "@/lib/types";
 import { sanitizeExternalUrl } from "@/lib/utils";
@@ -24,6 +26,7 @@ export default function CatalogProduct() {
   const [product, setProduct] = useState<Product | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -40,8 +43,12 @@ export default function CatalogProduct() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex justify-center py-32">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="container py-24">
+          <LoadingScreen
+            fullScreen={false}
+            title="Product Specifications"
+            subtitle="Loading details & availability..."
+          />
         </div>
       </Layout>
     );
@@ -187,18 +194,28 @@ export default function CatalogProduct() {
 
             {/* CTA buttons */}
             <div className="flex flex-wrap gap-3 pt-2">
+              <Button
+                size="lg"
+                onClick={() => setInquiryOpen(true)}
+                className="gap-2 rounded-xl font-bold bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Quick Inquire
+              </Button>
+
               <a
                 href={whatsappLink(whatsappText)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Button variant="whatsapp" size="lg" className="gap-2">
+                <Button variant="whatsapp" size="lg" className="gap-2 rounded-xl">
                   <MessageCircle className="h-4 w-4" />
-                  Enquire on WhatsApp
+                  WhatsApp
                 </Button>
               </a>
+
               <a href="tel:+919424899730">
-                <Button variant="cta" size="lg">
+                <Button variant="outline" size="lg" className="rounded-xl">
                   Call: 94248 99730
                 </Button>
               </a>
@@ -233,6 +250,13 @@ export default function CatalogProduct() {
           </div>
         )}
       </div>
+
+      <QuickInquiryDialog
+        open={inquiryOpen}
+        onOpenChange={setInquiryOpen}
+        defaultProduct={product.name}
+        source="catalog_product_page"
+      />
     </Layout>
   );
 }

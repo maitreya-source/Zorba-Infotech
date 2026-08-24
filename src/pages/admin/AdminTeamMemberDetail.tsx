@@ -395,10 +395,11 @@ export default function AdminTeamMemberDetail() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-slate-500">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2" />
-        <p className="text-xs">Loading personnel profile...</p>
-      </div>
+      <LoadingScreen
+        fullScreen={false}
+        title="Personnel Profile"
+        subtitle="Loading member details & performance metrics..."
+      />
     );
   }
 

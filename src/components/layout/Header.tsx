@@ -6,7 +6,6 @@ import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
 
 const navLinks = [
   { label: "Home", to: "/" },
-  { label: "Products", to: "/products" },
   { label: "Catalog", to: "/catalog" },
   { label: "Payments", to: "/payments" },
   { label: "Dealers", to: "/dealers" },

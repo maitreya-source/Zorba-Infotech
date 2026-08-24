@@ -131,6 +131,22 @@ export default function AdminInquiries() {
     }
   };
 
+  const getInquirySubject = (inq: Inquiry) => {
+    if (inq.subject && inq.subject.trim() && inq.subject !== "General Inquiry") {
+      return inq.subject;
+    }
+    if (inq.source === "dealers_portal") {
+      return "Dealer & Wholesale Pricing Registration";
+    }
+    if (inq.source === "careers_page") {
+      return "Job Application / Hiring";
+    }
+    if (inq.source === "product_page") {
+      return "Product & Price Inquiry";
+    }
+    return inq.subject || "Product & Service Inquiry";
+  };
+
   const getStatusBadge = (status: InquiryStatus) => {
     switch (status) {
       case "pending":
@@ -298,7 +314,7 @@ export default function AdminInquiries() {
 
                       <td className="px-4 py-3 max-w-xs">
                         <div className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
-                          {inq.subject || "General Inquiry"}
+                          {getInquirySubject(inq)}
                         </div>
                         <div className="text-slate-500 dark:text-slate-400 text-[11px] line-clamp-1 mt-0.5">
                           {inq.message}
@@ -408,7 +424,7 @@ export default function AdminInquiries() {
 
               <div className="space-y-1">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Subject / Requirement</span>
-                <p className="font-bold text-slate-900 dark:text-white text-xs">{selectedInquiry.subject || "General Inquiry"}</p>
+                <p className="font-bold text-slate-900 dark:text-white text-xs">{getInquirySubject(selectedInquiry)}</p>
               </div>
 
               <div className="space-y-1">

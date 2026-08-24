@@ -33,8 +33,7 @@ const Footer = () => (
           <h4 className="text-sm font-semibold font-display">Quick Links</h4>
           <nav className="flex flex-col gap-2.5 text-sm text-muted-foreground">
             <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
-            <Link to="/catalog" className="hover:text-foreground transition-colors">Product Catalog (Live Inventory)</Link>
-            <Link to="/products" className="hover:text-foreground transition-colors">Products & Services</Link>
+            <Link to="/catalog" className="hover:text-foreground transition-colors">Product Catalog</Link>
             <Link to="/payments" className="hover:text-foreground transition-colors">Payments</Link>
             <Link to="/dealers" className="hover:text-foreground transition-colors">Dealer Portal</Link>
             <Link to="/careers" className="hover:text-foreground transition-colors">Careers / Jobs</Link>

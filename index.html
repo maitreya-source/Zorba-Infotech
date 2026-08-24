@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Zorba Infotech – Computer Hardware Dealer &amp; IT Distributor, Neemuch</title>
+    <title>Zorba Infotech – Best Computer Shop in Neemuch | Laptops &amp; Printers Near Me</title>
     <meta name="application-name" content="Zorba Infotech" />
     <meta name="apple-mobile-web-app-title" content="Zorba Infotech" />
-    <meta name="description" content="Zorba Infotech – Neemuch's premier computer hardware dealer, wholesale IT distributor &amp; authorized service center. Laptops, desktops, CCTV, networking, biometrics &amp; custom PC builds. 4,000+ IT products. Shop No. 5 &amp; 6, U-Shape Market, Tagore Marg, Neemuch MP." />
-    <meta name="keywords" content="computer dealer Neemuch, laptop dealer Neemuch, IT distributor Neemuch, CCTV dealer Neemuch, networking Neemuch, printer dealer Neemuch, computer repair Neemuch, biometric device Neemuch, Zorba Infotech, computer hardware Madhya Pradesh, GeM portal computer dealer" />
+    <meta name="description" content="Looking for the best computer shop near you in Neemuch? Zorba Infotech is your trusted dealer for laptops, printers, desktop PCs, CCTV cameras, RAM, SSDs, and authorized computer repair in Neemuch for 20+ years. 4,000+ IT products in stock." />
+    <meta name="keywords" content="computer shop in neemuch, computer shop near me, laptops near me, laptop shop in neemuch, printers near me, printer shop neemuch, cctv camera near me, computer repair near me, custom gaming PC neemuch, IT hardware distributor Neemuch, Zorba Infotech" />
     <meta name="author" content="Zorba Infotech" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
     <meta name="geo.region" content="IN-MP" />
@@ -19,6 +19,11 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/logo-512x512.png" />
+
+    <!-- Google Fonts Preconnect & High-Legibility Typefaces (Plus Jakarta Sans & Space Grotesk) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
 
     <!-- Facebook Domain Verification -->
     <meta name="facebook-domain-verification" content="y9woic2c4mp9sz4oya36rr3q089x9w" />
@@ -47,11 +52,11 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "LocalBusiness",
+      "@type": ["LocalBusiness", "ComputerStore", "ElectronicsStore"],
       "@id": "https://zorbainfotech.in/#business",
       "name": "Zorba Infotech",
-      "alternateName": ["Zorba Service Center", "Prem Sagar Sales Agency"],
-      "description": "Zorba Infotech is Neemuch's premier computer hardware dealer, wholesale IT distributor and authorized service center offering 4,000+ IT products including laptops, desktops, CCTV, networking equipment, biometrics, and custom PC builds.",
+      "alternateName": ["Zorba Service Center", "Prem Sagar Sales Agency", "Zorba Computer Shop Neemuch"],
+      "description": "Zorba Infotech is Neemuch's trusted computer shop, laptop dealer, printer distributor and authorized service center offering 4,000+ IT products with 20+ years experience.",
       "url": "https://zorbainfotech.in",
       "telephone": ["+91-9993599730", "+91-9302199730", "+91-9424899730", "+91-9179699730"],
       "email": "zorbainfotech@gmail.com",
@@ -83,13 +88,29 @@
         "https://www.instagram.com/ZORBAINFOTECH1/",
         "https://www.indiamart.com/zorbainfotech"
       ],
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Computer, Laptop & Printer Offer Catalog",
+        "itemListElement": [
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Laptops & Notebooks (HP, Dell, Lenovo, Asus)" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Printers, Inks & Toners (Epson EcoTank, Canon, HP)" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Desktop Computers & Custom Gaming PCs" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "CCTV Cameras & 4G Solar Surveillance Systems" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Computer Repair & Laptop Screen/Battery Replacement" } }
+        ]
+      },
       "priceRange": "₹₹",
       "currenciesAccepted": "INR",
       "paymentAccepted": "Cash, UPI, Bank Transfer, Cheque",
-      "areaServed": {
-        "@type": "AdministrativeArea",
-        "name": "Neemuch, Madhya Pradesh, India"
-      },
+      "areaServed": [
+        { "@type": "City", "name": "Neemuch" },
+        { "@type": "City", "name": "Mandsaur" },
+        { "@type": "City", "name": "Manasa" },
+        { "@type": "City", "name": "Jawad" },
+        { "@type": "City", "name": "Singoli" },
+        { "@type": "City", "name": "Chhotisadri" },
+        { "@type": "City", "name": "Chittorgarh" }
+      ],
       "logo": "https://zorbainfotech.in/logo-512x512.png",
       "image": "https://zorbainfotech.in/logo-512x512.png"
     }
@@ -114,27 +135,56 @@
   </head>
 
   <body>
-    <!-- Polished, Branded Instant Splash Loader (Replaced seamlessly when React hydrates) -->
+    <!-- Clean Minimalist Root Shell (Matches dark background #0b0f19 so React hydrates with zero visual flash) -->
     <div id="root">
-      <div style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #0b0f19; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; padding: 20px; box-sizing: border-box; z-index: 99999;">
-        <div style="position: relative; width: 64px; height: 64px; margin-bottom: 20px;">
-          <img src="/favicon.svg" alt="Zorba Logo" width="64" height="64" style="display: block; width: 100%; height: 100%;" />
+      <div style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #0b0f19; font-family: system-ui, -apple-system, sans-serif; z-index: 9999;">
+        <div style="position: relative; width: 56px; height: 56px; margin-bottom: 16px;">
+          <img src="/favicon.svg" alt="Zorba Logo" width="56" height="56" style="display: block; width: 100%; height: 100%;" />
         </div>
-        <div style="color: #ffffff; font-size: 16px; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 4px;">ZORBA INFOTECH</div>
-        <div style="color: #94a3b8; font-size: 11px; font-weight: 500;">Computer Hardware &amp; IT Solutions &bull; Neemuch</div>
-        <div style="margin-top: 24px; width: 28px; height: 28px; border: 2.5px solid rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; border-radius: 50%; animation: zorbaSpin 0.8s linear infinite;"></div>
+        <div style="color: #ffffff; font-size: 15px; font-weight: 800; letter-spacing: 0.04em; margin-bottom: 2px;">ZORBA INFOTECH</div>
+        <div style="color: #94a3b8; font-size: 11px; font-weight: 500;">Computer Hardware &bull; Neemuch</div>
+        <div style="margin-top: 20px; width: 24px; height: 24px; border: 2px solid rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; border-radius: 50%; animation: zorbaSpin 0.8s linear infinite;"></div>
       </div>
     </div>
 
-    <!-- Noscript Fallback for Non-JS Crawlers -->
+    <!-- Complete Semantic Pre-Rendered Content for Search Engine Bots & Non-JS Scrapers -->
     <noscript>
-      <div style="padding: 24px; font-family: sans-serif; max-width: 800px; margin: 0 auto; line-height: 1.6;">
-        <h1>Zorba Infotech – Computer Hardware Dealer &amp; IT Distributor, Neemuch</h1>
-        <p>Neemuch's #1 computer hardware dealer, wholesale IT distributor &amp; authorized service center. Laptops, desktops, CCTV surveillance, networking equipment, biometrics, and custom PC builds.</p>
-        <p><strong>Address:</strong> Shop No. 5 &amp; 6, U-Shape Market, Tagore Marg, Neemuch 458441, Madhya Pradesh, India</p>
-        <p><strong>Phone:</strong> +91 99935 99730 | +91 93021 99730 | <strong>Email:</strong> zorbainfotech@gmail.com</p>
-        <p><a href="/products">Browse Products</a> | <a href="/dealers">Dealer Portal</a> | <a href="/contact">Contact Us</a> | <a href="/privacy-policy">Privacy Policy</a></p>
-      </div>
+      <header style="padding: 16px 24px; border-bottom: 1px solid #1e293b; background: #0b0f19; color: #fff; font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-weight: 800; font-size: 18px; letter-spacing: -0.02em;">Zorba Infotech</div>
+        <nav style="display: flex; gap: 16px; font-size: 13px;">
+          <a href="/catalog" style="color: #94a3b8; text-decoration: none;">Catalog</a>
+          <a href="/dealers" style="color: #94a3b8; text-decoration: none;">Dealers</a>
+          <a href="/payments" style="color: #94a3b8; text-decoration: none;">Payments</a>
+          <a href="/careers" style="color: #94a3b8; text-decoration: none;">Careers</a>
+          <a href="/contact" style="color: #94a3b8; text-decoration: none;">Contact</a>
+        </nav>
+      </header>
+
+      <main style="padding: 40px 24px; font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 0 auto; color: #0f172a; line-height: 1.6;">
+        <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 12px; color: #0f172a; letter-spacing: -0.02em;">
+          Zorba Infotech – Best Computer Shop in Neemuch | Laptops, Printers &amp; IT Hardware
+        </h1>
+        <p style="font-size: 16px; color: #475569; margin-bottom: 24px;">
+          Your trusted computer shop in Neemuch for 20+ years. Wholesale IT distributor, custom PC assembler, and authorized multi-brand service center with over 4,000 products in stock.
+        </p>
+
+        <section style="margin: 24px 0;">
+          <h2 style="font-size: 20px; font-weight: 700;">Hardware Categories</h2>
+          <ul style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; list-style: none; padding: 0; margin-top: 12px;">
+            <li><a href="/catalog?category=laptop" style="color: #2563eb; font-weight: 600;">💻 Laptops &amp; Desktops (HP, Dell, Lenovo, Asus)</a></li>
+            <li><a href="/catalog?category=printer" style="color: #2563eb; font-weight: 600;">🖨️ Printers, Inks &amp; Toners (Epson, Canon, HP)</a></li>
+            <li><a href="/catalog?category=cctv-security" style="color: #2563eb; font-weight: 600;">📹 CCTV Cameras &amp; 4G Security Systems</a></li>
+            <li><a href="/catalog?category=accessories" style="color: #2563eb; font-weight: 600;">⚡ RAM, NVMe SSDs &amp; PC Components</a></li>
+          </ul>
+        </section>
+
+        <section style="margin: 32px 0; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <h2 style="font-size: 18px; font-weight: 700; margin-top: 0;">Showroom &amp; Authorized Service Center</h2>
+          <p><strong>Address:</strong> Shop No. 5 &amp; 6, U-Shape Market, Tagore Marg, Neemuch 458441, Madhya Pradesh, India</p>
+          <p><strong>Phone:</strong> +91 99935 99730 | +91 93021 99730 | <strong>Email:</strong> zorbainfotech@gmail.com</p>
+          <p><strong>Showroom Timings:</strong> Monday to Saturday, 10:30 AM – 10:00 PM</p>
+        </section>
+      </main>
     </noscript>
 
     <script type="module" src="/src/main.tsx"></script>

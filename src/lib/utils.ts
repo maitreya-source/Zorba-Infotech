@@ -71,6 +71,24 @@ export function formatIndianPhoneNumber(phone: string): string {
 }
 
 /**
+ * Validates whether a given string is a valid 10-digit Indian mobile number (optionally prefixed with 0, 91, or +91).
+ */
+export function isValidIndianPhoneNumber(phone: string): boolean {
+  if (!phone) return false;
+  const digits = String(phone).replace(/\D/g, "");
+  if (digits.length === 10) {
+    return /^[6-9]\d{9}$/.test(digits);
+  }
+  if (digits.length === 11 && digits.startsWith("0")) {
+    return /^[6-9]\d{9}$/.test(digits.slice(1));
+  }
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return /^[6-9]\d{9}$/.test(digits.slice(2));
+  }
+  return false;
+}
+
+/**
  * Helper to display formatted phone number in UI (+91 XXXXXXXXXX).
  */
 export function formatPhoneForDisplay(phone: string): string {

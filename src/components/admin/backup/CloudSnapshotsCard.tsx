@@ -16,6 +16,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import LoadingScreen from "@/components/common/LoadingScreen";
 import type { CloudSnapshot, FullDatabaseBackup } from "@/lib/backup";
 
 interface CloudSnapshotsCardProps {
@@ -64,10 +65,11 @@ export default function CloudSnapshotsCard({
         </div>
 
         {loadingSnapshots ? (
-          <div className="flex flex-col items-center justify-center min-h-[170px]">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mb-2" />
-            <p className="text-xs text-muted-foreground">Loading recovery checkpoints...</p>
-          </div>
+          <LoadingScreen
+            fullScreen={false}
+            title="Cloud Snapshots"
+            subtitle="Loading recovery checkpoints..."
+          />
         ) : snapshots.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[170px] text-center space-y-2 bg-slate-50/50 dark:bg-slate-900/30 rounded-xl border border-dashed p-4">
             <Clock className="h-7 w-7 text-slate-300 dark:text-slate-600 mx-auto" />

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
+import LoadingScreen from "@/components/common/LoadingScreen";
 import {
   Activity,
   BarChart3,
@@ -263,7 +264,9 @@ export default function AdminLayout() {
 
         {/* Dedicated Independent Scrollable Ticket / Main Content Container */}
         <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 p-2 sm:p-4 md:p-6 focus:outline-none">
-          <Outlet />
+          <Suspense fallback={<LoadingScreen fullScreen={false} title="Admin Workspace" subtitle="Loading view..." />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 

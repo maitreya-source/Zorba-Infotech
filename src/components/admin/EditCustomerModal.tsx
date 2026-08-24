@@ -151,7 +151,7 @@ export default function EditCustomerModal({
             </Label>
             <Input
               id="edit-cust-name"
-              placeholder="e.g. Sharma Rajesh"
+              placeholder="e.g. LastName FirstName"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required

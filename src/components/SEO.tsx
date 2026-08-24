@@ -13,8 +13,8 @@ interface SEOProps {
 }
 
 export const SEO = ({
-  title = "Zorba Infotech – Computer Hardware Dealer & IT Distributor, Neemuch",
-  description = "Zorba Infotech – Neemuch's premier computer hardware dealer, wholesale IT distributor & service center. Laptops, desktops, PC components, CCTV, networking & custom builds.",
+  title = "Zorba Infotech – Best Computer Shop in Neemuch | Laptops & Printers Near Me",
+  description = "Looking for the best computer shop near you in Neemuch? Zorba Infotech is your trusted dealer for laptops, printers, desktop PCs, CCTV cameras, RAM, SSDs, and authorized computer repair for 20+ years.",
   path = "/",
   image = DEFAULT_IMAGE,
   type = "website",
@@ -41,12 +41,12 @@ export const SEO = ({
 export const LocalBusinessSchema = () => {
   const schema = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    "@type": ["LocalBusiness", "ComputerStore", "ElectronicsStore"],
     "@id": `${SITE_URL}/#business`,
     name: "Zorba Infotech",
-    alternateName: ["Zorba Service Center", "Prem Sagar Sales Agency"],
+    alternateName: ["Zorba Service Center", "Prem Sagar Sales Agency", "Zorba Computer Shop Neemuch"],
     description:
-      "Zorba Infotech is Neemuch's premier computer hardware dealer, wholesale IT distributor and authorized service center offering 4,000+ IT products including laptops, desktops, CCTV, networking equipment, biometrics, and custom PC builds.",
+      "Zorba Infotech is Neemuch's trusted computer shop, laptop dealer, printer distributor and authorized service center offering 4,000+ IT products with 20+ years experience.",
     url: SITE_URL,
     telephone: ["+91-9993599730", "+91-9302199730", "+91-9424899730", "+91-9179699730"],
     email: "zorbainfotech@gmail.com",

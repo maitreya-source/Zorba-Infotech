@@ -15,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import LoadingScreen from "@/components/common/LoadingScreen";
 import type { DriveBackupItem } from "@/lib/googleDriveBackup";
 
 interface GoogleDriveArchivesCardProps {
@@ -72,10 +73,11 @@ export default function GoogleDriveArchivesCard({
         </div>
 
         {loadingDriveBackups ? (
-          <div className="flex flex-col items-center justify-center min-h-[190px]">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent mb-2" />
-            <p className="text-xs text-muted-foreground">Connecting to Google Drive...</p>
-          </div>
+          <LoadingScreen
+            fullScreen={false}
+            title="Google Drive Archives"
+            subtitle="Connecting to Google Drive..."
+          />
         ) : driveBackups.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[190px] text-center space-y-2 bg-slate-50/50 dark:bg-slate-900/30 rounded-xl border border-dashed p-4">
             <HardDrive className="h-7 w-7 text-slate-300 dark:text-slate-600 mx-auto" />
