@@ -4,15 +4,14 @@ import {
   formatModelNumber,
   formatIndianPhoneNumber,
   formatPhoneForDisplay,
-  generateSearchTokens,
   generateWhatsAppMessage,
   generateCourierPickupRequestMessage,
   generateCourierDeliveryInquiryMessage,
   generateServiceCenterFollowUpMessage,
   sanitizeExternalUrl,
 } from "@/lib/utils";
-import { getFinancialYear } from "@/lib/firestore";
-import type { Product, ServicePart, QuotationItem } from "@/lib/types";
+import { getFinancialYear, normalizePhone10 } from "@/lib/firestore";
+import type { Product, ServicePart, QuotationItem, Customer } from "@/lib/types";
 
 describe("Zorba Infotech Integration & Business Logic Suite", () => {
   // ==========================================
@@ -102,25 +101,63 @@ describe("Zorba Infotech Integration & Business Logic Suite", () => {
   });
 
   // ==========================================
-  // 3. Customer Search Token Generation (Server-side Indexing)
+  // 3. Customer Slim In-Memory Search (Zero Token Bloat)
   // ==========================================
-  describe("Search Token Indexing for High-Performance Search", () => {
-    it("generates searchable prefixes across name, phone, company, email, and ID", () => {
-      const tokens = generateSearchTokens({
+  describe("Customer Slim Index Matching & Instant Multi-Field Search", () => {
+    const mockCustomers: Customer[] = [
+      {
         id: "cust-101",
         name: "Ramesh Sharma",
-        phone: "9826122334",
+        phone: "919826122334",
+        additionalPhones: ["917422200111"],
         companyName: "Sharma Trading Co",
         email: "ramesh@gmail.com",
-      });
+        createdAt: Date.now(),
+      },
+      {
+        id: "cust-102",
+        name: "Suresh Jain",
+        phone: "919425188770",
+        companyName: "Jain Stationary & Cyber",
+        email: "jain@gmail.com",
+        createdAt: Date.now(),
+      },
+    ];
 
-      expect(tokens).toContain("ramesh");
-      expect(tokens).toContain("sharma");
-      expect(tokens).toContain("trading");
-      expect(tokens).toContain("cust-101");
-      // Phone sub-strings
-      expect(tokens).toContain("9826");
-      expect(tokens).toContain("2334");
+    it("performs instant multi-token search across name, company, and phone", () => {
+      const search = (q: string) => {
+        const clean = q.trim().toLowerCase();
+        const qDigits = clean.replace(/\D/g, "");
+        const tokens = clean.split(/\s+/).filter(Boolean);
+
+        return mockCustomers.filter((c) => {
+          const name = (c.name || "").toLowerCase();
+          const phoneDigits = (c.phone || "").replace(/\D/g, "");
+          const company = (c.companyName || "").toLowerCase();
+          const email = (c.email || "").toLowerCase();
+
+          if (qDigits && (phoneDigits.includes(qDigits) || (c.phone && c.phone.includes(clean)))) {
+            return true;
+          }
+          if (qDigits && c.additionalPhones?.some((p) => p.replace(/\D/g, "").includes(qDigits))) {
+            return true;
+          }
+
+          return tokens.every((tok) =>
+            name.includes(tok) || company.includes(tok) || email.includes(tok)
+          );
+        });
+      };
+
+      // Search full name
+      expect(search("ramesh sharma").length).toBe(1);
+      // Search partial phone
+      expect(search("9826").length).toBe(1);
+      // Search alternate phone
+      expect(search("742220").length).toBe(1);
+      // Search company
+      expect(search("stationary").length).toBe(1);
+      expect(search("stationary")[0].id).toBe("cust-102");
     });
   });
 

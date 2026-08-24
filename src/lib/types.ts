@@ -76,8 +76,8 @@ export interface Customer {
   city?: string;
   companyName?: string;
   notes?: string;
-  searchTokens?: string[];
   createdAt: string | number;
+  updatedAt?: number;
 }
 
 export interface FinancialYearDoc {
@@ -444,5 +444,31 @@ export interface JobApplication {
   createdAt: number;
   updatedAt: number;
 }
+
+export interface MonthlyReportSummary {
+  id: string; // e.g. "2026-08"
+  monthKey: string;
+  fyId?: string;
+  totalCalls: number;
+  totalRevenue: number;
+  partsTotal: number;
+  serviceCharges: number;
+  completedCalls: number;
+  activeCalls: number;
+  inHouseCount: number;
+  serviceCenterCount: number;
+  onsiteCount: number;
+  dailyBreakdown?: Record<string, { count: number; revenue: number }>;
+  updatedAt?: number;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  lastDoc?: any;
+  hasMore: boolean;
+  totalCount?: number;
+}
+
+
 
 
