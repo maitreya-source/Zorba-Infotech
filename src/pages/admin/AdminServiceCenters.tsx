@@ -31,6 +31,7 @@ import {
 } from "@/components/common";
 import { getServiceCenters, deleteServiceCenter } from "@/lib/firestore";
 import type { ServiceCenter } from "@/lib/types";
+import { toTitleCase } from "@/lib/utils";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import EditServiceCenterModal from "@/components/admin/EditServiceCenterModal";
@@ -244,7 +245,7 @@ export default function AdminServiceCenters() {
             <SelectItem value="all">All Hub Cities</SelectItem>
             {availableCities.map((city) => (
               <SelectItem key={city} value={city}>
-                {city}
+                {toTitleCase(city)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -342,7 +343,7 @@ export default function AdminServiceCenters() {
                           </div>
                           <div className="min-w-0">
                             <div className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
-                              <span>{sc.name}</span>
+                              <span>{toTitleCase(sc.name)}</span>
                               <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
                             </div>
                             {sc.email && (
@@ -372,10 +373,10 @@ export default function AdminServiceCenters() {
                                   variant="outline"
                                   className="h-5 px-1.5 text-[10px] font-bold uppercase shrink-0 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/60"
                                 >
-                                  {addr.city || "Hub"}
+                                  {toTitleCase(addr.city || "Hub")}
                                 </Badge>
                                 <span className="text-slate-600 dark:text-slate-300">
-                                  {addr.address}
+                                  {toTitleCase(addr.address)}
                                 </span>
                               </div>
                             ))
@@ -392,7 +393,7 @@ export default function AdminServiceCenters() {
                             <a
                               href={`tel:${callPhone.replace(/\D/g, "")}`}
                               className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/60 border border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-colors"
-                              title={`Call ${sc.name} (${callPhone})`}
+                              title={`Call ${toTitleCase(sc.name)} (${callPhone})`}
                             >
                               <Phone className="h-3.5 w-3.5" />
                             </a>
@@ -403,10 +404,10 @@ export default function AdminServiceCenters() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800 rounded-lg cursor-pointer transition-colors"
-                              title={`Send WhatsApp API message to ${sc.name} (${waPhone})`}
+                              title={`Send WhatsApp API message to ${toTitleCase(sc.name)} (${waPhone})`}
                               onClick={() => {
                                 setWhatsAppTarget({
-                                  name: sc.name,
+                                  name: toTitleCase(sc.name),
                                   phone: waPhone,
                                 });
                               }}
@@ -474,7 +475,7 @@ export default function AdminServiceCenters() {
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {sc.name}
+                          {toTitleCase(sc.name)}
                         </h3>
                         {sc.email && (
                           <p className="text-[11px] text-slate-400 mt-0.5">{sc.email}</p>
@@ -520,7 +521,7 @@ export default function AdminServiceCenters() {
                         type="button"
                         onClick={() => {
                           setWhatsAppTarget({
-                            name: sc.name,
+                            name: toTitleCase(sc.name),
                             phone: waPhone,
                           });
                         }}
@@ -546,10 +547,10 @@ export default function AdminServiceCenters() {
                           variant="outline"
                           className="h-5 px-1.5 text-[10px] font-bold uppercase shrink-0 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/60"
                         >
-                          {addr.city || "Hub"}
+                          {toTitleCase(addr.city || "Hub")}
                         </Badge>
                         <span className="text-slate-600 dark:text-slate-400">
-                          {addr.address}
+                          {toTitleCase(addr.address)}
                         </span>
                       </div>
                     ))}

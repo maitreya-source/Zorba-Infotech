@@ -175,6 +175,8 @@ export default function AdminServiceCalls() {
 
   useEffect(() => {
     loadData();
+    // Preload heavy Service Call form chunk in background for instant 0ms editing
+    import("./AdminServiceCallForm");
   }, []);
 
   const handleDelete = async () => {

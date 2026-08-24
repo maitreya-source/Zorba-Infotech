@@ -96,8 +96,22 @@ export default function EditServiceCenterModal({
       return;
     }
 
-    const cleanAddresses = addresses.filter((a) => a.address.trim().length > 0);
-    const cleanPocs = pocs.filter((p) => p.name.trim().length > 0);
+    const cleanAddresses = addresses
+      .filter((a) => a.address.trim().length > 0)
+      .map((a) => ({
+        ...a,
+        city: a.city?.trim() ? toTitleCase(a.city) : undefined,
+        address: toTitleCase(a.address),
+      }));
+
+    const cleanPocs = pocs
+      .filter((p) => p.name.trim().length > 0)
+      .map((p) => ({
+        ...p,
+        name: toTitleCase(p.name),
+        designation: p.designation?.trim() ? toTitleCase(p.designation) : undefined,
+        phone: p.phone.trim() ? formatIndianPhoneNumber(p.phone) : "",
+      }));
 
     setSaving(true);
     try {
@@ -105,7 +119,7 @@ export default function EditServiceCenterModal({
         name: toTitleCase(name),
         phone: generalPhone.trim() ? formatIndianPhoneNumber(generalPhone) : undefined,
         whatsappPhone: whatsappPhone.trim() ? formatIndianPhoneNumber(whatsappPhone) : undefined,
-        email: email.trim() || undefined,
+        email: email.trim().toLowerCase() || undefined,
         addresses: cleanAddresses,
         pocs: cleanPocs,
         active,
@@ -141,6 +155,7 @@ export default function EditServiceCenterModal({
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onBlur={() => setName((prev) => toTitleCase(prev))}
                 required
                 className="mt-1 h-9 text-xs rounded-xl"
               />
