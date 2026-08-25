@@ -367,23 +367,124 @@ export const FEATURED_QUICK_BRANDS = [
   "Brother",
 ];
 
-export function searchBrandSuggestions(
-  query: string,
-  limitCount = 20,
-  categoryFilter?: string
-): HardwareBrand[] {
-  let sourceList = TOP_HARDWARE_BRANDS;
+export function mapCategoryToHardwareCategory(
+  categoryName?: string | null
+): HardwareBrand["category"] | null {
+  if (!categoryName || !categoryName.trim()) return null;
+  const lower = categoryName.trim().toLowerCase();
 
-  if (categoryFilter && categoryFilter !== "All") {
-    sourceList = sourceList.filter((b) => b.category === categoryFilter);
+  if (
+    lower.includes("cctv") ||
+    lower.includes("camera") ||
+    lower.includes("dvr") ||
+    lower.includes("nvr") ||
+    lower.includes("security") ||
+    lower.includes("surveillance") ||
+    lower.includes("biometric") ||
+    lower.includes("attendance") ||
+    lower.includes("access control")
+  ) {
+    return "CCTV & Security";
   }
 
+  if (
+    lower.includes("print") ||
+    lower.includes("scan") ||
+    lower.includes("pos") ||
+    lower.includes("receipt") ||
+    lower.includes("barcode") ||
+    lower.includes("toner") ||
+    lower.includes("cartridge") ||
+    lower.includes("projector")
+  ) {
+    return "Printers & Scanners";
+  }
+
+  if (
+    lower.includes("laptop") ||
+    lower.includes("desktop") ||
+    lower.includes("computer") ||
+    lower.includes("pc") ||
+    lower.includes("server") ||
+    lower.includes("workstation") ||
+    lower.includes("macbook") ||
+    lower.includes("all-in-one") ||
+    lower.includes("aio")
+  ) {
+    return "PC & Laptops";
+  }
+
+  if (
+    lower.includes("disk") ||
+    lower.includes("hdd") ||
+    lower.includes("ssd") ||
+    lower.includes("ram") ||
+    lower.includes("memory") ||
+    lower.includes("storage") ||
+    lower.includes("motherboard") ||
+    lower.includes("processor") ||
+    lower.includes("gpu") ||
+    lower.includes("graphic") ||
+    lower.includes("smps") ||
+    lower.includes("power supply") ||
+    lower.includes("cabinet")
+  ) {
+    return "Components & Storage";
+  }
+
+  if (
+    lower.includes("network") ||
+    lower.includes("router") ||
+    lower.includes("switch") ||
+    lower.includes("wifi") ||
+    lower.includes("wi-fi") ||
+    lower.includes("lan") ||
+    lower.includes("access point") ||
+    lower.includes("ups") ||
+    lower.includes("inverter") ||
+    lower.includes("battery")
+  ) {
+    return "Networking & Power";
+  }
+
+  if (
+    lower.includes("mouse") ||
+    lower.includes("keyboard") ||
+    lower.includes("headphone") ||
+    lower.includes("headset") ||
+    lower.includes("speaker") ||
+    lower.includes("webcam") ||
+    lower.includes("peripheral") ||
+    lower.includes("accessory") ||
+    lower.includes("cable") ||
+    lower.includes("adapter")
+  ) {
+    return "Peripherals";
+  }
+
+  return null;
+}
+
+export function searchBrandSuggestions(
+  query: string,
+  limitCount = 30,
+  categoryHint?: string
+): HardwareBrand[] {
+  const mappedCategory = mapCategoryToHardwareCategory(categoryHint);
+
   if (!query || !query.trim()) {
-    if (categoryFilter && categoryFilter !== "All") {
-      return sourceList.slice(0, limitCount);
+    // If a category was recognized, show all brands in that category first, then other popular brands
+    if (mappedCategory) {
+      const primaryCategoryBrands = TOP_HARDWARE_BRANDS.filter(
+        (b) => b.category === mappedCategory
+      );
+      const otherCategoryBrands = TOP_HARDWARE_BRANDS.filter(
+        (b) => b.category !== mappedCategory && b.popular
+      );
+      return [...primaryCategoryBrands, ...otherCategoryBrands].slice(0, limitCount);
     }
 
-    // Return a balanced mix of popular brands from EVERY category
+    // Default: Return a balanced mix of popular brands from EVERY category
     const balanced: HardwareBrand[] = [];
     const categories: HardwareBrand["category"][] = [
       "CCTV & Security",
@@ -396,27 +497,47 @@ export function searchBrandSuggestions(
 
     for (const cat of categories) {
       const catBrands = TOP_HARDWARE_BRANDS.filter((b) => b.category === cat && b.popular);
-      balanced.push(...catBrands.slice(0, 3));
+      balanced.push(...catBrands.slice(0, 4));
     }
 
-    return balanced.slice(0, limitCount);
+    // If still have room, add remaining brands
+    const remaining = TOP_HARDWARE_BRANDS.filter((b) => !balanced.includes(b));
+    return [...balanced, ...remaining].slice(0, limitCount);
   }
 
   const cleanQ = query.trim().toLowerCase();
-  
-  // Exact or prefix matches first, then contains matches
-  const prefixMatches: HardwareBrand[] = [];
-  const containsMatches: HardwareBrand[] = [];
 
-  for (const brand of sourceList) {
+  // Search through all TOP_HARDWARE_BRANDS
+  // If mappedCategory exists, matches within that category rank highest
+  const exactCategoryPrefix: HardwareBrand[] = [];
+  const exactCategoryContains: HardwareBrand[] = [];
+  const otherPrefix: HardwareBrand[] = [];
+  const otherContains: HardwareBrand[] = [];
+
+  for (const brand of TOP_HARDWARE_BRANDS) {
     const brandName = brand.name.toLowerCase();
+    const isTargetCategory = mappedCategory ? brand.category === mappedCategory : false;
+
     if (brandName.startsWith(cleanQ)) {
-      prefixMatches.push(brand);
+      if (isTargetCategory) {
+        exactCategoryPrefix.push(brand);
+      } else {
+        otherPrefix.push(brand);
+      }
     } else if (brandName.includes(cleanQ) || brand.category.toLowerCase().includes(cleanQ)) {
-      containsMatches.push(brand);
+      if (isTargetCategory) {
+        exactCategoryContains.push(brand);
+      } else {
+        otherContains.push(brand);
+      }
     }
   }
 
-  return [...prefixMatches, ...containsMatches].slice(0, limitCount);
+  return [
+    ...exactCategoryPrefix,
+    ...otherPrefix,
+    ...exactCategoryContains,
+    ...otherContains,
+  ].slice(0, limitCount);
 }
 

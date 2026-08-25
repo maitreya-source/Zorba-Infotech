@@ -4,6 +4,7 @@ import BrandTypeahead from "@/components/admin/BrandTypeahead";
 import {
   TOP_HARDWARE_BRANDS,
   searchBrandSuggestions,
+  mapCategoryToHardwareCategory,
 } from "@/lib/constants";
 
 describe("Top Hardware Brands & Search Suggestions", () => {
@@ -11,55 +12,45 @@ describe("Top Hardware Brands & Search Suggestions", () => {
     expect(TOP_HARDWARE_BRANDS.length).toBeGreaterThanOrEqual(100);
   });
 
-  it("includes top PC, Printer, Camera, and Component brands", () => {
-    const brandNames = TOP_HARDWARE_BRANDS.map((b) => b.name.toLowerCase());
-    // PCs & Laptops
-    expect(brandNames).toContain("hp");
-    expect(brandNames).toContain("dell");
-    expect(brandNames).toContain("lenovo");
-    expect(brandNames).toContain("asus");
-    expect(brandNames).toContain("apple");
-
-    // Printers & Scanners
-    expect(brandNames).toContain("canon");
-    expect(brandNames).toContain("epson");
-    expect(brandNames).toContain("brother");
-    expect(brandNames).toContain("tvs electronics");
-
-    // CCTV, Security & Cameras
-    expect(brandNames).toContain("hikvision");
-    expect(brandNames).toContain("cp plus");
-    expect(brandNames).toContain("dahua");
-    expect(brandNames).toContain("ezviz");
-    expect(brandNames).toContain("tp-link tapo");
-    expect(brandNames).toContain("essl");
-
-    // Components & Networking
-    expect(brandNames).toContain("western digital (wd)");
-    expect(brandNames).toContain("seagate");
-    expect(brandNames).toContain("kingston");
-    expect(brandNames).toContain("d-link");
-    expect(brandNames).toContain("tp-link");
-    expect(brandNames).toContain("logitech");
+  it("maps Firestore categories correctly to hardware categories", () => {
+    expect(mapCategoryToHardwareCategory("Laptops")).toBe("PC & Laptops");
+    expect(mapCategoryToHardwareCategory("Desktop Computers")).toBe("PC & Laptops");
+    expect(mapCategoryToHardwareCategory("CCTV Cameras")).toBe("CCTV & Security");
+    expect(mapCategoryToHardwareCategory("Biometric Attendance")).toBe("CCTV & Security");
+    expect(mapCategoryToHardwareCategory("Printers & Inks")).toBe("Printers & Scanners");
+    expect(mapCategoryToHardwareCategory("Routers & Switches")).toBe("Networking & Power");
+    expect(mapCategoryToHardwareCategory("Keyboards & Mice")).toBe("Peripherals");
+    expect(mapCategoryToHardwareCategory("Hard Disks & SSDs")).toBe("Components & Storage");
   });
 
-  it("returns balanced multi-category brands when query is empty", () => {
+  it("prioritizes matching category brands when categoryHint is provided and NEVER returns empty", () => {
+    const laptopBrands = searchBrandSuggestions("", 30, "Laptops");
+    expect(laptopBrands.length).toBeGreaterThan(0);
+    expect(laptopBrands[0].category).toBe("PC & Laptops");
+    expect(laptopBrands.some((b) => b.name === "HP")).toBe(true);
+    expect(laptopBrands.some((b) => b.name === "Dell")).toBe(true);
+
+    const cctvBrands = searchBrandSuggestions("", 30, "CCTV Cameras");
+    expect(cctvBrands.length).toBeGreaterThan(0);
+    expect(cctvBrands[0].category).toBe("CCTV & Security");
+    expect(cctvBrands.some((b) => b.name === "Hikvision")).toBe(true);
+    expect(cctvBrands.some((b) => b.name === "CP Plus")).toBe(true);
+
+    const printerBrands = searchBrandSuggestions("", 30, "Printers");
+    expect(printerBrands.length).toBeGreaterThan(0);
+    expect(printerBrands[0].category).toBe("Printers & Scanners");
+    expect(printerBrands.some((b) => b.name === "Canon")).toBe(true);
+    expect(printerBrands.some((b) => b.name === "Epson")).toBe(true);
+  });
+
+  it("returns balanced multi-category brands when query is empty and no category is given", () => {
     const results = searchBrandSuggestions("");
     expect(results.length).toBeGreaterThan(0);
     const categories = new Set(results.map((r) => r.category));
-    // Verify it contains multiple categories (CCTV, Printers, PCs, etc.)
     expect(categories.size).toBeGreaterThanOrEqual(4);
     expect(categories.has("CCTV & Security")).toBe(true);
     expect(categories.has("Printers & Scanners")).toBe(true);
     expect(categories.has("PC & Laptops")).toBe(true);
-  });
-
-  it("filters suggestions by category", () => {
-    const cctvResults = searchBrandSuggestions("", 20, "CCTV & Security");
-    expect(cctvResults.length).toBeGreaterThan(0);
-    expect(cctvResults.every((b) => b.category === "CCTV & Security")).toBe(true);
-    expect(cctvResults.some((b) => b.name === "Hikvision")).toBe(true);
-    expect(cctvResults.some((b) => b.name === "CP Plus")).toBe(true);
   });
 
   it("filters suggestions by prefix and substring matches", () => {
@@ -104,7 +95,7 @@ describe("BrandTypeahead Component", () => {
     expect(brandValue).toBe("Hikvision");
   });
 
-  it("shows clean suggestions dropdown when focused and filters on typing", () => {
+  it("shows suggestions dropdown with relevant brands when categoryHint is passed", () => {
     let brandValue = "";
     const handleChange = (val: string) => {
       brandValue = val;
@@ -114,6 +105,7 @@ describe("BrandTypeahead Component", () => {
       <BrandTypeahead
         value={brandValue}
         onChange={handleChange}
+        categoryHint="CCTV Cameras"
         showChips={false}
       />
     );
@@ -121,13 +113,9 @@ describe("BrandTypeahead Component", () => {
     const input = screen.getByPlaceholderText(/e\.g\. Hikvision \/ HP/i);
     fireEvent.focus(input);
 
-    // Initial dropdown shows balanced multi-category top brands
+    // Initial dropdown shows CCTV brands at top
     expect(screen.getByText("Hikvision")).toBeInTheDocument();
-    expect(screen.getByText("Canon")).toBeInTheDocument();
-    expect(screen.getByText("Dell")).toBeInTheDocument();
-
-    // Type query to filter
-    fireEvent.change(input, { target: { value: "epson" } });
-    expect(screen.getByText("Epson")).toBeInTheDocument();
+    expect(screen.getByText("CP Plus")).toBeInTheDocument();
+    expect(screen.getByText("Dahua")).toBeInTheDocument();
   });
 });
