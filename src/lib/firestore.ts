@@ -370,7 +370,7 @@ export async function getProductsPaginated(options?: {
     constraints.push(orderBy("createdAt", "desc"));
     constraints.push(limit(pageSize + 1));
 
-    if (options?.lastDoc) {
+    if (options?.lastDoc && typeof (options.lastDoc as any)?.data === "function") {
       constraints.push(startAfter(options.lastDoc));
     }
 

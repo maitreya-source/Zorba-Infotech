@@ -1,9 +1,20 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Package, Star, Search, RefreshCw, Globe, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Package,
+  Star,
+  RefreshCw,
+  Globe,
+  EyeOff,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -21,7 +32,7 @@ import {
   LoadingScreen,
 } from "@/components/common";
 import {
-  getProductsPaginated,
+  getProducts,
   getCategories,
   deleteProduct,
   deleteProductPhoto,
@@ -30,95 +41,218 @@ import {
 import type { Product, Category } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 
+type SortField = "name" | "category" | "price" | "stock" | "visibility" | "createdAt";
+type SortDirection = "asc" | "desc";
+
 export default function AdminProducts() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [visibilityFilter, setVisibilityFilter] = useState<"all" | "website" | "erp">("all");
+  
+  // Interactive sorting state
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  // Pagination state
   const [pageSize, setPageSize] = useState<number>(25);
-  const [pageNumber, setPageNumber] = useState<number>(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [docHistory, setDocHistory] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  
+  // Dialog / Action state
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const searchTimerRef = useRef<any>(null);
-
-  const load = async (targetPage = 1, lastDocRef?: any) => {
-    setLoading(true);
+  const loadData = async (forceRefresh = false) => {
+    if (forceRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const [res, cats] = await Promise.all([
-        getProductsPaginated({
-          pageSize,
-          lastDoc: lastDocRef,
-          categoryId: catFilter !== "all" ? catFilter : undefined,
-          visibilityFilter,
-          search: search.trim(),
-        }),
+      const [prods, cats] = await Promise.all([
+        getProducts(forceRefresh),
         categories.length === 0 ? getCategories() : Promise.resolve(categories),
       ]);
-      setProducts(res.items);
-      setHasMore(res.hasMore);
+      setProducts(prods);
       if (categories.length === 0) setCategories(cats);
     } catch (err: any) {
       console.error("Firebase connection error in AdminProducts:", err);
       setError(err?.message || "Firebase connection error. Could not connect to database.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    setPageNumber(1);
-    setDocHistory([]);
-    load(1, undefined);
-  }, [catFilter, visibilityFilter, pageSize]);
+    loadData(true);
+  }, []);
 
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPageNumber(1);
-    setDocHistory([]);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await getProductsPaginated({
-          pageSize,
-          categoryId: catFilter !== "all" ? catFilter : undefined,
-          visibilityFilter,
-          search: val.trim(),
-        });
-        setProducts(res.items);
-        setHasMore(res.hasMore);
-      } catch (err: any) {
-        setError(err?.message || "Failed to search products");
-      } finally {
-        setLoading(false);
+  const catMap = useMemo(() => {
+    return Object.fromEntries(categories.map((c) => [c.id, c.name]));
+  }, [categories]);
+
+  // Filter products by search, category, and website visibility
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return products.filter((p) => {
+      // Category filter
+      if (catFilter !== "all" && p.categoryId !== catFilter) {
+        return false;
       }
-    }, 250);
+
+      // Visibility filter
+      if (visibilityFilter === "website" && p.showOnWebsite === false) {
+        return false;
+      }
+      if (visibilityFilter === "erp" && p.showOnWebsite !== false) {
+        return false;
+      }
+
+      // Search query filter across multiple fields
+      if (q) {
+        const nameMatch = p.name && p.name.toLowerCase().includes(q);
+        const modelMatch = p.model && p.model.toLowerCase().includes(q);
+        const brandMatch = p.brand && p.brand.toLowerCase().includes(q);
+        const itemCodeMatch = p.itemCode && p.itemCode.toLowerCase().includes(q);
+        const descMatch = p.description && p.description.toLowerCase().includes(q);
+        const categoryName = catMap[p.categoryId]?.toLowerCase() || "";
+        const catMatch = categoryName.includes(q);
+        if (!nameMatch && !modelMatch && !brandMatch && !itemCodeMatch && !descMatch && !catMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [products, catFilter, visibilityFilter, search, catMap]);
+
+  // Sort filtered products
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "name": {
+          const nameA = (a.name || "").toLowerCase();
+          const nameB = (b.name || "").toLowerCase();
+          cmp = nameA.localeCompare(nameB);
+          if (cmp === 0) {
+            const modelA = (a.model || "").toLowerCase();
+            const modelB = (b.model || "").toLowerCase();
+            cmp = modelA.localeCompare(modelB);
+          }
+          break;
+        }
+        case "category": {
+          const catA = (catMap[a.categoryId] || a.category || "").toLowerCase();
+          const catB = (catMap[b.categoryId] || b.category || "").toLowerCase();
+          cmp = catA.localeCompare(catB);
+          if (cmp === 0) {
+            cmp = (a.name || "").toLowerCase().localeCompare((b.name || "").toLowerCase());
+          }
+          break;
+        }
+        case "price": {
+          const priceA = a.price != null ? Number(a.price) : null;
+          const priceB = b.price != null ? Number(b.price) : null;
+          if (priceA === null && priceB === null) {
+            cmp = 0;
+          } else if (priceA === null) {
+            return 1;
+          } else if (priceB === null) {
+            return -1;
+          } else {
+            cmp = priceA - priceB;
+          }
+          break;
+        }
+        case "stock": {
+          const stockA = a.inStock ? 1 : 0;
+          const stockB = b.inStock ? 1 : 0;
+          cmp = stockA - stockB;
+          if (cmp === 0) {
+            cmp = (a.name || "").toLowerCase().localeCompare((b.name || "").toLowerCase());
+          }
+          break;
+        }
+        case "visibility": {
+          const visA = a.showOnWebsite !== false ? 1 : 0;
+          const visB = b.showOnWebsite !== false ? 1 : 0;
+          cmp = visA - visB;
+          if (cmp === 0) {
+            cmp = (a.name || "").toLowerCase().localeCompare((b.name || "").toLowerCase());
+          }
+          break;
+        }
+        case "createdAt": {
+          const timeA = (a.createdAt as any)?.toMillis?.() ?? (typeof a.createdAt === "number" ? a.createdAt : 0);
+          const timeB = (b.createdAt as any)?.toMillis?.() ?? (typeof b.createdAt === "number" ? b.createdAt : 0);
+          cmp = timeA - timeB;
+          break;
+        }
+        default:
+          cmp = 0;
+      }
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+  }, [filteredProducts, sortField, sortDirection, catMap]);
+
+  // Reset page when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, catFilter, visibilityFilter, pageSize]);
+
+  // Sliced paginated results
+  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return sortedProducts.slice(start, start + pageSize);
+  }, [sortedProducts, safeCurrentPage, pageSize]);
+
+  // Handle clickable header sort toggle
+  const handleHeaderSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
   };
 
-  const handleNextPage = async () => {
-    if (!hasMore || loading) return;
-    const lastDoc = products.length > 0 ? (products[products.length - 1] as any) : undefined;
-    setDocHistory((prev) => [...prev, lastDoc]);
-    setPageNumber((prev) => prev + 1);
-    load(pageNumber + 1, lastDoc);
-  };
-
-  const handlePrevPage = async () => {
-    if (pageNumber <= 1 || loading) return;
-    const prevHistory = [...docHistory];
-    prevHistory.pop();
-    const prevDoc = prevHistory.length > 0 ? prevHistory[prevHistory.length - 1] : undefined;
-    setDocHistory(prevHistory);
-    setPageNumber((prev) => prev - 1);
-    load(pageNumber - 1, prevDoc);
+  const renderSortHeader = (label: string, field: SortField, className = "") => {
+    const isActive = sortField === field;
+    return (
+      <th
+        className={`px-4 py-3 cursor-pointer select-none transition-colors hover:text-slate-900 dark:hover:text-white ${className}`}
+        onClick={() => handleHeaderSort(field)}
+        title={`Sort by ${label} (${isActive ? (sortDirection === "asc" ? "Ascending" : "Descending") : "Click to sort"})`}
+      >
+        <div className="flex items-center gap-1.5 group">
+          <span className={isActive ? "text-[#2563EB] dark:text-blue-400 font-extrabold" : "text-slate-500 dark:text-slate-400"}>
+            {label}
+          </span>
+          <span className="shrink-0">
+            {isActive ? (
+              sortDirection === "asc" ? (
+                <ArrowUp className="h-3.5 w-3.5 text-[#2563EB] dark:text-blue-400" />
+              ) : (
+                <ArrowDown className="h-3.5 w-3.5 text-[#2563EB] dark:text-blue-400" />
+              )
+            ) : (
+              <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-40 group-hover:opacity-100 transition-opacity" />
+            )}
+          </span>
+        </div>
+      </th>
+    );
   };
 
   useTallyShortcuts({
@@ -152,15 +286,12 @@ export default function AdminProducts() {
       await deleteProductPhoto(deleteId);
       await deleteProduct(deleteId);
       toast.success("Product deleted successfully");
+      setProducts((prev) => prev.filter((p) => p.id !== deleteId));
       setDeleteId(null);
-      load(pageNumber, docHistory.length > 0 ? docHistory[docHistory.length - 1] : undefined);
     } catch {
       toast.error("Failed to delete product");
     }
   };
-
-  const catMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
-
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto text-xs">
@@ -178,24 +309,37 @@ export default function AdminProducts() {
             </p>
           </div>
 
-          <Link to="/admin/products/new">
+          <div className="flex items-center gap-2">
             <Button
+              variant="outline"
               size="sm"
-              className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
+              onClick={() => loadData(true)}
+              disabled={loading || refreshing}
+              className="gap-1.5 font-semibold text-slate-200 border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
+              title="Refresh product directory"
             >
-              <Plus className="h-4 w-4" /> Add Product (Alt+C)
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
             </Button>
-          </Link>
+            <Link to="/admin/products/new">
+              <Button
+                size="sm"
+                className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" /> Add Product (Alt+C)
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Filter / Search Bar */}
       <SearchFilterBar
         value={search}
-        onChange={handleSearchChange}
-        placeholder="Search by model, name, brand, code…"
-        count={products.length}
-        countLabel="Current Page"
+        onChange={(val) => setSearch(val)}
+        placeholder="Search by model, name, brand, code, category…"
+        count={filteredProducts.length}
+        countLabel="Total Products"
       >
         <Select value={catFilter} onValueChange={(v) => setCatFilter(v)}>
           <SelectTrigger className="w-full sm:w-40 h-9 text-xs rounded-xl">
@@ -221,6 +365,18 @@ export default function AdminProducts() {
             <SelectItem value="erp">🔒 ERP Only</SelectItem>
           </SelectContent>
         </Select>
+
+        <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+          <SelectTrigger className="w-full sm:w-28 h-9 text-xs rounded-xl">
+            <SelectValue placeholder="Page Size" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10 / page</SelectItem>
+            <SelectItem value="25">25 / page</SelectItem>
+            <SelectItem value="50">50 / page</SelectItem>
+            <SelectItem value="100">100 / page</SelectItem>
+          </SelectContent>
+        </Select>
       </SearchFilterBar>
 
       {/* Table / Loading / Error */}
@@ -231,10 +387,10 @@ export default function AdminProducts() {
       ) : error ? (
         <FirebaseErrorState
           error={error}
-          onRetry={() => load(pageNumber)}
+          onRetry={() => loadData(true)}
           title="Catalog Sync Error"
         />
-      ) : products.length === 0 ? (
+      ) : filteredProducts.length === 0 ? (
         <EmptyState
           icon={Package}
           title="No Products Found"
@@ -253,16 +409,16 @@ export default function AdminProducts() {
             <table className="w-full text-left text-xs">
               <thead className="border-b bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="px-4 py-3">Product & Model</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Price</th>
-                  <th className="px-4 py-3">Stock Status</th>
-                  <th className="px-4 py-3">Website Listing</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  {renderSortHeader("Product & Model", "name", "min-w-[220px]")}
+                  {renderSortHeader("Category", "category", "min-w-[120px]")}
+                  {renderSortHeader("Price", "price", "min-w-[100px]")}
+                  {renderSortHeader("Stock Status", "stock", "min-w-[110px]")}
+                  {renderSortHeader("Website Listing", "visibility", "min-w-[120px]")}
+                  <th className="px-4 py-3 text-right min-w-[90px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {products.map((product) => (
+                {paginatedProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -301,7 +457,7 @@ export default function AdminProducts() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-medium">
-                      {catMap[product.categoryId] ?? "—"}
+                      {catMap[product.categoryId] ?? product.category ?? "—"}
                     </td>
                     <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">
                       {product.price != null ? (
@@ -359,6 +515,7 @@ export default function AdminProducts() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                            title="Edit Product"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -368,6 +525,7 @@ export default function AdminProducts() {
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive cursor-pointer"
                           onClick={() => setDeleteId(product.id)}
+                          title="Delete Product"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -382,19 +540,16 @@ export default function AdminProducts() {
       )}
 
       {/* Pagination Footer */}
-      {!loading && !error && products.length > 0 && (
+      {!loading && !error && filteredProducts.length > 0 && (
         <TablePagination
-          pageNumber={pageNumber}
-          currentItemsCount={products.length}
-          hasMore={hasMore}
-          isLoading={loading}
-          label="products"
+          pageNumber={safeCurrentPage}
+          currentItemsCount={paginatedProducts.length}
+          hasMore={safeCurrentPage < totalPages}
+          isLoading={loading || refreshing}
+          pageSize={pageSize}
+          label={`products (Page ${safeCurrentPage} of ${totalPages} • Total ${filteredProducts.length})`}
           onPageChange={(newPage) => {
-            if (newPage > pageNumber) {
-              handleNextPage();
-            } else {
-              handlePrevPage();
-            }
+            setCurrentPage(Math.max(1, Math.min(totalPages, newPage)));
           }}
         />
       )}
@@ -411,3 +566,4 @@ export default function AdminProducts() {
     </div>
   );
 }
+
