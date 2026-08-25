@@ -9,7 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -23,6 +25,9 @@ import {
 import { getCategories, getProduct, updateProduct } from "@/lib/firestore";
 import { toTitleCase, formatModelNumber } from "@/lib/utils";
 import type { Category, Product } from "@/lib/types";
+import { DEFAULT_WARRANTY } from "@/lib/constants";
+import WarrantySelector from "@/components/admin/WarrantySelector";
+import BrandTypeahead from "@/components/admin/BrandTypeahead";
 
 interface EditProductModalProps {
   productId?: string;
@@ -44,6 +49,7 @@ export default function EditProductModal({
   const [model, setModel] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [price, setPrice] = useState("");
+  const [showPriceOnWebsite, setShowPriceOnWebsite] = useState(true);
   const [warranty, setWarranty] = useState("");
   const [description, setDescription] = useState("");
   const [showOnWebsite, setShowOnWebsite] = useState(true);
@@ -72,6 +78,7 @@ export default function EditProductModal({
         setModel(prod.model || "");
         setCategoryId(prod.categoryId || "");
         setPrice(prod.price !== null && prod.price !== undefined ? String(prod.price) : "");
+        setShowPriceOnWebsite(prod.showPriceOnWebsite !== false);
         setWarranty(prod.warranty || "");
         setDescription(prod.description || "");
         setShowOnWebsite(prod.showOnWebsite !== false);
@@ -101,7 +108,8 @@ export default function EditProductModal({
         model: formatModelNumber(model),
         categoryId,
         price: priceNum !== null && !isNaN(priceNum) ? priceNum : null,
-        warranty: warranty.trim() ? toTitleCase(warranty) : "",
+        showPriceOnWebsite,
+        warranty: warranty.trim(),
         description: description.trim(),
         showOnWebsite,
       };
@@ -172,13 +180,13 @@ export default function EditProductModal({
             {/* Brand & Model */}
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <Label className="text-xs font-semibold">Brand / Make</Label>
-                <Input
+                <Label className="text-xs font-semibold block mb-1">Brand / Make</Label>
+                <BrandTypeahead
                   value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  onBlur={() => setBrand((prev) => toTitleCase(prev))}
-                  placeholder="e.g. Lenovo, Dell"
-                  className="h-9 text-xs rounded-xl mt-1 bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  onChange={setBrand}
+                  categoryHint={categories.find((c) => c.id === categoryId)?.name}
+                  placeholder="e.g. Lenovo, Dell, HP"
+                  showChips={false}
                 />
               </div>
               <div>
@@ -200,8 +208,8 @@ export default function EditProductModal({
               </div>
             </div>
 
-            {/* Price & Warranty */}
-            <div className="grid grid-cols-2 gap-2.5">
+            {/* Price & Website Price Visibility */}
+            <div className="space-y-2">
               <div>
                 <Label className="text-xs font-semibold">Standard Retail Price (₹)</Label>
                 <Input
@@ -212,17 +220,19 @@ export default function EditProductModal({
                   className="h-9 text-xs rounded-xl mt-1 bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
                 />
               </div>
-              <div>
-                <Label className="text-xs font-semibold">Warranty Period</Label>
-                <Input
-                  value={warranty}
-                  onChange={(e) => setWarranty(e.target.value)}
-                  onBlur={() => setWarranty((prev) => toTitleCase(prev))}
-                  placeholder="e.g. 1 Year Standard"
-                  className="h-9 text-xs rounded-xl mt-1 bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
+              <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950">
+                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                  {showPriceOnWebsite ? "🌐 Price visible on website" : "📞 Call for Price on website"}
+                </span>
+                <Switch checked={showPriceOnWebsite} onCheckedChange={setShowPriceOnWebsite} />
               </div>
             </div>
+
+            {/* Standardized 3-Part Warranty Policy */}
+            <WarrantySelector
+              value={warranty}
+              onChange={(val) => setWarranty(val)}
+            />
 
             {/* Description */}
             <div>

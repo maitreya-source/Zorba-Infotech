@@ -310,7 +310,7 @@ function ProductCard({
         )}
 
         <div className="mt-auto pt-2 flex items-center justify-between">
-          {product.price != null ? (
+          {product.price != null && product.showPriceOnWebsite !== false ? (
             <span className="text-lg font-bold text-primary">
               ₹{product.price.toLocaleString("en-IN")}
             </span>

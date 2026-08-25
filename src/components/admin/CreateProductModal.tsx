@@ -9,7 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -23,6 +25,9 @@ import {
 import { getCategories, createProduct, createCategory } from "@/lib/firestore";
 import { toTitleCase, formatModelNumber } from "@/lib/utils";
 import type { Category, Product } from "@/lib/types";
+import { DEFAULT_WARRANTY } from "@/lib/constants";
+import WarrantySelector from "@/components/admin/WarrantySelector";
+import BrandTypeahead from "@/components/admin/BrandTypeahead";
 
 interface CreateProductModalProps {
   open: boolean;
@@ -45,7 +50,8 @@ export default function CreateProductModal({
   const [model, setModel] = useState("");
   const [categoryId, setCategoryId] = useState(defaultCategoryId || "");
   const [price, setPrice] = useState("");
-  const [warranty, setWarranty] = useState("");
+  const [showPriceOnWebsite, setShowPriceOnWebsite] = useState(true);
+  const [warranty, setWarranty] = useState(DEFAULT_WARRANTY);
   const [description, setDescription] = useState("");
   const [showOnWebsite, setShowOnWebsite] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,7 +83,8 @@ export default function CreateProductModal({
       setBrand("");
       setModel("");
       setPrice("");
-      setWarranty("");
+      setShowPriceOnWebsite(true);
+      setWarranty(DEFAULT_WARRANTY);
       setDescription("");
       setShowOnWebsite(true);
       if (defaultCategoryId) setCategoryId(defaultCategoryId);
@@ -135,6 +142,7 @@ export default function CreateProductModal({
         serviceCenter: "",
         productUrl: "",
         price: isNaN(priceNum as number) ? null : priceNum,
+        showPriceOnWebsite,
         description: description.trim(),
         photoUrl: null,
         categoryId,
@@ -219,12 +227,12 @@ export default function CreateProductModal({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Brand / OEM</Label>
-                <Input
-                  placeholder="e.g. Dell, HP, Lenovo, Hikvision"
+                <BrandTypeahead
                   value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  onBlur={() => setBrand((prev) => toTitleCase(prev))}
-                  className="h-9 text-xs rounded-xl"
+                  onChange={setBrand}
+                  categoryHint={categories.find((c) => c.id === categoryId)?.name || defaultCategoryName}
+                  placeholder="e.g. Dell, HP, Lenovo"
+                  showChips={false}
                 />
               </div>
               <div className="space-y-1">
@@ -246,8 +254,8 @@ export default function CreateProductModal({
               </div>
             </div>
 
-            {/* Estimated Price & Warranty */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Estimated Price & Website Price Visibility */}
+            <div className="space-y-2">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Approx / Estimated Price (₹)
@@ -260,17 +268,19 @@ export default function CreateProductModal({
                   className="h-9 text-xs font-mono rounded-xl"
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Warranty</Label>
-                <Input
-                  placeholder="e.g. 1 Year Onsite, 3 Years"
-                  value={warranty}
-                  onChange={(e) => setWarranty(e.target.value)}
-                  onBlur={() => setWarranty((prev) => toTitleCase(prev))}
-                  className="h-9 text-xs rounded-xl"
-                />
+              <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950">
+                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                  {showPriceOnWebsite ? "🌐 Price visible on website" : "📞 Call for Price on website"}
+                </span>
+                <Switch checked={showPriceOnWebsite} onCheckedChange={setShowPriceOnWebsite} />
               </div>
             </div>
+
+            {/* Standardized 3-Part Warranty Policy */}
+            <WarrantySelector
+              value={warranty}
+              onChange={(val) => setWarranty(val)}
+            />
 
             {/* Description / Key Specs */}
             <div className="space-y-1">

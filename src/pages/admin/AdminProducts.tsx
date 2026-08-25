@@ -419,7 +419,12 @@ export default function AdminProducts() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {paginatedProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
+                  <tr
+                    key={product.id}
+                    onClick={() => navigate(`/admin/products/${product.id}/edit`)}
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors cursor-pointer group"
+                    title={`Click row to edit ${product.name}`}
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {product.photoUrl ? (
@@ -429,12 +434,12 @@ export default function AdminProducts() {
                             className="h-10 w-10 rounded-xl object-contain shrink-0 border bg-white p-1"
                           />
                         ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-slate-50 dark:bg-slate-900">
-                            <Package className="h-4 w-4 text-slate-400" />
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-slate-50 dark:bg-slate-900 group-hover:border-blue-200 dark:group-hover:border-blue-800 transition-colors">
+                            <Package className="h-4 w-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
+                          <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white group-hover:text-[#2563EB] dark:group-hover:text-blue-400 transition-colors">
                             <span className="truncate">{product.name}</span>
                             {product.featured && (
                               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
@@ -459,9 +464,18 @@ export default function AdminProducts() {
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-medium">
                       {catMap[product.categoryId] ?? product.category ?? "—"}
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">
+                    <td className="px-4 py-3 font-mono">
                       {product.price != null ? (
-                        <span>₹{product.price.toLocaleString("en-IN")}</span>
+                        <div>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            ₹{product.price.toLocaleString("en-IN")}
+                          </span>
+                          {product.showPriceOnWebsite === false && (
+                            <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-sans font-medium">
+                              (Web: Call for Price)
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-slate-400 font-normal">Contact for Price</span>
                       )}
@@ -482,7 +496,10 @@ export default function AdminProducts() {
                       <button
                         type="button"
                         disabled={togglingId === product.id}
-                        onClick={() => handleToggleVisibility(product.id, product.showOnWebsite)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleVisibility(product.id, product.showOnWebsite);
+                        }}
                         title="Click to toggle website catalog visibility"
                         className="cursor-pointer transition-transform active:scale-95 text-left"
                       >
@@ -510,7 +527,10 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Link to={`/admin/products/${product.id}/edit`}>
+                        <Link
+                          to={`/admin/products/${product.id}/edit`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Button
                             variant="ghost"
                             size="icon"
@@ -524,7 +544,10 @@ export default function AdminProducts() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive cursor-pointer"
-                          onClick={() => setDeleteId(product.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteId(product.id);
+                          }}
                           title="Delete Product"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

@@ -70,7 +70,7 @@ export default function CatalogProduct() {
     <Layout>
       <SEO
         title={`${product.name} – Zorba Infotech`}
-        description={product.description || `Buy ${product.name} at Zorba Infotech Neemuch. ${product.brand ? `Brand: ${product.brand}.` : ""} ${product.price != null ? `Price: ₹${product.price.toLocaleString("en-IN")}.` : "Contact for price."}`}
+        description={product.description || `Buy ${product.name} at Zorba Infotech Neemuch. ${product.brand ? `Brand: ${product.brand}.` : ""} ${product.price != null && product.showPriceOnWebsite !== false ? `Price: ₹${product.price.toLocaleString("en-IN")}.` : "Contact for price."}`}
         path={`/catalog/${product.id}`}
       />
 
@@ -155,7 +155,7 @@ export default function CatalogProduct() {
             </div>
 
             {/* Price */}
-            {product.price != null ? (
+            {product.price != null && product.showPriceOnWebsite !== false ? (
               <div className="text-3xl font-bold text-primary">
                 ₹{product.price.toLocaleString("en-IN")}
               </div>

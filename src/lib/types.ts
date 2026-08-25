@@ -25,6 +25,7 @@ export interface Product {
   serviceCenter: string;
   productUrl: string;
   price: number | null;
+  showPriceOnWebsite?: boolean; // Controls whether price is displayed on the public website (defaults to true if price is set)
   description: string;
   photoUrl: string | null;
   categoryId: string;

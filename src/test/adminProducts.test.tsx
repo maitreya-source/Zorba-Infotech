@@ -172,4 +172,20 @@ describe("AdminProducts Table Sorting & Pagination", () => {
       expect(screen.getByText(/Page 1 of/i)).toBeInTheDocument();
     });
   });
+
+  it("navigates to edit page when table row is clicked", async () => {
+    render(
+      <MemoryRouter>
+        <AdminProducts />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Apple MacBook Pro 1")).toBeInTheDocument();
+    });
+
+    const row = screen.getByText("Apple MacBook Pro 1").closest("tr");
+    expect(row).toBeInTheDocument();
+    expect(row).toHaveClass("cursor-pointer");
+  });
 });

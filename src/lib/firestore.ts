@@ -473,10 +473,11 @@ export async function createProduct(
     category: data.category ? toTitleCase(data.category) : "",
     model: cleanDocId,
     itemCode: data.itemCode ? data.itemCode.trim().toUpperCase() : "",
-    warranty: data.warranty ? toTitleCase(data.warranty) : "",
+    warranty: data.warranty ? data.warranty.trim() : "",
     serviceCenter: data.serviceCenter ? toTitleCase(data.serviceCenter) : "",
     description: data.description ? data.description.trim() : "",
     showOnWebsite: data.showOnWebsite !== undefined ? data.showOnWebsite : true,
+    showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? data.showPriceOnWebsite : true,
     createdAt: serverTimestamp() as any,
     updatedAt: serverTimestamp() as any,
   };
@@ -508,10 +509,11 @@ export async function updateProduct(
     if (sanitized.category) sanitized.category = toTitleCase(sanitized.category);
     if (sanitized.model) sanitized.model = formatModelNumber(sanitized.model);
     if (sanitized.itemCode) sanitized.itemCode = sanitized.itemCode.trim().toUpperCase();
-    if (sanitized.warranty) sanitized.warranty = toTitleCase(sanitized.warranty);
+    if (sanitized.warranty !== undefined) sanitized.warranty = sanitized.warranty.trim();
     if (sanitized.serviceCenter) sanitized.serviceCenter = toTitleCase(sanitized.serviceCenter);
     if (sanitized.description) sanitized.description = sanitized.description.trim();
     if (sanitized.showOnWebsite !== undefined) sanitized.showOnWebsite = Boolean(sanitized.showOnWebsite);
+    if (sanitized.showPriceOnWebsite !== undefined) sanitized.showPriceOnWebsite = Boolean(sanitized.showPriceOnWebsite);
 
     await updateDoc(
       doc(db, "products", id),

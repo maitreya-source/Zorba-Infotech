@@ -31,7 +31,9 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -43,6 +45,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { Category, CustomField } from "@/lib/types";
+import { DEFAULT_WARRANTY } from "@/lib/constants";
+import WarrantySelector from "@/components/admin/WarrantySelector";
+import BrandTypeahead from "@/components/admin/BrandTypeahead";
 import LoadingScreen from "@/components/common/LoadingScreen";
 
 interface FormState {
@@ -54,6 +59,7 @@ interface FormState {
   serviceCenter: string;
   productUrl: string;
   price: string;
+  showPriceOnWebsite: boolean;
   description: string;
   categoryId: string;
   inStock: boolean;
@@ -67,10 +73,11 @@ const EMPTY_FORM: FormState = {
   brand: "",
   model: "",
   itemCode: "",
-  warranty: "",
+  warranty: DEFAULT_WARRANTY,
   serviceCenter: "",
   productUrl: "",
   price: "",
+  showPriceOnWebsite: true,
   description: "",
   categoryId: "",
   inStock: true,
@@ -117,10 +124,11 @@ export default function AdminProductForm() {
           brand: product.brand ?? "",
           model: product.model ?? id,
           itemCode: product.itemCode ?? "",
-          warranty: product.warranty ?? "",
+          warranty: product.warranty ?? DEFAULT_WARRANTY,
           serviceCenter: product.serviceCenter ?? "",
           productUrl: product.productUrl ?? "",
           price: product.price != null ? String(product.price) : "",
+          showPriceOnWebsite: product.showPriceOnWebsite !== false,
           description: product.description ?? "",
           categoryId: product.categoryId ?? "",
           inStock: product.inStock ?? true,
@@ -248,6 +256,7 @@ export default function AdminProductForm() {
         serviceCenter: form.serviceCenter.trim() ? toTitleCase(form.serviceCenter) : "",
         productUrl: form.productUrl.trim(),
         price: form.price !== "" ? Number(form.price) : null,
+        showPriceOnWebsite: form.showPriceOnWebsite,
         description: form.description.trim(),
         categoryId: form.categoryId,
         inStock: form.inStock,
@@ -499,15 +508,14 @@ export default function AdminProductForm() {
 
             {/* Brand / Manufacturer */}
             <div className="md:col-span-6">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
                 Brand / Manufacturer
               </Label>
-              <Input
-                placeholder="e.g. Hikvision / HP / Canon / Dell / D-Link"
+              <BrandTypeahead
                 value={form.brand}
-                onChange={(e) => set("brand", e.target.value)}
-                onBlur={() => set("brand", toTitleCase(form.brand))}
-                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                onChange={(v) => set("brand", v)}
+                categoryHint={categories.find((c) => c.id === form.categoryId)?.name}
+                placeholder="e.g. Hikvision / HP / Canon / Dell / D-Link"
               />
             </div>
 
@@ -526,52 +534,25 @@ export default function AdminProductForm() {
           </div>
         </div>
 
-        {/* Section 2: Pricing, Warranty & Official Support */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+        {/* Section 2: Warranty & Official Support */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4">
           <div className="flex items-center gap-2">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-[11px]">
               2
             </span>
             <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Pricing, Warranty & Support
+              Warranty & Official Support
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {/* Price */}
-            <div>
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Selling Price (₹)
-              </Label>
-              <Input
-                type="number"
-                placeholder="Leave blank for Call for Price"
-                value={form.price}
-                onChange={(e) => set("price", e.target.value)}
-                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-bold text-emerald-600 dark:text-emerald-400"
-              />
-            </div>
-
-            {/* Warranty */}
-            <div>
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Warranty Period
-              </Label>
-              <Input
-                placeholder="e.g. 2 Years Manufacturer Warranty"
-                value={form.warranty}
-                onChange={(e) => set("warranty", e.target.value)}
-                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-              />
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Service Center Info */}
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Service Center Support
               </Label>
               <Input
-                placeholder="e.g. Authorized Hikvision Service Center"
+                placeholder="e.g. Authorized Brand Service Center"
                 value={form.serviceCenter}
                 onChange={(e) => set("serviceCenter", e.target.value)}
                 className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
@@ -590,6 +571,14 @@ export default function AdminProductForm() {
                 className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
               />
             </div>
+          </div>
+
+          {/* Standardized 3-Part Warranty Policy Selection */}
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+            <WarrantySelector
+              value={form.warranty}
+              onChange={(val) => set("warranty", val)}
+            />
           </div>
         </div>
 
@@ -736,6 +725,66 @@ export default function AdminProductForm() {
               </label>
               <p className="text-[11px] text-slate-400">
                 Recommended: Clean white background PNG or JPG. Max 5MB.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 5: Pricing & Website Visibility */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-[#2563EB] font-extrabold text-[11px]">
+              5
+            </span>
+            <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+              Pricing & Commercial Terms
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            {/* Selling Price */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Standard Selling Price (₹)
+              </Label>
+              <Input
+                type="number"
+                placeholder="e.g. 45000 (leave blank for Call for Price)"
+                value={form.price}
+                onChange={(e) => set("price", e.target.value)}
+                className="h-10 text-sm rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-bold text-emerald-600 dark:text-emerald-400"
+              />
+              <p className="text-[11px] text-slate-400">
+                Internal reference price used for quotations, billing, and service calls.
+              </p>
+            </div>
+
+            {/* Price Visible on Website Switch */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Price Display on Website
+              </Label>
+              <div className="flex items-center justify-between h-10 px-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  {form.showPriceOnWebsite ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      🌐 Price Visible on Website
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                      📞 "Call / Contact for Price" on Website
+                    </span>
+                  )}
+                </span>
+                <Switch
+                  checked={form.showPriceOnWebsite}
+                  onCheckedChange={(v) => set("showPriceOnWebsite", v)}
+                />
+              </div>
+              <p className="text-[11px] text-slate-400">
+                {form.showPriceOnWebsite
+                  ? "Visitors will see the exact ₹ price on the public catalog and product pages."
+                  : "Hides numeric price from visitors and displays 'Contact for price' while retaining ERP price."}
               </p>
             </div>
           </div>
