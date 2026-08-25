@@ -47,7 +47,6 @@ const navItems = [
 export default function AdminLayout() {
   const { user, signOut } = useAuth();
   const { activeProfile, showSelectorModal, setShowSelectorModal } = useStaffProfile();
-  const [selectorDismissed, setSelectorDismissed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -160,7 +159,6 @@ export default function AdminLayout() {
           {/* Active Staff Profile Card (Click to Switch) */}
           <div
             onClick={() => {
-              setSelectorDismissed(false);
               setShowSelectorModal(true);
               setMobileSidebarOpen(false);
             }}
@@ -273,16 +271,16 @@ export default function AdminLayout() {
       {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-screen on Desktop) */}
       <div id="admin-right-rail" className="h-screen shrink-0 empty:hidden print:hidden z-20 hidden xl:block" />
 
-      {/* Netflix Profile Selector Modal */}
+      {/* Mandatory Staff Profile Selector Modal */}
       <StaffProfileSelectorModal
-        open={(!activeProfile && !selectorDismissed) || showSelectorModal}
+        open={!activeProfile || showSelectorModal}
         onOpenChange={(next) => {
-          setShowSelectorModal(next);
-          if (!next) {
-            setSelectorDismissed(true);
+          if (!next && !activeProfile) {
+            return;
           }
+          setShowSelectorModal(next);
         }}
-        canDismiss={true}
+        canDismiss={Boolean(activeProfile)}
       />
     </div>
   );

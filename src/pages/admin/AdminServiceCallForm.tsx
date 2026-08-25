@@ -177,7 +177,7 @@ export default function AdminServiceCallForm() {
   const customerIdParam = searchParams.get("customerId");
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { activeProfile } = useStaffProfile();
+  const { activeProfile, setShowSelectorModal } = useStaffProfile();
   const isEditing = Boolean(id);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const initialSnapshotRef = useRef<string>("");
@@ -674,6 +674,12 @@ export default function AdminServiceCallForm() {
     if (data.paymentNotes !== undefined) setPaymentNotes(data.paymentNotes);
     setShowPaymentModal(false);
 
+    if (!activeProfile) {
+      toast.error("Please select your staff profile with 5-digit PIN before recording payment.");
+      setShowSelectorModal(true);
+      return;
+    }
+
     if (id) {
       setPaymentSaving(true);
       try {
@@ -684,8 +690,8 @@ export default function AdminServiceCallForm() {
             timestamp: Date.now(),
             stage: "payment_received",
             title: `Payment Received (₹${data.amountPaid ?? grandTotal} via ${(data.paymentMode || "UPI").toUpperCase()})`,
-            staffId: activeProfile?.id || "admin",
-            staffName: activeProfile?.name || "Admin Staff",
+            staffId: activeProfile.id,
+            staffName: toTitleCase(activeProfile.name),
             status: status,
             comments: data.paymentNotes || undefined,
           };
@@ -709,8 +715,8 @@ export default function AdminServiceCallForm() {
           timestamp: Date.now(),
           stage: "payment_received",
           title: `Payment Received (₹${data.amountPaid ?? grandTotal} via ${(data.paymentMode || "UPI").toUpperCase()})`,
-          staffId: activeProfile?.id || "admin",
-          staffName: activeProfile?.name || "Admin Staff",
+          staffId: activeProfile.id,
+          staffName: toTitleCase(activeProfile.name),
           status: status,
           comments: data.paymentNotes || undefined,
         };
@@ -797,8 +803,14 @@ export default function AdminServiceCallForm() {
       return;
     }
 
-    const effectiveStaffId = activeProfile?.id || handledByStaffId || user?.uid || "desk-profile";
-    const effectiveStaffName = activeProfile?.name || handledByStaffName || user?.displayName || user?.email || "Desk Staff";
+    if (!activeProfile) {
+      toast.error("Please select your staff profile with 5-digit PIN before saving a service ticket.");
+      setShowSelectorModal(true);
+      return;
+    }
+
+    const effectiveStaffId = activeProfile.id;
+    const effectiveStaffName = toTitleCase(activeProfile.name);
 
     setSaving(true);
     try {

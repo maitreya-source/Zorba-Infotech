@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import type { TeamMember } from "@/lib/types";
 
-const STORAGE_KEY = "zorba_active_staff_profile";
+const STORAGE_KEY = "zorba_active_staff_profile_v2";
+const LEGACY_STORAGE_KEY = "zorba_active_staff_profile";
 const TEN_HOURS_MS = 10 * 60 * 60 * 1000; // 10 hours TTL
 
 export interface ActiveStaffProfile {
@@ -31,6 +32,9 @@ const StaffProfileContext = createContext<StaffProfileContextType | undefined>(u
 export function StaffProfileProvider({ children }: { children: React.ReactNode }) {
   const [activeProfile, setActiveProfileState] = useState<ActiveStaffProfile | null>(() => {
     try {
+      // Purge any legacy unverified sessions
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return null;
       const parsed: ActiveStaffProfile = JSON.parse(stored);

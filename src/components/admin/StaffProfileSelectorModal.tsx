@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { getTeamMembers, createTeamMember, updateTeamMember } from "@/lib/firestore";
@@ -193,10 +195,32 @@ export default function StaffProfileSelectorModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-[#0A0E17] text-white border-slate-800 shadow-2xl rounded-3xl">
-        {/* Top-Right Close Button */}
-        {canDismiss && (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && (!activeProfile || !canDismiss)) {
+          return; // Block closing when profile is not selected
+        }
+        if (onOpenChange) onOpenChange(next);
+      }}
+    >
+      <DialogContent
+        onPointerDownOutside={(e) => {
+          if (!activeProfile || !canDismiss) {
+            e.preventDefault();
+          }
+        }}
+        onEscapeKeyDown={(e) => {
+          if (!activeProfile || !canDismiss) {
+            e.preventDefault();
+          }
+        }}
+        className={`max-w-4xl p-0 overflow-hidden bg-[#0A0E17] text-white border-slate-800 shadow-2xl rounded-3xl ${
+          !activeProfile || !canDismiss ? "[&>button]:hidden" : ""
+        }`}
+      >
+        {/* Top-Right Close Button (Only when a profile is already active and modal was opened manually) */}
+        {canDismiss && activeProfile && (
           <button
             type="button"
             onClick={handleClose}
@@ -213,21 +237,21 @@ export default function StaffProfileSelectorModal({
         <div className="relative z-10 p-6 md:p-10 space-y-8">
           {/* Header */}
           <div className="text-center space-y-2 max-w-lg mx-auto">
-            <h1 className="text-3xl md:text-4xl font-extrabold font-display tracking-tight text-white">
+            <DialogTitle className="text-3xl md:text-4xl font-extrabold font-display tracking-tight text-white">
               {pinMode === "setup"
                 ? "Setup Your 5-Digit PIN"
                 : pinMode === "verify"
                 ? "Enter Security PIN"
                 : "Who is working today?"}
-            </h1>
+            </DialogTitle>
 
-            <p className="text-xs md:text-sm text-slate-400">
+            <DialogDescription className="text-xs md:text-sm text-slate-400">
               {pinMode === "setup"
                 ? `Create a 5-digit PIN for ${selectedMemberForPin?.name}. You will use this PIN to access this profile.`
                 : pinMode === "verify"
                 ? `Enter the 5-digit PIN for ${selectedMemberForPin?.name} to unlock the desk profile.`
                 : "Select your profile to automatically stamp tickets, service calls, and workshop actions."}
-            </p>
+            </DialogDescription>
           </div>
 
           {/* VIEW 1: PIN Verification / Setup */}
@@ -272,18 +296,17 @@ export default function StaffProfileSelectorModal({
                   <div className="flex gap-2.5 pt-2">
                     <Button
                       type="button"
-                      variant="outline"
                       onClick={handleBackToProfiles}
-                      className="flex-1 h-10 text-xs rounded-xl border-slate-700 text-slate-300 hover:bg-slate-800 gap-1.5 cursor-pointer"
+                      className="flex-1 h-11 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 gap-2 cursor-pointer transition-colors"
                     >
-                      <ArrowLeft className="h-3.5 w-3.5" /> Back
+                      <ArrowLeft className="h-4 w-4" /> Back
                     </Button>
                     <Button
                       type="submit"
                       disabled={enteredPin.length !== 5}
-                      className="flex-1 h-10 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-500 text-white gap-1.5 cursor-pointer"
+                      className="flex-1 h-11 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-500 text-white gap-1.5 cursor-pointer shadow-sm"
                     >
-                      <KeyRound className="h-3.5 w-3.5" /> Unlock Profile
+                      <KeyRound className="h-4 w-4" /> Unlock Profile
                     </Button>
                   </div>
                 </form>
@@ -336,16 +359,15 @@ export default function StaffProfileSelectorModal({
                   <div className="flex gap-2.5 pt-2">
                     <Button
                       type="button"
-                      variant="outline"
                       onClick={handleBackToProfiles}
-                      className="flex-1 h-10 text-xs rounded-xl border-slate-700 text-slate-300 hover:bg-slate-800 gap-1.5 cursor-pointer"
+                      className="flex-1 h-11 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 gap-2 cursor-pointer transition-colors"
                     >
-                      <ArrowLeft className="h-3.5 w-3.5" /> Back
+                      <ArrowLeft className="h-4 w-4" /> Back
                     </Button>
                     <Button
                       type="submit"
                       disabled={enteredPin.length !== 5 || confirmPin.length !== 5 || savingPin}
-                      className="flex-1 h-10 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-500 text-white gap-1.5 cursor-pointer"
+                      className="flex-1 h-11 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-500 text-white gap-1.5 cursor-pointer shadow-sm"
                     >
                       {savingPin ? "Saving..." : "Set PIN & Log In"}
                     </Button>
@@ -557,10 +579,9 @@ export default function StaffProfileSelectorModal({
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   type="button"
-                  variant="outline"
                   size="sm"
                   onClick={() => setShowAddForm(false)}
-                  className="text-xs rounded-xl border-slate-800"
+                  className="text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 cursor-pointer"
                 >
                   Cancel
                 </Button>
