@@ -4,6 +4,10 @@
       ".read": true,
       ".write": true
     },
+    "staff_presence": {
+      ".read": true,
+      ".write": true
+    },
     "sync_bus": {
       ".read": true,
       ".write": true
