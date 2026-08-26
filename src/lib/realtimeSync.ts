@@ -390,3 +390,117 @@ export function useResourcePresence(
 
   return { activeEditors };
 }
+
+export interface OnlineStaffDutyMember {
+  staffId: string;
+  name: string;
+}
+
+/**
+ * Hook to announce current staff member's live on-duty status in the shop/workshop
+ * and track which other team members are currently online across all devices.
+ */
+export function useStaffDutyPresence(activeProfile?: {
+  id?: string;
+  name?: string;
+} | null) {
+  const [onlineStaff, setOnlineStaff] = useState<OnlineStaffDutyMember[]>([]);
+
+  useEffect(() => {
+    if (!activeProfile || !activeProfile.id) return;
+
+    const staffId = activeProfile.id;
+    const staffName = activeProfile.name || "Staff Member";
+
+    const deviceSessionId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("zorba_duty_device_id") ||
+          `dev_${Math.random().toString(36).slice(2, 9)}`
+        : `dev_${Math.random().toString(36).slice(2, 9)}`;
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("zorba_duty_device_id", deviceSessionId);
+      } catch {}
+    }
+
+    let myDutyRef: any = null;
+    let dutyListenerUnsub: (() => void) | null = null;
+
+    if (rtdb) {
+      try {
+        const safeStaffKey = staffId.replace(/[.#$[\]]/g, "_");
+        const safeDevKey = deviceSessionId.replace(/[.#$[\]]/g, "_");
+        myDutyRef = ref(rtdb, `staff_presence/${safeStaffKey}/${safeDevKey}`);
+
+        const updateHeartbeat = () => {
+          set(myDutyRef, {
+            staffId,
+            name: staffName,
+          }).catch(() => {});
+        };
+
+        updateHeartbeat();
+        try {
+          onDisconnect(myDutyRef).remove();
+        } catch {}
+
+        const heartbeatTimer = setInterval(updateHeartbeat, 15000);
+
+        // Listen for all online staff in RTDB
+        const rootPresenceRef = ref(rtdb, "staff_presence");
+        dutyListenerUnsub = onValue(
+          rootPresenceRef,
+          (snapshot) => {
+            const data = snapshot.val();
+            if (!data) {
+              setOnlineStaff([]);
+              return;
+            }
+            const staffMap = new Map<string, OnlineStaffDutyMember>();
+
+            Object.keys(data).forEach((sKey) => {
+              const userDevices = data[sKey];
+              if (userDevices && typeof userDevices === "object") {
+                Object.keys(userDevices).forEach((dKey) => {
+                  const item = userDevices[dKey];
+                  if (item && item.staffId) {
+                    staffMap.set(item.staffId, {
+                      staffId: item.staffId,
+                      name: item.name || "Staff Member",
+                    });
+                  }
+                });
+              }
+            });
+
+            setOnlineStaff(Array.from(staffMap.values()));
+          },
+          (err) => {
+            console.debug("Staff presence listener standby:", err.message);
+          }
+        );
+
+        return () => {
+          clearInterval(heartbeatTimer);
+          if (dutyListenerUnsub) dutyListenerUnsub();
+          if (myDutyRef) {
+            remove(myDutyRef).catch(() => {});
+          }
+        };
+      } catch (e) {
+        console.debug("Duty presence initialization skipped:", e);
+      }
+    }
+  }, [activeProfile?.id, activeProfile?.name]);
+
+  const isStaffOnline = (staffId: string) => {
+    return onlineStaff.some((s) => s.staffId === staffId);
+  };
+
+  return {
+    onlineStaff,
+    isStaffOnline,
+    onlineCount: onlineStaff.length,
+  };
+}

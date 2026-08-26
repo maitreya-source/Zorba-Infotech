@@ -19,7 +19,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   databaseURL:
     import.meta.env.VITE_FIREBASE_DATABASE_URL ||
-    `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID || "zorba-infotech-web"}-default-rtdb.firebaseio.com`,
+    "https://zorba-infotech-web-default-rtdb.asia-southeast1.firebasedatabase.app",
 };
 
 const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);

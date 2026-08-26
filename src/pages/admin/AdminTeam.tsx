@@ -33,10 +33,12 @@ import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { AVATAR_CATALOG, getAvatarById } from "@/lib/avatars";
 import TechnicianCommissionModal from "@/components/admin/TechnicianCommissionModal";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
+import { useStaffDutyPresence } from "@/lib/realtimeSync";
 
 export default function AdminTeam() {
   const navigate = useNavigate();
   const { activeProfile } = useStaffProfile();
+  const { isStaffOnline, onlineCount } = useStaffDutyPresence(activeProfile);
   const isOwner = activeProfile?.role === "proprietor";
 
   const [team, setTeam] = useState<TeamMember[]>([]);
@@ -467,12 +469,29 @@ export default function AdminTeam() {
                       )}
                     </td>
 
-                    {/* Status */}
+                    {/* Live Duty & Active Status */}
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${member.active !== false ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
-                        {member.active !== false ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
-                        {member.active !== false ? "Active" : "Inactive"}
-                      </span>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          {isStaffOnline(member.id) ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-300 shadow-2xs">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                              </span>
+                              On Duty
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                              <span className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                              Offline
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {member.active !== false ? "Staff Record Active" : "Deactivated"}
+                        </div>
+                      </div>
                     </td>
 
                     {/* Actions */}

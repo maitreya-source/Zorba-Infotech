@@ -2,9 +2,10 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { playNotificationChime } from "@/lib/realtimeSync";
+import { playNotificationChime, useStaffDutyPresence } from "@/lib/realtimeSync";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import StaffOnDutyBoard from "@/components/admin/StaffOnDutyBoard";
 import {
   Activity,
   BarChart3,
@@ -55,6 +56,9 @@ export default function AdminLayout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Real-time duty presence
+  const { onlineStaff } = useStaffDutyPresence(activeProfile);
 
   // Real-time unread pending counts
   const [pendingInquiriesCount, setPendingInquiriesCount] = useState(0);
@@ -316,8 +320,11 @@ export default function AdminLayout() {
           {/* Center: Dynamic Center Area for Service Call Type Chips */}
           <div id="admin-header-center" className="flex items-center justify-center flex-1 min-w-0 overflow-x-auto no-scrollbar" />
 
-          {/* Right: Back to List on Service Call Form OR Back to Main Website on other pages */}
+          {/* Right: Live Staff On Duty Board + Back Link */}
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {/* Live Staff On Duty Pill */}
+            <StaffOnDutyBoard onlineStaff={onlineStaff} />
+
             {isServiceCallForm ? (
               <Link
                 to="/admin/service-calls"
