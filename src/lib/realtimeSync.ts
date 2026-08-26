@@ -403,14 +403,14 @@ export interface OnlineStaffDutyMember {
 export function useStaffDutyPresence(activeProfile?: {
   id?: string;
   name?: string;
+  role?: string;
 } | null) {
   const [onlineStaff, setOnlineStaff] = useState<OnlineStaffDutyMember[]>([]);
 
   useEffect(() => {
-    if (!activeProfile || !activeProfile.id) return;
-
-    const staffId = activeProfile.id;
-    const staffName = activeProfile.name || "Staff Member";
+    const isExempt = activeProfile?.role === "developer";
+    const staffId = activeProfile?.id;
+    const staffName = activeProfile?.name || "Staff Member";
 
     const deviceSessionId =
       typeof window !== "undefined"
@@ -429,23 +429,28 @@ export function useStaffDutyPresence(activeProfile?: {
 
     if (rtdb) {
       try {
-        const safeStaffKey = staffId.replace(/[.#$[\]]/g, "_");
-        const safeDevKey = deviceSessionId.replace(/[.#$[\]]/g, "_");
-        myDutyRef = ref(rtdb, `staff_presence/${safeStaffKey}/${safeDevKey}`);
+        let heartbeatTimer: any = null;
 
-        const updateHeartbeat = () => {
-          set(myDutyRef, {
-            staffId,
-            name: staffName,
-          }).catch(() => {});
-        };
+        // Register online presence only for non-exempt staff members
+        if (staffId && !isExempt) {
+          const safeStaffKey = staffId.replace(/[.#$[\]]/g, "_");
+          const safeDevKey = deviceSessionId.replace(/[.#$[\]]/g, "_");
+          myDutyRef = ref(rtdb, `staff_presence/${safeStaffKey}/${safeDevKey}`);
 
-        updateHeartbeat();
-        try {
-          onDisconnect(myDutyRef).remove();
-        } catch {}
+          const updateHeartbeat = () => {
+            set(myDutyRef, {
+              staffId,
+              name: staffName,
+            }).catch(() => {});
+          };
 
-        const heartbeatTimer = setInterval(updateHeartbeat, 15000);
+          updateHeartbeat();
+          try {
+            onDisconnect(myDutyRef).remove();
+          } catch {}
+
+          heartbeatTimer = setInterval(updateHeartbeat, 15000);
+        }
 
         // Listen for all online staff in RTDB
         const rootPresenceRef = ref(rtdb, "staff_presence");
@@ -492,7 +497,7 @@ export function useStaffDutyPresence(activeProfile?: {
         console.debug("Duty presence initialization skipped:", e);
       }
     }
-  }, [activeProfile?.id, activeProfile?.name]);
+  }, [activeProfile?.id, activeProfile?.name, activeProfile?.role]);
 
   const isStaffOnline = (staffId: string) => {
     return onlineStaff.some((s) => s.staffId === staffId);
