@@ -9,7 +9,8 @@
 
 import { useEffect, useState } from "react";
 import { ref, onValue, set, remove, onDisconnect, serverTimestamp } from "firebase/database";
-import { rtdb } from "./firebase";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db, rtdb } from "./firebase";
 
 export type SyncTopic =
   | "products"
@@ -406,9 +407,32 @@ export function useStaffDutyPresence(activeProfile?: {
   role?: string;
 } | null) {
   const [onlineStaff, setOnlineStaff] = useState<OnlineStaffDutyMember[]>([]);
+  const [developerStaffIds, setDeveloperStaffIds] = useState<Set<string>>(new Set());
+
+  // Real-time track which team members are developers to strictly exempt them
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(
+        collection(db, "team_members"),
+        (snap) => {
+          const devSet = new Set<string>();
+          snap.docs.forEach((doc) => {
+            const data = doc.data();
+            if (data.role === "developer") {
+              devSet.add(doc.id);
+              if (data.id) devSet.add(data.id);
+            }
+          });
+          setDeveloperStaffIds(devSet);
+        },
+        () => {}
+      );
+      return () => unsub();
+    } catch {}
+  }, []);
 
   useEffect(() => {
-    const isExempt = activeProfile?.role === "developer";
+    const isExempt = activeProfile?.role === "developer" || (activeProfile?.id && developerStaffIds.has(activeProfile.id));
     const staffId = activeProfile?.id;
     const staffName = activeProfile?.name || "Staff Member";
 
@@ -430,6 +454,12 @@ export function useStaffDutyPresence(activeProfile?: {
     if (rtdb) {
       try {
         let heartbeatTimer: any = null;
+
+        // If current profile is a developer, ensure any legacy node is purged immediately
+        if (staffId && isExempt) {
+          const safeStaffKey = staffId.replace(/[.#$[\]]/g, "_");
+          remove(ref(rtdb, `staff_presence/${safeStaffKey}`)).catch(() => {});
+        }
 
         // Register online presence only for non-exempt staff members
         if (staffId && !isExempt) {
@@ -470,6 +500,12 @@ export function useStaffDutyPresence(activeProfile?: {
                 Object.keys(userDevices).forEach((dKey) => {
                   const item = userDevices[dKey];
                   if (item && item.staffId) {
+                    // Strictly purge and exempt developers from online board
+                    if (developerStaffIds.has(item.staffId) || (staffId === item.staffId && isExempt)) {
+                      remove(ref(rtdb!, `staff_presence/${sKey}`)).catch(() => {});
+                      return;
+                    }
+
                     staffMap.set(item.staffId, {
                       staffId: item.staffId,
                       name: item.name || "Staff Member",
@@ -487,7 +523,7 @@ export function useStaffDutyPresence(activeProfile?: {
         );
 
         return () => {
-          clearInterval(heartbeatTimer);
+          if (heartbeatTimer) clearInterval(heartbeatTimer);
           if (dutyListenerUnsub) dutyListenerUnsub();
           if (myDutyRef) {
             remove(myDutyRef).catch(() => {});
@@ -497,9 +533,10 @@ export function useStaffDutyPresence(activeProfile?: {
         console.debug("Duty presence initialization skipped:", e);
       }
     }
-  }, [activeProfile?.id, activeProfile?.name, activeProfile?.role]);
+  }, [activeProfile?.id, activeProfile?.name, activeProfile?.role, developerStaffIds]);
 
   const isStaffOnline = (staffId: string) => {
+    if (developerStaffIds.has(staffId)) return false;
     return onlineStaff.some((s) => s.staffId === staffId);
   };
 
