@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -33,6 +33,10 @@ import {
 } from "@/components/common";
 import {
   getProducts,
+  getProductsPaginated,
+  searchProducts,
+  syncProductIndex,
+  getProductIndexCount,
   getCategories,
   deleteProduct,
   deleteProductPhoto,
@@ -568,9 +572,10 @@ export default function AdminProducts() {
           pageNumber={safeCurrentPage}
           currentItemsCount={paginatedProducts.length}
           hasMore={safeCurrentPage < totalPages}
+          totalPages={totalPages}
           isLoading={loading || refreshing}
           pageSize={pageSize}
-          label={`products (Page ${safeCurrentPage} of ${totalPages} • Total ${filteredProducts.length})`}
+          label="products"
           onPageChange={(newPage) => {
             setCurrentPage(Math.max(1, Math.min(totalPages, newPage)));
           }}

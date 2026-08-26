@@ -35,8 +35,8 @@ export interface Product {
   showOnWebsite?: boolean; // Controls public website catalog visibility (defaults to true)
   order: number | null;
   customFields: CustomField[];
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
+  createdAt?: Timestamp | number;
+  updatedAt?: Timestamp | number;
 }
 
 export type ServiceCallType =

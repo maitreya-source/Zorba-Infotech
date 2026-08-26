@@ -5,6 +5,7 @@ interface TablePaginationProps {
   pageNumber: number;
   currentItemsCount: number;
   hasMore?: boolean;
+  totalPages?: number;
   onPageChange: (newPage: number) => void;
   isLoading?: boolean;
   pageSize?: number;
@@ -20,6 +21,7 @@ export default function TablePagination({
   pageNumber,
   currentItemsCount,
   hasMore = false,
+  totalPages,
   onPageChange,
   isLoading = false,
   pageSize = 25,
@@ -31,7 +33,7 @@ export default function TablePagination({
       className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-slate-50/70 dark:bg-slate-900/50 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs ${className}`}
     >
       <div className="text-slate-500 dark:text-slate-400 font-medium">
-        Page <span className="font-extrabold text-slate-900 dark:text-white">{pageNumber}</span>
+        <span>Page {pageNumber}{totalPages ? ` of ${totalPages}` : ""}</span>
         {currentItemsCount > 0 && (
           <span>
             {" "}• Showing <span className="font-bold text-slate-900 dark:text-white">{currentItemsCount}</span> {label}
