@@ -906,8 +906,14 @@ export default function AdminQuotationForm() {
                           <Input
                             type="number"
                             min="1"
-                            value={it.quantity}
-                            onChange={(e) => handleUpdateItem(idx, "quantity", e.target.value)}
+                            placeholder="1"
+                            value={it.quantity === 0 ? "" : it.quantity}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const clean = raw === "" ? 1 : Math.max(1, Number(raw.replace(/^0+(?=\d)/, '')) || 1);
+                              handleUpdateItem(idx, "quantity", clean);
+                            }}
                             className="h-8 text-xs font-mono font-bold text-center rounded-xl w-16 mx-auto"
                           />
                         </td>
@@ -918,8 +924,13 @@ export default function AdminQuotationForm() {
                             type="number"
                             min="0"
                             placeholder="0"
-                            value={it.estimatedPrice}
-                            onChange={(e) => handleUpdateItem(idx, "estimatedPrice", e.target.value)}
+                            value={it.estimatedPrice === 0 ? "" : it.estimatedPrice}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));
+                              handleUpdateItem(idx, "estimatedPrice", clean);
+                            }}
                             className="h-8 text-xs font-mono text-right rounded-xl w-28 ml-auto font-bold"
                           />
                         </td>
@@ -1016,8 +1027,12 @@ export default function AdminQuotationForm() {
                   type="number"
                   min="0"
                   placeholder="0"
-                  value={discountInput}
-                  onChange={(e) => setDiscountInput(e.target.value)}
+                  value={discountInput === "0" ? "" : discountInput}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setDiscountInput(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+                  }}
                   className="h-8 text-xs font-mono text-right w-28 rounded-xl"
                 />
               </div>

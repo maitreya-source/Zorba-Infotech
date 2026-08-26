@@ -199,9 +199,15 @@ export default function ServiceCallPaymentModal({
                   </Label>
                   <Input
                     type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="h-8 text-xs font-mono rounded-xl bg-white dark:bg-slate-900"
+                    min="0"
+                    placeholder="0"
+                    value={amount === "0" ? "" : amount}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setAmount(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+                    }}
+                    className="h-8 text-xs font-mono rounded-xl bg-white dark:bg-slate-900 font-bold"
                   />
                 </div>
               </div>

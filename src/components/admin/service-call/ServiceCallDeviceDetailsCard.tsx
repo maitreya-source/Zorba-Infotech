@@ -188,9 +188,14 @@ export default function ServiceCallDeviceDetailsCard({
             <Input
               type="number"
               min="1"
-              value={quantity}
-              onChange={(e) => onQuantityChange(e.target.value)}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
+              placeholder="1"
+              value={quantity === 0 ? "" : quantity}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const raw = e.target.value;
+                onQuantityChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+              }}
+              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors text-center"
             />
           </div>
 
@@ -371,9 +376,14 @@ export default function ServiceCallDeviceDetailsCard({
               </Label>
               <Input
                 type="number"
+                min="0"
                 placeholder="0"
-                value={courierChargesInput}
-                onChange={(e) => onCourierChargesInputChange(e.target.value)}
+                value={courierChargesInput === "0" ? "" : courierChargesInput}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  onCourierChargesInputChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+                }}
                 className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
               />
             </div>

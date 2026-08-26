@@ -215,7 +215,11 @@ export default function EditProductModal({
                 <Input
                   type="number"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setPrice(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+                  }}
                   placeholder="e.g. 24000"
                   className="h-9 text-xs rounded-xl mt-1 bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono"
                 />

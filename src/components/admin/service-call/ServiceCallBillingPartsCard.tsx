@@ -94,17 +94,29 @@ export default function ServiceCallBillingPartsCard({
               <Input
                 type="number"
                 min="1"
-                value={p.quantity}
-                onChange={(e) => onUpdatePart(idx, "quantity", e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors"
+                placeholder="1"
+                value={p.quantity === 0 ? "" : p.quantity}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const clean = raw === "" ? 1 : Math.max(1, Number(raw.replace(/^0+(?=\d)/, '')) || 1);
+                  onUpdatePart(idx, "quantity", clean);
+                }}
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors text-center"
               />
             </div>
             <div className="col-span-2">
               <Input
                 type="number"
+                min="0"
                 placeholder="0"
-                value={p.unitPrice}
-                onChange={(e) => onUpdatePart(idx, "unitPrice", e.target.value)}
+                value={p.unitPrice === 0 ? "" : p.unitPrice}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));
+                  onUpdatePart(idx, "unitPrice", clean);
+                }}
                 className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white transition-colors"
               />
             </div>
@@ -145,9 +157,14 @@ export default function ServiceCallBillingPartsCard({
           </Label>
           <Input
             type="number"
+            min="0"
             placeholder="0"
-            value={serviceChargesInput}
-            onChange={(e) => onServiceChargesInputChange(e.target.value)}
+            value={serviceChargesInput === "0" ? "" : serviceChargesInput}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onServiceChargesInputChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+            }}
             className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white transition-colors"
           />
         </div>
@@ -158,9 +175,14 @@ export default function ServiceCallBillingPartsCard({
           </Label>
           <Input
             type="number"
+            min="0"
             placeholder="0"
-            value={discountInput}
-            onChange={(e) => onDiscountInputChange(e.target.value)}
+            value={discountInput === "0" ? "" : discountInput}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onDiscountInputChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+            }}
             className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-rose-600 dark:text-rose-400 placeholder:text-slate-400 focus:bg-white transition-colors"
           />
         </div>

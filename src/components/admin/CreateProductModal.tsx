@@ -264,7 +264,11 @@ export default function CreateProductModal({
                   type="number"
                   placeholder="e.g. 45000"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setPrice(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+                  }}
                   className="h-9 text-xs font-mono rounded-xl"
                 />
               </div>

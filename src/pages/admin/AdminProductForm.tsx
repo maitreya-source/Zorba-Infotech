@@ -751,7 +751,11 @@ export default function AdminProductForm() {
                 type="number"
                 placeholder="e.g. 45000 (leave blank for Call for Price)"
                 value={form.price}
-                onChange={(e) => set("price", e.target.value)}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  set("price", raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+                }}
                 className="h-10 text-sm rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-bold text-emerald-600 dark:text-emerald-400"
               />
               <p className="text-[11px] text-slate-400">
