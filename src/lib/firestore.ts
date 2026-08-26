@@ -1695,6 +1695,7 @@ export async function createTeamMember(
     createdAt: Date.now(),
   };
   await setDoc(docRef, cleanFirestoreData(newMember));
+  publishSyncSignal("team", { action: "create", resourceId: newMember.id });
   return newMember;
 }
 
@@ -1724,10 +1725,12 @@ export async function updateTeamMember(
   } catch {
     await setDoc(doc(db, "team_members", id), cleanPayload, { merge: true });
   }
+  publishSyncSignal("team", { action: "update", resourceId: id });
 }
 
 export async function deleteTeamMember(id: string): Promise<void> {
   await deleteDoc(doc(db, "team_members", id));
+  publishSyncSignal("team", { action: "delete", resourceId: id });
 }
 
 // ─── Backward-Compatibility Aliases ──────────────────────────────────────────

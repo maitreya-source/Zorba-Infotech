@@ -41,6 +41,7 @@ import {
   deleteQuotation,
   getQuotationTemplates,
 } from "@/lib/firestore";
+import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Quotation, QuotationTemplate } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
@@ -91,6 +92,12 @@ export default function AdminQuotations() {
 
   useEffect(() => {
     loadData();
+
+    // Real-time zero-cost table refresh when quotations are created/updated/deleted
+    const unsub = subscribeSyncSignal("quotations", () => {
+      getQuotations().then((data) => setQuotations(data)).catch(() => {});
+    });
+    return () => unsub();
   }, []);
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);

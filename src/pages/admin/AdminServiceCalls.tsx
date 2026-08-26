@@ -49,6 +49,7 @@ import {
   LoadingScreen,
 } from "@/components/common";
 import { getServiceCalls, deleteServiceCall, restoreServiceCall, updateServiceCall, getFinancialYears } from "@/lib/firestore";
+import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { ServiceCall, ServiceCallStatus, FinancialYearDoc } from "@/lib/types";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
@@ -177,6 +178,12 @@ export default function AdminServiceCalls() {
     loadData();
     // Preload heavy Service Call form chunk in background for instant 0ms editing
     import("./AdminServiceCallForm");
+
+    // Real-time zero-cost table refresh when tickets are updated on any machine
+    const unsub = subscribeSyncSignal("service_calls", () => {
+      getServiceCalls().then((data) => setCalls(data)).catch(() => {});
+    });
+    return () => unsub();
   }, []);
 
   const handleDelete = async () => {

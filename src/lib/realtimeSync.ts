@@ -18,7 +18,8 @@ export type SyncTopic =
   | "quotations"
   | "service_calls"
   | "inquiries"
-  | "job_applications";
+  | "job_applications"
+  | "team";
 
 export interface SyncMessage {
   topic: SyncTopic;

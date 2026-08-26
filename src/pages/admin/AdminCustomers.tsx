@@ -13,6 +13,7 @@ import {
   LoadingScreen,
 } from "@/components/common";
 import { getCustomersPaginated, searchCustomers, deleteCustomer } from "@/lib/firestore";
+import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Customer } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
@@ -64,6 +65,12 @@ export default function AdminCustomers() {
     setPageNumber(1);
     setDocHistory([]);
     loadData(1, undefined);
+
+    // Real-time zero-cost customer table refresh
+    const unsub = subscribeSyncSignal("customers", () => {
+      loadData(pageNumber, docHistory[pageNumber - 2]);
+    });
+    return () => unsub();
   }, [pageSize]);
 
   // Debounced search handling

@@ -33,7 +33,7 @@ import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { AVATAR_CATALOG, getAvatarById } from "@/lib/avatars";
 import TechnicianCommissionModal from "@/components/admin/TechnicianCommissionModal";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
-import { useStaffDutyPresence } from "@/lib/realtimeSync";
+import { useStaffDutyPresence, subscribeSyncSignal } from "@/lib/realtimeSync";
 
 export default function AdminTeam() {
   const navigate = useNavigate();
@@ -89,6 +89,12 @@ export default function AdminTeam() {
 
   useEffect(() => {
     loadData();
+
+    // Real-time zero-cost team list refresh
+    const unsub = subscribeSyncSignal("team", () => {
+      loadData();
+    });
+    return () => unsub();
   }, []);
 
   // Universal Alt+C shortcut to open create modal

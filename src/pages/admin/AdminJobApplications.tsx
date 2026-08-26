@@ -37,6 +37,7 @@ import {
   updateJobApplicationStatus,
   deleteJobApplication,
 } from "@/lib/firestore";
+import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { JobApplication, JobApplicationStatus } from "@/lib/types";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { formatIndianPhoneNumber } from "@/lib/utils";
@@ -67,6 +68,12 @@ export default function AdminJobApplications() {
 
   useEffect(() => {
     loadData();
+
+    // Real-time zero-cost table refresh when job applications change
+    const unsub = subscribeSyncSignal("job_applications", () => {
+      getJobApplications().then((list) => setApplications(list)).catch(() => {});
+    });
+    return () => unsub();
   }, []);
 
   const filtered = useMemo(() => {

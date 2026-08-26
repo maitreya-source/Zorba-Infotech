@@ -42,6 +42,7 @@ import {
   deleteProductPhoto,
   toggleProductWebsiteVisibility,
 } from "@/lib/firestore";
+import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Product, Category } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 
@@ -96,6 +97,12 @@ export default function AdminProducts() {
 
   useEffect(() => {
     loadData(true);
+
+    // Real-time zero-cost product catalog table refresh
+    const unsub = subscribeSyncSignal("products", () => {
+      loadData(false);
+    });
+    return () => unsub();
   }, []);
 
   const catMap = useMemo(() => {

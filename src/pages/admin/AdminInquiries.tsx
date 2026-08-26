@@ -35,6 +35,7 @@ import {
   updateInquiryStatus,
   deleteInquiry,
 } from "@/lib/firestore";
+import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Inquiry, InquiryStatus } from "@/lib/types";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { formatIndianPhoneNumber } from "@/lib/utils";
@@ -65,6 +66,12 @@ export default function AdminInquiries() {
 
   useEffect(() => {
     loadData();
+
+    // Real-time zero-cost table refresh when inquiries change
+    const unsub = subscribeSyncSignal("inquiries", () => {
+      getInquiries().then((list) => setInquiries(list)).catch(() => {});
+    });
+    return () => unsub();
   }, []);
 
   const nonJobInquiries = useMemo(() => {
