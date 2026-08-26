@@ -26,7 +26,7 @@ export default function StaffOnDutyBoard({ onlineStaff }: StaffOnDutyBoardProps)
             ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25"
             : "bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-800"
         }`}
-        title="View live staff on duty board"
+        title="View live staff online"
       >
         <span className="relative flex h-2 w-2">
           {count > 0 && (
@@ -35,7 +35,7 @@ export default function StaffOnDutyBoard({ onlineStaff }: StaffOnDutyBoardProps)
           <span className={`relative inline-flex rounded-full h-2 w-2 ${count > 0 ? "bg-emerald-400" : "bg-slate-500"}`}></span>
         </span>
         <span className="font-mono">{count}</span>
-        <span className="hidden sm:inline">On Duty</span>
+        <span className="hidden sm:inline">Online</span>
         <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
       </button>
 
@@ -49,7 +49,7 @@ export default function StaffOnDutyBoard({ onlineStaff }: StaffOnDutyBoardProps)
                 </div>
                 <div>
                   <h3 className="font-display font-extrabold text-base text-slate-900 dark:text-white">
-                    Live Staff On Duty
+                    Live Staff Online
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                     Logged in on shop terminals
