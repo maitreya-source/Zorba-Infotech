@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "presence": {
+      ".read": true,
+      ".write": true
+    },
+    "sync_bus": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

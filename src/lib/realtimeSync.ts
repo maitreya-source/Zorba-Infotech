@@ -3,11 +3,13 @@
  *
  * Provides instant multi-tab & multi-device coordination:
  * 1. Broadcasts cache invalidation signals (products, customers, quotations, service calls, inquiries, jobs)
- * 2. Manages presence to warn staff when someone else is editing the same record
+ * 2. Multi-Device Presence: warns staff across different laptops when someone else is editing the same record
  * 3. Plays subtle audio chimes and shows notifications for incoming inquiries & job applications
  */
 
 import { useEffect, useState } from "react";
+import { ref, onValue, set, remove, onDisconnect, serverTimestamp } from "firebase/database";
+import { rtdb } from "./firebase";
 
 export type SyncTopic =
   | "products"
@@ -34,7 +36,7 @@ export interface ActiveEditor {
   resourceId: string;
 }
 
-// Dedicated BroadcastChannel for instant cross-tab coordination on same machine
+// Dedicated BroadcastChannel for instant cross-tab coordination on same machine (<1ms)
 const SYNC_CHANNEL_NAME = "zorba_realtime_sync_bus";
 const PRESENCE_CHANNEL_NAME = "zorba_realtime_presence_bus";
 const PRESENCE_STORAGE_KEY = "zorba_active_editors_v1";
@@ -51,7 +53,7 @@ if (typeof window !== "undefined" && "BroadcastChannel" in window) {
 
 const listeners = new Map<SyncTopic, Set<(msg: SyncMessage) => void>>();
 
-// Initialize global sync listener
+// Initialize local sync listener
 if (syncBroadcastChannel) {
   syncBroadcastChannel.onmessage = (event) => {
     const data = event.data as SyncMessage;
@@ -61,6 +63,38 @@ if (syncBroadcastChannel) {
       topicListeners.forEach((cb) => cb(data));
     }
   };
+}
+
+// Initialize RTDB Cloud Sync listener (if database provisioned)
+if (rtdb && typeof window !== "undefined") {
+  try {
+    const cloudSyncBusRef = ref(rtdb, "sync_bus");
+    let isInitialRTDBSync = true;
+    onValue(
+      cloudSyncBusRef,
+      (snap) => {
+        if (isInitialRTDBSync) {
+          isInitialRTDBSync = false;
+          return;
+        }
+        const data = snap.val();
+        if (!data) return;
+        Object.keys(data).forEach((topicKey) => {
+          const msg = data[topicKey] as SyncMessage;
+          if (msg && msg.topic && Date.now() - (msg.timestamp || 0) < 15000) {
+            const topicListeners = listeners.get(msg.topic);
+            if (topicListeners) {
+              topicListeners.forEach((cb) => cb(msg));
+            }
+          }
+        });
+      },
+      (err) => {
+        // Silently fallback if RTDB is disabled in console
+        console.debug("RTDB cloud sync standby:", err.message);
+      }
+    );
+  } catch {}
 }
 
 /**
@@ -82,7 +116,7 @@ export function publishSyncSignal(
     action: meta?.action,
   };
 
-  // 1. Broadcast to local tabs
+  // 1. Broadcast to local tabs (0ms latency)
   if (syncBroadcastChannel) {
     try {
       syncBroadcastChannel.postMessage(message);
@@ -93,6 +127,14 @@ export function publishSyncSignal(
   const topicListeners = listeners.get(topic);
   if (topicListeners) {
     topicListeners.forEach((cb) => cb(message));
+  }
+
+  // 3. Publish to RTDB cloud for multi-computer signaling (< 50ms)
+  if (rtdb) {
+    try {
+      const topicRef = ref(rtdb, `sync_bus/${topic}`);
+      set(topicRef, message).catch(() => {});
+    } catch {}
   }
 }
 
@@ -152,7 +194,7 @@ export function playNotificationChime() {
 
 /**
  * Hook to announce active editing presence on a document (Quotation, Service Call, Product)
- * and discover if another staff member is currently editing the same document.
+ * and discover if another staff member on ANY laptop is currently editing the same document.
  */
 export function useResourcePresence(
   resourceType: "service_call" | "quotation" | "product",
@@ -160,9 +202,17 @@ export function useResourcePresence(
   staffProfile?: { id?: string; name?: string; role?: string } | null
 ) {
   const [activeEditors, setActiveEditors] = useState<ActiveEditor[]>([]);
-  const staffId = staffProfile?.id || "anonymous";
+  const staffId = staffProfile?.id || (typeof window !== "undefined" ? localStorage.getItem("zorba_client_session_id") || `client_${Math.random().toString(36).slice(2, 9)}` : "anonymous");
   const staffName = staffProfile?.name || "Staff Member";
   const staffRole = staffProfile?.role;
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem("zorba_client_session_id")) {
+      try {
+        localStorage.setItem("zorba_client_session_id", staffId);
+      } catch {}
+    }
+  }, [staffId]);
 
   useEffect(() => {
     if (!resourceId || resourceId === "new" || resourceId === "NEW") {
@@ -180,7 +230,7 @@ export function useResourcePresence(
       resourceId,
     };
 
-    // Helper to read active editors from storage
+    // --- A. Local Multi-Tab Coordination ---
     const getStoredEditors = (): Record<string, ActiveEditor[]> => {
       try {
         const raw = localStorage.getItem(PRESENCE_STORAGE_KEY);
@@ -196,8 +246,7 @@ export function useResourcePresence(
       } catch {}
     };
 
-    // Register my presence
-    const registerHeartbeat = () => {
+    const registerLocalHeartbeat = () => {
       const all = getStoredEditors();
       const list = (all[currentKey] || []).filter(
         (e) => e.staffId !== staffId && Date.now() - e.lastHeartbeat < 15000
@@ -206,9 +255,13 @@ export function useResourcePresence(
       all[currentKey] = list;
       saveStoredEditors(all);
 
-      // Update state for other active editors
       const others = list.filter((e) => e.staffId !== staffId);
-      setActiveEditors(others);
+      setActiveEditors((prev) => {
+        // Merge with existing cloud editors
+        const map = new Map(prev.map((e) => [e.staffId, e]));
+        others.forEach((o) => map.set(o.staffId, o));
+        return Array.from(map.values()).filter((e) => e.staffId !== staffId);
+      });
 
       if (presenceBroadcastChannel) {
         presenceBroadcastChannel.postMessage({
@@ -218,7 +271,7 @@ export function useResourcePresence(
       }
     };
 
-    const cleanupPresence = () => {
+    const cleanupLocalPresence = () => {
       const all = getStoredEditors();
       if (all[currentKey]) {
         all[currentKey] = all[currentKey].filter((e) => e.staffId !== staffId);
@@ -233,10 +286,9 @@ export function useResourcePresence(
       }
     };
 
-    registerHeartbeat();
-    const interval = setInterval(registerHeartbeat, 5000);
+    registerLocalHeartbeat();
+    const interval = setInterval(registerLocalHeartbeat, 5000);
 
-    // Listen for presence broadcasts
     const handlePresenceMessage = (event: MessageEvent) => {
       const data = event.data;
       if (!data) return;
@@ -258,11 +310,80 @@ export function useResourcePresence(
       presenceBroadcastChannel.addEventListener("message", handlePresenceMessage);
     }
 
+    // --- B. Cloud RTDB Multi-Device Coordination ---
+    let cloudPresenceUnsub: (() => void) | null = null;
+    let myPresenceRef: any = null;
+
+    if (rtdb) {
+      try {
+        const sanitizedId = resourceId.replace(/[.#$[\]]/g, "_");
+        const presenceRoomRef = ref(rtdb, `presence/${resourceType}/${sanitizedId}`);
+        const safeStaffKey = staffId.replace(/[.#$[\]]/g, "_");
+        myPresenceRef = ref(rtdb, `presence/${resourceType}/${sanitizedId}/${safeStaffKey}`);
+
+        // Register session in RTDB and set auto-removal on disconnect/tab close
+        set(myPresenceRef, {
+          staffId,
+          staffName,
+          staffRole: staffRole || null,
+          resourceType,
+          resourceId,
+          lastHeartbeat: serverTimestamp(),
+        }).catch(() => {});
+
+        try {
+          onDisconnect(myPresenceRef).remove();
+        } catch {}
+
+        // Listen for all active devices in this room
+        cloudPresenceUnsub = onValue(
+          presenceRoomRef,
+          (snapshot) => {
+            const roomData = snapshot.val();
+            if (!roomData) {
+              setActiveEditors([]);
+              return;
+            }
+            const cloudEditors: ActiveEditor[] = [];
+            Object.keys(roomData).forEach((key) => {
+              const item = roomData[key];
+              if (item && item.staffId && item.staffId !== staffId) {
+                cloudEditors.push({
+                  staffId: item.staffId,
+                  staffName: item.staffName || "Staff Member",
+                  staffRole: item.staffRole || undefined,
+                  lastHeartbeat: typeof item.lastHeartbeat === "number" ? item.lastHeartbeat : Date.now(),
+                  resourceType: item.resourceType || resourceType,
+                  resourceId: item.resourceId || resourceId,
+                });
+              }
+            });
+            setActiveEditors(cloudEditors);
+          },
+          (err) => {
+            console.debug("RTDB presence room standby:", err.message);
+          }
+        );
+      } catch (err) {
+        console.debug("RTDB presence init skipped:", err);
+      }
+    }
+
     return () => {
       clearInterval(interval);
-      cleanupPresence();
+      cleanupLocalPresence();
       if (presenceBroadcastChannel) {
         presenceBroadcastChannel.removeEventListener("message", handlePresenceMessage);
+      }
+      if (cloudPresenceUnsub) {
+        try {
+          cloudPresenceUnsub();
+        } catch {}
+      }
+      if (myPresenceRef) {
+        try {
+          remove(myPresenceRef).catch(() => {});
+        } catch {}
       }
     };
   }, [resourceType, resourceId, staffId, staffName, staffRole]);
