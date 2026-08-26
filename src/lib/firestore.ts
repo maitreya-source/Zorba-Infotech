@@ -24,6 +24,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
 import { toTitleCase, formatModelNumber, formatIndianPhoneNumber } from "./utils";
+import { publishSyncSignal, subscribeSyncSignal } from "./realtimeSync";
 import type {
   Category,
   Product,
@@ -260,12 +261,19 @@ function loadLocalProductIndex(): void {
 }
 loadLocalProductIndex();
 
-// Auto delta sync on window focus if stale (> 30s)
+// Auto delta sync on window focus if stale (> 30s) or on real-time sync signal
 if (typeof window !== "undefined") {
   window.addEventListener("focus", () => {
     if (Date.now() - _lastProductSyncTimestamp > 30000 && !_isSyncingProductIndex) {
       syncProductIndex();
     }
+  });
+
+  subscribeSyncSignal("products", () => {
+    syncProductIndex();
+  });
+  subscribeSyncSignal("customers", () => {
+    syncCustomerIndex();
   });
 }
 
@@ -698,6 +706,8 @@ export async function createProduct(
     }).catch(() => {});
   }
 
+  publishSyncSignal("products", { action: "create", resourceId: cleanDocId });
+
   return productData;
 }
 
@@ -741,6 +751,8 @@ export async function updateProduct(
         } catch {}
       }
     }
+
+    publishSyncSignal("products", { action: "update", resourceId: id });
   } catch (err: any) {
     console.error("updateProduct error:", err);
     throw new Error(formatFirebaseError(err));
@@ -772,6 +784,8 @@ export async function toggleProductWebsiteVisibility(
         } catch {}
       }
     }
+
+    publishSyncSignal("products", { action: "update", resourceId: id });
   } catch (err: any) {
     console.error("toggleProductWebsiteVisibility error:", err);
     throw new Error(formatFirebaseError(err));
@@ -790,6 +804,7 @@ export async function deleteProduct(id: string): Promise<void> {
         } catch {}
       }
     }
+    publishSyncSignal("products", { action: "delete", resourceId: id });
   } catch (err: any) {
     console.error("deleteProduct error:", err);
     throw new Error(formatFirebaseError(err));
@@ -1247,6 +1262,8 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
     } catch {}
   }
 
+  publishSyncSignal("customers", { action: "create", resourceId: newCust.id });
+
   return newCust;
 }
 
@@ -1312,6 +1329,8 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
       } catch {}
     }
   }
+
+  publishSyncSignal("customers", { action: "update", resourceId: id });
 }
 
 export async function getCustomersPaginated(options?: {
@@ -1480,6 +1499,7 @@ export async function getCustomer(id: string): Promise<Customer | null> {
 export async function deleteCustomer(id: string): Promise<void> {
   await deleteDoc(doc(db, "customers", id));
   invalidateCustomersCache();
+  publishSyncSignal("customers", { action: "delete", resourceId: id });
 }
 
 // ─── Service Centers ──────────────────────────────────────────────────────────
@@ -2485,6 +2505,8 @@ export async function createServiceCall(
   batch.set(topDocRef, cleanData);
   await batch.commit();
 
+  publishSyncSignal("service_calls", { action: "create", resourceId: ticketNo });
+
   // Auto-save model to catalog
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
     saveDeviceModel(data.deviceCategory, data.modelNumber).catch(() => {});
@@ -2563,6 +2585,8 @@ export async function updateServiceCall(
   batch.set(topDocRef, cleanData, { merge: true });
   await batch.commit();
 
+  publishSyncSignal("service_calls", { action: "update", resourceId: id });
+
   if (data.deviceCategory && data.modelNumber && data.modelNumber.trim()) {
     saveDeviceModel(data.deviceCategory, data.modelNumber).catch(() => {});
   }
@@ -2585,6 +2609,7 @@ export async function deleteServiceCall(id: string): Promise<void> {
     }
     batch.set(doc(db, "service_calls", id), softDeleteData, { merge: true });
     await batch.commit();
+    publishSyncSignal("service_calls", { action: "delete", resourceId: id });
   } catch (err: any) {
     console.error("deleteServiceCall error:", err);
     throw new Error(formatFirebaseError(err));
@@ -2608,6 +2633,7 @@ export async function restoreServiceCall(id: string): Promise<void> {
     }
     batch.set(doc(db, "service_calls", id), restoreData, { merge: true });
     await batch.commit();
+    publishSyncSignal("service_calls", { action: "update", resourceId: id });
   } catch (err: any) {
     console.error("restoreServiceCall error:", err);
     throw new Error(formatFirebaseError(err));
@@ -3419,6 +3445,7 @@ export async function createQuotation(
       updatedAt: Date.now(),
     };
     await setDoc(docRef, cleanFirestoreData(newQuotation));
+    publishSyncSignal("quotations", { action: "create", resourceId: newQuotation.id });
     return newQuotation;
   } catch (err) {
     console.error("createQuotation error:", err);
@@ -3447,6 +3474,7 @@ export async function updateQuotation(
 
     const docRef = doc(db, "quotations", id);
     await setDoc(docRef, cleanFirestoreData({ ...sanitized, updatedAt: Date.now() }), { merge: true });
+    publishSyncSignal("quotations", { action: "update", resourceId: id });
   } catch (err) {
     console.error("updateQuotation error:", err);
     throw new Error(formatFirebaseError(err));
@@ -3456,6 +3484,7 @@ export async function updateQuotation(
 export async function deleteQuotation(id: string): Promise<void> {
   try {
     await deleteDoc(doc(db, "quotations", id));
+    publishSyncSignal("quotations", { action: "delete", resourceId: id });
   } catch (err) {
     console.error("deleteQuotation error:", err);
     throw new Error(formatFirebaseError(err));
@@ -3639,6 +3668,7 @@ export async function createInquiry(
       updatedAt: Date.now(),
     };
     await setDoc(docRef, cleanFirestoreData(newInq));
+    publishSyncSignal("inquiries", { action: "create", resourceId: newInq.id });
     return newInq;
   } catch (err: any) {
     console.error("createInquiry error:", err);
@@ -3664,6 +3694,7 @@ export async function updateInquiryStatus(
     if (staffName) updateData.resolvedByStaffName = staffName;
     if (status === "completed" || status === "dismissed") updateData.resolvedAt = Date.now();
     await setDoc(docRef, cleanFirestoreData(updateData), { merge: true });
+    publishSyncSignal("inquiries", { action: "update", resourceId: id });
   } catch (err: any) {
     console.error("updateInquiryStatus error:", err);
     throw new Error(formatFirebaseError(err));
@@ -3673,6 +3704,7 @@ export async function updateInquiryStatus(
 export async function deleteInquiry(id: string): Promise<void> {
   try {
     await deleteDoc(doc(db, "inquiries", id));
+    publishSyncSignal("inquiries", { action: "delete", resourceId: id });
   } catch (err: any) {
     console.error("deleteInquiry error:", err);
     throw new Error(formatFirebaseError(err));
@@ -3727,6 +3759,7 @@ export async function createJobApplication(
       updatedAt: Date.now(),
     };
     await setDoc(docRef, cleanFirestoreData(newApp));
+    publishSyncSignal("job_applications", { action: "create", resourceId: newApp.id });
     return newApp;
   } catch (err: any) {
     console.error("createJobApplication error:", err);
@@ -3751,6 +3784,7 @@ export async function updateJobApplicationStatus(
     if (staffId) updateData.reviewedByStaffId = staffId;
     if (staffName) updateData.reviewedByStaffName = staffName;
     await setDoc(docRef, cleanFirestoreData(updateData), { merge: true });
+    publishSyncSignal("job_applications", { action: "update", resourceId: id });
   } catch (err) {
     console.error("updateJobApplicationStatus error:", err);
     throw new Error(formatFirebaseError(err));
@@ -3760,6 +3794,7 @@ export async function updateJobApplicationStatus(
 export async function deleteJobApplication(id: string): Promise<void> {
   try {
     await deleteDoc(doc(db, "job_applications", id));
+    publishSyncSignal("job_applications", { action: "delete", resourceId: id });
   } catch (err) {
     console.error("deleteJobApplication error:", err);
     throw new Error(formatFirebaseError(err));

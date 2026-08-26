@@ -33,7 +33,7 @@ import {
   GraduationCap,
   Building,
 } from "lucide-react";
-import { createJobApplication, createInquiry } from "@/lib/firestore";
+import { createJobApplication } from "@/lib/firestore";
 import { isValidIndianPhoneNumber, formatIndianPhoneNumber } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -220,15 +220,6 @@ export default function Careers() {
         resumeLink: resumeLink.trim() || undefined,
         message: message.trim() || undefined,
       });
-
-      // Also create an inquiry entry for administrative tracking
-      await createInquiry({
-        name: fullName.trim(),
-        phone: normalizedPhone,
-        message: `[Job Application - ${selectedRoleTitle}]\nExperience: ${experience}\nEmail: ${email.trim() || "N/A"}\nResume Link: ${resumeLink.trim() || "N/A"}\nNotes: ${message.trim() || "None"}`,
-        status: "pending",
-        source: "careers_page",
-      }).catch(() => null);
 
       toast.success("Application submitted successfully! Our HR team will contact you shortly.");
       setShowApplyModal(false);

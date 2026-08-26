@@ -67,8 +67,14 @@ export default function AdminInquiries() {
     loadData();
   }, []);
 
+  const nonJobInquiries = useMemo(() => {
+    return inquiries.filter(
+      (inq) => inq.source !== "careers_page" && !inq.message?.startsWith("[Job Application")
+    );
+  }, [inquiries]);
+
   const filtered = useMemo(() => {
-    return inquiries.filter((inq) => {
+    return nonJobInquiries.filter((inq) => {
       const matchesStatus = statusFilter === "all" || inq.status === statusFilter;
       const q = search.toLowerCase().trim();
       const matchesSearch =
@@ -81,7 +87,7 @@ export default function AdminInquiries() {
 
       return matchesStatus && matchesSearch;
     });
-  }, [inquiries, statusFilter, search]);
+  }, [nonJobInquiries, statusFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginatedInquiries = useMemo(() => {
@@ -91,12 +97,12 @@ export default function AdminInquiries() {
 
   const counts = useMemo(() => {
     return {
-      all: inquiries.length,
-      pending: inquiries.filter((i) => i.status === "pending").length,
-      completed: inquiries.filter((i) => i.status === "completed").length,
-      dismissed: inquiries.filter((i) => i.status === "dismissed").length,
+      all: nonJobInquiries.length,
+      pending: nonJobInquiries.filter((i) => i.status === "pending").length,
+      completed: nonJobInquiries.filter((i) => i.status === "completed").length,
+      dismissed: nonJobInquiries.filter((i) => i.status === "dismissed").length,
     };
-  }, [inquiries]);
+  }, [nonJobInquiries]);
 
   const handleUpdateStatus = async (id: string, newStatus: InquiryStatus) => {
     try {

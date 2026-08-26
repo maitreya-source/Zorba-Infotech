@@ -1,5 +1,9 @@
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { playNotificationChime } from "@/lib/realtimeSync";
+import { toast } from "sonner";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import {
   Activity,
@@ -52,9 +56,60 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Real-time unread pending counts
+  const [pendingInquiriesCount, setPendingInquiriesCount] = useState(0);
+  const [pendingJobAppsCount, setPendingJobAppsCount] = useState(0);
+  const isFirstLoadRef = useRef(true);
+
   // Sync customer index in background only for authenticated admin staff
   useEffect(() => {
     syncCustomerIndex();
+  }, []);
+
+  // Real-time unread pending counts listener
+  useEffect(() => {
+    // 1. Pending Inquiries
+    const qInq = query(collection(db, "inquiries"), where("status", "==", "pending"));
+    const unsubInq = onSnapshot(
+      qInq,
+      (snap) => {
+        const nonJobDocs = snap.docs.filter(
+          (d) => d.data().source !== "careers_page" && !d.data().message?.startsWith("[Job Application")
+        );
+        const count = nonJobDocs.length;
+        if (!isFirstLoadRef.current && count > pendingInquiriesCount) {
+          playNotificationChime();
+          toast.info("🔔 New website customer inquiry received!");
+        }
+        setPendingInquiriesCount(count);
+      },
+      (err) => {
+        console.warn("Inquiries unread snapshot warning:", err);
+      }
+    );
+
+    // 2. Pending Job Applications
+    const qJobs = query(collection(db, "job_applications"), where("status", "==", "pending"));
+    const unsubJobs = onSnapshot(
+      qJobs,
+      (snap) => {
+        const count = snap.size;
+        if (!isFirstLoadRef.current && count > pendingJobAppsCount) {
+          playNotificationChime();
+          toast.info("💼 New career job application received!");
+        }
+        setPendingJobAppsCount(count);
+        isFirstLoadRef.current = false;
+      },
+      (err) => {
+        console.warn("Job applications unread snapshot warning:", err);
+      }
+    );
+
+    return () => {
+      unsubInq();
+      unsubJobs();
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -127,31 +182,58 @@ export default function AdminLayout() {
             </div>
           )}
 
-          {navItems.map(({ label, to, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={() => setMobileSidebarOpen(false)}
-              title={collapsed ? label : undefined}
-              className={({ isActive }) =>
-                `group flex items-center gap-3 rounded-xl py-2.5 transition-all text-xs ${
-                  collapsed ? "justify-center px-0" : "px-3"
-                } ${
-                  isActive
-                    ? "bg-slate-800/90 text-white font-bold border border-slate-700/80 shadow-xs"
-                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 font-medium"
-                }`
-              }
-            >
-              <Icon className={`h-4 w-4 shrink-0 transition-colors group-hover:text-white`} />
-              {!collapsed && (
-                <>
-                  <span className="flex-1 truncate">{label}</span>
-                  <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60 transition-opacity text-slate-500" />
-                </>
-              )}
-            </NavLink>
-          ))}
+          {navItems.map(({ label, to, icon: Icon }) => {
+            const isJobNav = to === "/admin/job-applications";
+            const isInqNav = to === "/admin/inquiries";
+            const badgeCount = isJobNav ? pendingJobAppsCount : isInqNav ? pendingInquiriesCount : 0;
+
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={() => setMobileSidebarOpen(false)}
+                title={collapsed ? (badgeCount > 0 ? `${label} (${badgeCount} pending)` : label) : undefined}
+                className={({ isActive }) =>
+                  `group relative flex items-center gap-3 rounded-xl py-2.5 transition-all text-xs ${
+                    collapsed ? "justify-center px-0" : "px-3"
+                  } ${
+                    isActive
+                      ? "bg-slate-800/90 text-white font-bold border border-slate-700/80 shadow-xs"
+                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 font-medium"
+                  }`
+                }
+              >
+                <div className="relative">
+                  <Icon className="h-4 w-4 shrink-0 transition-colors group-hover:text-white" />
+                  {collapsed && badgeCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    </span>
+                  )}
+                </div>
+
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 truncate">{label}</span>
+                    {badgeCount > 0 ? (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold shadow-xs ${
+                          isJobNav
+                            ? "bg-blue-500/20 text-blue-300 border border-blue-400/40"
+                            : "bg-rose-500/20 text-rose-300 border border-rose-400/40"
+                        }`}
+                      >
+                        {badgeCount}
+                      </span>
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60 transition-opacity text-slate-500" />
+                    )}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
 
         {/* Unified Profile & Account Footer (Fixed at bottom) */}

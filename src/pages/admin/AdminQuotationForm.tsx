@@ -58,6 +58,8 @@ import QuotationTemplateModal from "@/components/admin/QuotationTemplateModal";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
 import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
 import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
+import { useResourcePresence } from "@/lib/realtimeSync";
+import ResourceCollisionAlert from "@/components/admin/ResourceCollisionAlert";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { formatIndianPhoneNumber } from "@/lib/utils";
@@ -71,6 +73,7 @@ export default function AdminQuotationForm() {
   const navigate = useNavigate();
   const { activeProfile } = useStaffProfile();
   const isEditing = Boolean(id);
+  const { activeEditors } = useResourcePresence("quotation", id, activeProfile);
 
   // Core Form State
   const [quotationNo, setQuotationNo] = useState("");
@@ -644,6 +647,9 @@ export default function AdminQuotationForm() {
           </Button>
         </div>
       </div>
+
+      {/* Real-time Concurrent Editing Collision Warning */}
+      <ResourceCollisionAlert activeEditors={activeEditors} resourceLabel="quotation" />
 
       {/* Main Quotation Form Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

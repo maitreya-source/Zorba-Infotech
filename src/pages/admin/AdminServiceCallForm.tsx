@@ -83,6 +83,8 @@ import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import CreateProductModal from "@/components/admin/CreateProductModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
+import { useResourcePresence } from "@/lib/realtimeSync";
+import ResourceCollisionAlert from "@/components/admin/ResourceCollisionAlert";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
@@ -179,6 +181,7 @@ export default function AdminServiceCallForm() {
   const { user } = useAuth();
   const { activeProfile, setShowSelectorModal } = useStaffProfile();
   const isEditing = Boolean(id);
+  const { activeEditors } = useResourcePresence("service_call", id, activeProfile);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const initialSnapshotRef = useRef<string>("");
   const [showEscQuitPrompt, setShowEscQuitPrompt] = useState(false);
@@ -1085,6 +1088,9 @@ export default function AdminServiceCallForm() {
   return (
     <div className="space-y-4 max-w-[1440px] mx-auto pb-16 text-xs">
       <form id="service-call-form" onSubmit={handleSubmit} className="space-y-4 max-w-5xl mx-auto">
+        {/* Real-time Concurrent Editing Collision Warning */}
+        <ResourceCollisionAlert activeEditors={activeEditors} resourceLabel="service call ticket" />
+
         {/* Card 0: Service Workflow Mode Switcher + Header Metadata (Status, Tech Assignee, Date) */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-4 md:p-5 space-y-4">
           {/* Top Service Type Mode Switcher Integrated into Header Card */}
