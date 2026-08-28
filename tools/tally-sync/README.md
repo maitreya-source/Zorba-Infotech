@@ -50,7 +50,7 @@ This folder contains the standalone, zero-dependency Windows synchronization cli
 ### C. Dry-Run Simulation (Zero Database Writes)
 * Test what products would be created or updated without modifying live data:
   * Double-click `DryRun_All.bat`
-  * Check the results in the Admin Dashboard: `https://zorba.co.in/admin/tally-sync`
+  * Check the results in the Admin Dashboard: `https://zorbainfotech.in/admin/tally-sync`
 
 ---
 

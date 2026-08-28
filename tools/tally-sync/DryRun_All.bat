@@ -12,7 +12,7 @@ ZorbaTallySync.exe -dry-run -all
 
 echo.
 echo ================================================================
-echo Check the Admin Dashboard at: https://zorba.co.in/admin/tally-sync
+echo Check the Admin Dashboard at: https://zorbainfotech.in/admin/tally-sync
 echo to see the simulation report.
 echo ================================================================
 pause
