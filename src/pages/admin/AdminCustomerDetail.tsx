@@ -312,6 +312,11 @@ export default function AdminCustomerDetail() {
                     <Building className="h-3 w-3 mr-1" /> {customer.companyName}
                   </Badge>
                 )}
+                {customer.group && (
+                  <Badge variant="secondary" className="text-[10px] font-semibold bg-purple-500/20 text-purple-200 border-purple-400/30">
+                    {customer.group}
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-slate-300 mt-0.5">
                 Client Profile & Complete Service Call History Lookup
@@ -414,6 +419,23 @@ export default function AdminCustomerDetail() {
               <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-white truncate">
                 <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                 <span className="truncate">{customer.email || "No email on record"}</span>
+              </div>
+            </div>
+
+            {/* Address & Group */}
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Customer Group / Region</span>
+              <div className="flex items-center gap-1.5 font-medium text-purple-700 dark:text-purple-300">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800">
+                  {customer.group || "Sundry Debtors"}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Registered City</span>
+              <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
+                <span>{customer.city || "Neemuch"}</span>
               </div>
             </div>
 

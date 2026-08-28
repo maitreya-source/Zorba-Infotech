@@ -32,6 +32,7 @@ export default function CreateCustomerModal({
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [group, setGroup] = useState("");
   const [additionalPhones, setAdditionalPhones] = useState<string[]>([]);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,6 +99,7 @@ export default function CreateCustomerModal({
       const cust = await createCustomer({
         name: formattedName,
         phone: fullPhone,
+        group: group.trim() || undefined,
         additionalPhones: cleanExtraPhones.length > 0 ? cleanExtraPhones : undefined,
         email: email.trim().toLowerCase() || undefined,
         address: address.trim() ? toTitleCase(address) : undefined,
@@ -112,6 +114,7 @@ export default function CreateCustomerModal({
       setEmail("");
       setAddress("");
       setCompanyName("");
+      setGroup("");
       setAdditionalPhones([]);
       setDuplicateCustomer(null);
       setShowMoreDetails(false);
@@ -214,15 +217,30 @@ export default function CreateCustomerModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="cust-email" className="text-xs font-semibold">Email Address</Label>
+              <Label htmlFor="cust-group" className="text-xs font-semibold">Customer Group / Region</Label>
               <Input
-                id="cust-email"
-                type="email"
-                placeholder="customer@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 h-8 text-xs"
+                id="cust-group"
+                list="create-cust-groups-list"
+                placeholder="e.g. 2314-Neemuch, Sundry Debtors"
+                value={group}
+                onChange={(e) => setGroup(e.target.value)}
+                className="mt-1 h-8 text-xs font-medium"
               />
+              <datalist id="create-cust-groups-list">
+                <option value="Sundry Debtors" />
+                <option value="2314-Neemuch" />
+                <option value="2314-Neemuch North" />
+                <option value="2319-Neemuch South" />
+                <option value="2323-West Neemuch" />
+                <option value="2305-East Jawahar + Indira Nagar" />
+                <option value="2305-East Neemuch East" />
+                <option value="2311-Jawad, Nayagaon, Khor, Suvakheda" />
+                <option value="2313-Mandsaur, Pipliya Mandi, Malhargarh" />
+                <option value="2318-Rampura, Kukreshwar, Manasa" />
+                <option value="23-Indore, Bhopal" />
+                <option value="27-Maharashtra" />
+                <option value="09-Uttar Pradesh" />
+              </datalist>
             </div>
             <div>
               <Label htmlFor="cust-company" className="text-xs font-semibold">Company / Business Name</Label>
@@ -236,15 +254,28 @@ export default function CreateCustomerModal({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="cust-address" className="text-xs font-semibold">Address / Onsite Location</Label>
-            <Input
-              id="cust-address"
-              placeholder="Shop #, Street, City"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="mt-1 h-8 text-xs"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="cust-email" className="text-xs font-semibold">Email Address</Label>
+              <Input
+                id="cust-email"
+                type="email"
+                placeholder="customer@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 h-8 text-xs"
+              />
+            </div>
+            <div>
+              <Label htmlFor="cust-address" className="text-xs font-semibold">Address / Onsite Location</Label>
+              <Input
+                id="cust-address"
+                placeholder="Shop #, Street, City"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="mt-1 h-8 text-xs"
+              />
+            </div>
           </div>
 
           {/* Expandable Section: Additional Phone Numbers */}
