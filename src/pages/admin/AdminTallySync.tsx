@@ -1117,30 +1117,55 @@ export default function AdminTallySync() {
                     <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 sticky top-0">
                       <tr>
                         <th className="p-2.5 pl-3">Customer / Party Name</th>
-                        <th className="p-2.5">Parent Ledger Group</th>
+                        <th className="p-2.5">Normalized Group</th>
+                        <th className="p-2.5">WhatsApp Mobile</th>
+                        <th className="p-2.5">City & Locality</th>
                         <th className="p-2.5">GSTIN</th>
-                        <th className="p-2.5">Closing Balance</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {(selectedRun.createdCustomers || [])
                         .filter((c) =>
                           !modalSearch ||
-                          c.name.toLowerCase().includes(modalSearch.toLowerCase())
+                          c.name.toLowerCase().includes(modalSearch.toLowerCase()) ||
+                          (c.phone && c.phone.includes(modalSearch))
                         )
-                        .map((c, idx) => (
+                        .map((c: any, idx) => (
                           <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-2.5 pl-3 font-medium text-purple-900">{c.name}</td>
-                            <td className="p-2.5 text-slate-600">{c.parent}</td>
-                            <td className="p-2.5 font-mono">{c.gstin || "—"}</td>
-                            <td className="p-2.5 font-medium">
-                              {c.closingBalance ? `₹${c.closingBalance.toLocaleString("en-IN")}` : "₹0"}
+                            <td className="p-2.5 pl-3 font-medium text-purple-900">
+                              {c.name}
+                              {c.rawName && c.rawName !== c.name && (
+                                <div className="text-[10px] text-slate-400 font-normal truncate max-w-xs">
+                                  Raw: {c.rawName}
+                                </div>
+                              )}
                             </td>
+                            <td className="p-2.5">
+                              <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-200 text-[10px] font-semibold">
+                                {c.group || c.parent || "Sundry Debtors"}
+                              </Badge>
+                            </td>
+                            <td className="p-2.5 font-mono">
+                              {c.phone ? (
+                                <span className="text-emerald-700 font-semibold">
+                                  +{c.phone.startsWith("91") ? c.phone.slice(0, 2) + " " + c.phone.slice(2) : c.phone}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="p-2.5 text-slate-600">
+                              {c.city || "Neemuch"}
+                              {c.address && c.address !== c.city && (
+                                <span className="text-slate-400 text-[10px] block">{c.address}</span>
+                              )}
+                            </td>
+                            <td className="p-2.5 font-mono">{c.gstin || "—"}</td>
                           </tr>
                         ))}
                       {(selectedRun.createdCustomers || []).length === 0 && (
                         <tr>
-                          <td colSpan={4} className="p-6 text-center text-slate-400">
+                          <td colSpan={5} className="p-6 text-center text-slate-400">
                             No customer ledgers in this run.
                           </td>
                         </tr>

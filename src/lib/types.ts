@@ -85,6 +85,7 @@ export interface Customer {
   email?: string;
   address?: string;
   city?: string;
+  group?: string;
   companyName?: string;
   notes?: string;
   createdAt: string | number;

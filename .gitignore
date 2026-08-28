@@ -31,8 +31,7 @@ dist-ssr
 *.sw?
 
 # Binaries and compiled files
-tally-gateway
-services/tally-gateway/tally-gateway
+/services/tally-gateway/tally-gateway
 *.exe
 __pycache__/
 *.pyc
