@@ -241,11 +241,18 @@ export default function AdminCustomers() {
                         <span>{cust.name}</span>
                         <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
                       </div>
-                      {cust.companyName && (
-                        <div className="text-[11px] text-[#2563EB] font-semibold flex items-center gap-1 mt-0.5">
-                          <Building className="h-3 w-3" /> {cust.companyName}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        {cust.companyName && cust.companyName !== cust.name && (
+                          <span className="text-[11px] text-[#2563EB] font-semibold flex items-center gap-1">
+                            <Building className="h-3 w-3" /> {cust.companyName}
+                          </span>
+                        )}
+                        {cust.group && (
+                          <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            {cust.group}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Phone */}
