@@ -50,6 +50,7 @@ const AdminQuotations = lazy(() => import("./pages/admin/AdminQuotations"));
 const AdminQuotationForm = lazy(() => import("./pages/admin/AdminQuotationForm"));
 const AdminInquiries = lazy(() => import("./pages/admin/AdminInquiries"));
 const AdminJobApplications = lazy(() => import("./pages/admin/AdminJobApplications"));
+const AdminTallySync = lazy(() => import("./pages/admin/AdminTallySync"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,6 +121,7 @@ const App = () => (
                       <Route path="/admin/inquiries" element={<AdminInquiries />} />
                       <Route path="/admin/job-applications" element={<AdminJobApplications />} />
                       <Route path="/admin/whatsapp-templates" element={<AdminWhatsAppTemplates />} />
+                      <Route path="/admin/tally-sync" element={<AdminTallySync />} />
                       <Route path="/admin/backup" element={<AdminBackupRestore />} />
                     </Route>
                   </Route>

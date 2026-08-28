@@ -24,6 +24,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
 import { toTitleCase, formatModelNumber, formatIndianPhoneNumber } from "./utils";
+import { normalizeProduct } from "./normalizeProduct";
 import { publishSyncSignal, subscribeSyncSignal } from "./realtimeSync";
 import type {
   Category,
@@ -126,22 +127,55 @@ export function cleanFirestoreData<T>(data: T): T {
 // ─── Default Categories ───────────────────────────────────────────────────────
 
 const DEFAULT_CATEGORIES = [
-  { name: "CCTV & Security", iconName: "Camera", color: "from-blue-500/10 to-blue-600/5", order: 1, description: "DVR, NVR, Cameras & Surveillance" },
-  { name: "Printer", iconName: "Printer", color: "from-emerald-500/10 to-emerald-600/5", order: 2, description: "Inkjet, Laser, Thermal & Multifunction Printers" },
-  { name: "Toner / Cartridge", iconName: "Layers", color: "from-cyan-500/10 to-cyan-600/5", order: 3, description: "Toner refill, Drum replacement & Cartridges" },
-  { name: "Laptop", iconName: "Laptop", color: "from-purple-500/10 to-purple-600/5", order: 4, description: "Laptops, MacBooks & Notebooks" },
-  { name: "Desktop & PC", iconName: "Monitor", color: "from-amber-500/10 to-amber-600/5", order: 5, description: "Desktops, CPU Towers, All-in-One PCs" },
-  { name: "Router & Networking", iconName: "Wifi", color: "from-red-500/10 to-red-600/5", order: 6, description: "Routers, Switches, Access Points, Fiber ONTs" },
-  { name: "UPS & Inverter", iconName: "Cpu", color: "from-indigo-500/10 to-indigo-600/5", order: 7, description: "UPS Units, Batteries & Power Supplies" },
-  { name: "Scanner & Billing", iconName: "Barcode", color: "from-pink-500/10 to-pink-600/5", order: 8, description: "Barcode Scanners, Receipt Printers, POS Terminals" },
-  { name: "Biometric & Attendance", iconName: "Fingerprint", color: "from-rose-500/10 to-rose-600/5", order: 9, description: "Fingerprint & Face Recognition Devices" },
-  { name: "Monitor & Display", iconName: "Tv", color: "from-violet-500/10 to-violet-600/5", order: 10, description: "LCD/LED Monitors, Touch Screens & Interactive Panels" },
-  { name: "Accessories", iconName: "Package", color: "from-slate-500/10 to-slate-600/5", order: 11, description: "Cables, Adapters, Keyboards & Mice" },
+  { id: "processor", name: "Processor", iconName: "Cpu", color: "from-blue-500/10 to-blue-600/5", order: 1, description: "Intel Core & AMD Ryzen CPUs" },
+  { id: "laptop", name: "Laptop", iconName: "Laptop", color: "from-purple-500/10 to-purple-600/5", order: 2, description: "Laptops, MacBooks & Notebooks" },
+  { id: "printer", name: "Printer", iconName: "Printer", color: "from-emerald-500/10 to-emerald-600/5", order: 3, description: "Inkjet, Laser, Thermal & Multifunction Printers" },
+  { id: "desktop-pc", name: "Desktop & PC", iconName: "Monitor", color: "from-amber-500/10 to-amber-600/5", order: 4, description: "Desktops, Motherboards, RAM & Internal SSDs" },
+  { id: "cctv-security", name: "CCTV & Security", iconName: "Camera", color: "from-blue-500/10 to-blue-600/5", order: 5, description: "DVR, NVR, Cameras & Surveillance" },
+  { id: "router-networking", name: "Router & Networking", iconName: "Wifi", color: "from-red-500/10 to-red-600/5", order: 6, description: "Routers, Switches, Access Points, Fiber ONTs" },
+  { id: "scanner-billing", name: "Scanner & Billing", iconName: "Barcode", color: "from-pink-500/10 to-pink-600/5", order: 7, description: "Barcode Scanners, Receipt Printers, POS Terminals" },
+  { id: "biometric-attendance", name: "Biometric & Attendance", iconName: "Fingerprint", color: "from-rose-500/10 to-rose-600/5", order: 8, description: "Fingerprint & Face Recognition Devices" },
+  { id: "monitor-display", name: "Monitor & Display", iconName: "Tv", color: "from-violet-500/10 to-violet-600/5", order: 9, description: "Monitors, Displays, Projectors & Screens" },
+  { id: "ups-inverter", name: "UPS & Inverter", iconName: "Cpu", color: "from-indigo-500/10 to-indigo-600/5", order: 10, description: "UPS Units, Batteries & Power Supplies" },
+  { id: "toner-cartridge", name: "Toner / Cartridge", iconName: "Layers", color: "from-cyan-500/10 to-cyan-600/5", order: 11, description: "Toner refill, Drum replacement & Cartridges" },
+  { id: "accessories", name: "Accessories", iconName: "Package", color: "from-slate-500/10 to-slate-600/5", order: 12, description: "Cables, Adapters, Keyboards & Mice" },
 ];
 
-// ─── Master Categories ────────────────────────────────────────────────────────
+let _cachedCategories: Category[] | null = null;
 
-export async function getCategories(): Promise<Category[]> {
+// ─── Master Categories (Cached & 0-Read Capable) ──────────────────────────────
+
+export async function getCategories(forceRefresh = false): Promise<Category[]> {
+  if (!forceRefresh && _cachedCategories && _cachedCategories.length > 0) {
+    return _cachedCategories;
+  }
+
+  // Check localStorage (< 1ms, 0 Firestore reads)
+  if (!forceRefresh && typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("zorba_categories_cache");
+      if (stored) {
+        _cachedCategories = JSON.parse(stored);
+        if (_cachedCategories && _cachedCategories.length > 0) {
+          return _cachedCategories;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  // Return static defaults instantly for public users without Firestore query
+  if (!forceRefresh) {
+    _cachedCategories = DEFAULT_CATEGORIES as Category[];
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("zorba_categories_cache", JSON.stringify(_cachedCategories));
+      } catch {}
+    }
+    return _cachedCategories;
+  }
+
   try {
     let snap;
     try {
@@ -152,14 +186,18 @@ export async function getCategories(): Promise<Category[]> {
     }
     const categories = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Category);
     if (categories.length === 0) {
-      await seedDefaultCategories();
-      const res = await getDocs(collection(db, "categories"));
-      return res.docs.map((d) => ({ id: d.id, ...d.data() }) as Category);
+      return DEFAULT_CATEGORIES as Category[];
+    }
+    _cachedCategories = categories;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("zorba_categories_cache", JSON.stringify(categories));
+      } catch {}
     }
     return categories;
   } catch (err: any) {
-    console.error("getCategories error:", err);
-    throw new Error(formatFirebaseError(err));
+    console.warn("getCategories fallback to default categories:", err);
+    return DEFAULT_CATEGORIES as Category[];
   }
 }
 
@@ -220,6 +258,8 @@ export interface ProductIndexItem {
   categoryId: string;
   category?: string;
   price?: number | null;
+  stockCount?: number;
+  uom?: string;
   inStock: boolean;
   showOnWebsite: boolean;
   showPriceOnWebsite?: boolean;
@@ -235,18 +275,32 @@ export interface ProductIndexItem {
   updatedAt?: any;
 }
 
-const STORAGE_KEY_PRODUCT_INDEX = "zorba_prod_index_v2";
-const STORAGE_KEY_PRODUCT_SYNC = "zorba_prod_sync_v2";
+const CATALOG_MANIFEST_VERSION = "v3_20260828_clean";
+const STORAGE_KEY_PRODUCT_INDEX = `zorba_prod_index_${CATALOG_MANIFEST_VERSION}`;
+const STORAGE_KEY_PRODUCT_SYNC = `zorba_prod_sync_${CATALOG_MANIFEST_VERSION}`;
+const STORAGE_KEY_CATALOG_VERSION = "zorba_catalog_manifest_version";
 
 let _productIndex: ProductIndexItem[] = [];
 let _isProductIndexInitialized = false;
 let _isSyncingProductIndex = false;
 let _lastProductSyncTimestamp = 0;
 
-// Load local cache synchronously on startup (< 1ms)
+// Load local cache synchronously on startup (< 1ms) with auto-invalidation on new version
 function loadLocalProductIndex(): void {
   if (typeof window === "undefined") return;
   try {
+    const storedVersion = localStorage.getItem(STORAGE_KEY_CATALOG_VERSION);
+    if (storedVersion !== CATALOG_MANIFEST_VERSION) {
+      // Version changed! Automatically clear old stale caches
+      localStorage.removeItem("zorba_prod_index_v2");
+      localStorage.removeItem("zorba_prod_sync_v2");
+      localStorage.removeItem("zorba_categories_cache");
+      localStorage.setItem(STORAGE_KEY_CATALOG_VERSION, CATALOG_MANIFEST_VERSION);
+      _productIndex = [];
+      _lastProductSyncTimestamp = 0;
+      return;
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY_PRODUCT_INDEX);
     if (raw) {
       _productIndex = JSON.parse(raw);
@@ -294,31 +348,90 @@ export async function syncProductIndex(forceFull = false): Promise<void> {
     }
 
     if (forceFull || _productIndex.length === 0 || lastSync === 0) {
-      // Full sync: fetch all product docs (slim projection)
-      const snap = await fetchWithTimeout(getDocs(collection(db, "products")));
-      const items: ProductIndexItem[] = snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          name: data.name || "",
-          brand: data.brand || "",
-          model: data.model || d.id,
-          itemCode: data.itemCode || "",
-          categoryId: data.categoryId || "",
-          category: data.category || "",
-          price: data.price !== undefined ? data.price : null,
-          inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
-          showOnWebsite: data.showOnWebsite !== undefined ? Boolean(data.showOnWebsite) : true,
-          showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? Boolean(data.showPriceOnWebsite) : true,
-          featured: Boolean(data.featured),
-          photoUrl: data.photoUrl || null,
-          description: data.description || "",
-          order: data.order !== undefined ? data.order : null,
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
-        };
-      });
-      _productIndex = items;
+      // 1. Ultra-fast bootstrap from static CDN manifest (< 40ms, 0 Firestore Reads)
+      let loadedFromManifest = false;
+      if (typeof window !== "undefined" && !forceFull) {
+        try {
+          const res = await fetch(`/data/products_manifest.json?v=${CATALOG_MANIFEST_VERSION}`, {
+            cache: "no-cache",
+            headers: { "Cache-Control": "no-cache" },
+          });
+          if (res.ok) {
+            const manifestData = await res.json();
+            if (Array.isArray(manifestData) && manifestData.length > 0) {
+              const categoryNames: Record<string, string> = {
+                processor: "Processor",
+                printer: "Printer",
+                "toner-cartridge": "Toner / Cartridge",
+                laptop: "Laptop",
+                "desktop-pc": "Desktop & PC",
+                "cctv-security": "CCTV & Security",
+                "router-networking": "Router & Networking",
+                "monitor-display": "Monitor & Display",
+                "ups-inverter": "UPS & Inverter",
+                "scanner-billing": "Scanner & Billing",
+                "biometric-attendance": "Biometric & Attendance",
+                accessories: "Accessories",
+              };
+              _productIndex = manifestData.map((it: any) => ({
+                id: it.id,
+                name: it.n || "",
+                brand: it.b || "",
+                model: it.m || "",
+                itemCode: "",
+                categoryId: it.c || "accessories",
+                category: categoryNames[it.c] || "Accessories",
+                price: it.p !== undefined ? it.p : null,
+                stockCount: typeof it.s === "number" ? it.s : 0,
+                uom: it.u || "Nag.",
+                inStock: it.i === 1,
+                showOnWebsite: it.v !== 0,
+                showPriceOnWebsite: it.p !== null && it.p > 0,
+                featured: false,
+                photoUrl: null,
+                description: "",
+                order: null,
+                createdAt: 1787860000000,
+                updatedAt: 1787860000000,
+              }));
+              loadedFromManifest = true;
+              lastSync = 1787860000000;
+            }
+          }
+        } catch (manifestErr) {
+          console.warn("Manifest bootstrap fallback:", manifestErr);
+        }
+      }
+
+      // 2. If manifest was unavailable or full refresh requested, query Firestore
+      if (!loadedFromManifest) {
+        const snap = await fetchWithTimeout(getDocs(collection(db, "products")));
+        const items: ProductIndexItem[] = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            name: data.name || "",
+            brand: data.brand || "",
+            model: data.model || "",
+            itemCode: data.itemCode || "",
+            categoryId: data.categoryId || "",
+            category: data.category || "",
+            price: data.price !== undefined ? data.price : null,
+            stockCount: typeof data.stockCount === "number" ? data.stockCount : 0,
+            uom: data.uom || "Nag.",
+            inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
+            showOnWebsite: data.showOnWebsite !== undefined ? Boolean(data.showOnWebsite) : true,
+            showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? Boolean(data.showPriceOnWebsite) : true,
+            featured: Boolean(data.featured),
+            photoUrl: data.photoUrl || null,
+            description: data.description || "",
+            order: data.order !== undefined ? data.order : null,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
+          };
+        });
+        _productIndex = items;
+      }
     } else {
       // Delta sync: fetch only updated docs since last sync with 60s overlap buffer
       const sinceTime = Math.max(0, lastSync - 60000);
@@ -335,11 +448,13 @@ export async function syncProductIndex(forceFull = false): Promise<void> {
             id: d.id,
             name: data.name || "",
             brand: data.brand || "",
-            model: data.model || d.id,
+            model: data.model || "",
             itemCode: data.itemCode || "",
             categoryId: data.categoryId || "",
             category: data.category || "",
             price: data.price !== undefined ? data.price : null,
+            stockCount: typeof data.stockCount === "number" ? data.stockCount : 0,
+            uom: data.uom || "Nag.",
             inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
             showOnWebsite: data.showOnWebsite !== undefined ? Boolean(data.showOnWebsite) : true,
             showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? Boolean(data.showPriceOnWebsite) : true,
@@ -399,7 +514,11 @@ export async function getProducts(forceRefresh = false): Promise<Product[]> {
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
-  // Instant check in memory index (< 0.1ms)
+  // 1. Instant check in memory index (< 0.1ms)
+  if (_productIndex.length === 0) {
+    await syncProductIndex();
+  }
+
   if (_productIndex.length > 0) {
     const cached = _productIndex.find((p) => p.id === id || p.model?.toUpperCase() === id.toUpperCase());
     if (cached) return cached as Product;
@@ -418,96 +537,72 @@ export async function getProduct(id: string): Promise<Product | null> {
 export async function getPublicProducts(options?: {
   categoryId?: string;
   pageSize?: number;
-  lastDoc?: DocumentSnapshot | QueryDocumentSnapshot;
+  offset?: number;
+  page?: number;
+  lastDoc?: any;
   search?: string;
 }): Promise<PaginatedResult<Product>> {
-  const pageSize = options?.pageSize || 24;
-  const categoryId = options?.categoryId && options.categoryId !== "all" ? options.categoryId : undefined;
-  const search = (options?.search || "").trim().toLowerCase();
-
-  try {
-    const constraints: any[] = [
-      where("showOnWebsite", "==", true),
-    ];
-
-    if (categoryId) {
-      constraints.push(where("categoryId", "==", categoryId));
-    }
-
-    // Default sorting by order then createdAt
-    constraints.push(orderBy("order", "asc"));
-    constraints.push(orderBy("createdAt", "desc"));
-    constraints.push(limit(pageSize + 1));
-
-    if (options?.lastDoc) {
-      constraints.push(startAfter(options.lastDoc));
-    }
-
-    const q = query(collection(db, "products"), ...constraints);
-    const snap = await fetchWithTimeout(getDocs(q));
-
-    const docs = snap.docs;
-    const hasMore = docs.length > pageSize;
-    const resultDocs = hasMore ? docs.slice(0, pageSize) : docs;
-    const newLastDoc = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1] : undefined;
-
-    let items = resultDocs.map((d) => ({ id: d.id, ...d.data() }) as Product);
-
-    if (search) {
-      items = items.filter((p) => {
-        const nameMatch = p.name && p.name.toLowerCase().includes(search);
-        const modelMatch = p.model && p.model.toLowerCase().includes(search);
-        const brandMatch = p.brand && p.brand.toLowerCase().includes(search);
-        const descMatch = p.description && p.description.toLowerCase().includes(search);
-        return nameMatch || modelMatch || brandMatch || descMatch;
-      });
-    }
-
-    return {
-      items,
-      lastDoc: newLastDoc,
-      hasMore,
-    };
-  } catch (err: any) {
-    // Fallback if composite index is being generated or order field is missing on some docs
-    try {
-      const simpleConstraints: any[] = [
-        where("showOnWebsite", "==", true),
-      ];
-      if (categoryId) {
-        simpleConstraints.push(where("categoryId", "==", categoryId));
-      }
-      simpleConstraints.push(limit(pageSize + 1));
-      if (options?.lastDoc) {
-        simpleConstraints.push(startAfter(options.lastDoc));
-      }
-      const simpleQ = query(collection(db, "products"), ...simpleConstraints);
-      const snap = await fetchWithTimeout(getDocs(simpleQ));
-      const docs = snap.docs;
-      const hasMore = docs.length > pageSize;
-      const resultDocs = hasMore ? docs.slice(0, pageSize) : docs;
-      const newLastDoc = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1] : undefined;
-
-      let items = resultDocs.map((d) => ({ id: d.id, ...d.data() }) as Product);
-      if (search) {
-        items = items.filter((p) => {
-          const nameMatch = p.name && p.name.toLowerCase().includes(search);
-          const modelMatch = p.model && p.model.toLowerCase().includes(search);
-          const brandMatch = p.brand && p.brand.toLowerCase().includes(search);
-          const descMatch = p.description && p.description.toLowerCase().includes(search);
-          return nameMatch || modelMatch || brandMatch || descMatch;
-        });
-      }
-      return {
-        items,
-        lastDoc: newLastDoc,
-        hasMore,
-      };
-    } catch (fallbackErr) {
-      console.error("getPublicProducts error:", fallbackErr);
-      return { items: [], hasMore: false };
-    }
+  if (_productIndex.length === 0) {
+    await syncProductIndex();
   }
+
+  const pageSize = options?.pageSize || 24;
+  let offset = 0;
+  if (options?.offset !== undefined) {
+    offset = options.offset;
+  } else if (typeof options?.lastDoc === "number") {
+    offset = options.lastDoc;
+  } else if (options?.page) {
+    offset = (options.page - 1) * pageSize;
+  }
+
+  const categoryId = options?.categoryId && options.categoryId !== "all" ? options.categoryId : undefined;
+  const searchRaw = (options?.search || "").trim().toLowerCase();
+  const searchTokens = searchRaw ? searchRaw.split(/\s+/).filter(Boolean) : [];
+
+  let pool = _productIndex.filter((p) => p.showOnWebsite !== false);
+
+  if (categoryId) {
+    pool = pool.filter((p) => p.categoryId === categoryId);
+  }
+
+  if (searchTokens.length > 0) {
+    // Multi-token full-text search across all 6,048 products
+    pool = pool.filter((p) => {
+      const searchTarget = `${p.name} ${p.brand || ""} ${p.model || ""} ${p.category || ""} ${p.itemCode || ""} ${p.description || ""}`.toLowerCase();
+      return searchTokens.every((token) => searchTarget.includes(token));
+    });
+
+    // Priority: In-Stock items FIRST, Out-of-Stock items AFTER in-stock items
+    pool.sort((a, b) => {
+      if (a.inStock !== b.inStock) {
+        return a.inStock ? -1 : 1;
+      }
+      return (b.stockCount || 0) - (a.stockCount || 0);
+    });
+  } else {
+    // Default browse mode (no search): ONLY show IN-STOCK items!
+    pool = pool.filter((p) => p.inStock === true && (p.stockCount || 0) > 0);
+
+    // Sort by featured, custom order, then stock count
+    pool.sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      if (a.order != null && b.order != null) return a.order - b.order;
+      return (b.stockCount || 0) - (a.stockCount || 0);
+    });
+  }
+
+  const total = pool.length;
+  const items = pool.slice(offset, offset + pageSize) as Product[];
+  const nextOffset = offset + pageSize;
+  const hasMore = nextOffset < total;
+
+  return {
+    items,
+    hasMore,
+    totalCount: total,
+    lastDoc: nextOffset as any,
+  };
 }
 
 export async function getProductsPaginated(options?: {
@@ -619,6 +714,13 @@ export async function searchProducts(
       );
     });
 
+    results.sort((a, b) => {
+      if (a.inStock !== b.inStock) {
+        return a.inStock ? -1 : 1;
+      }
+      return (b.stockCount || 0) - (a.stockCount || 0);
+    });
+
     return results.slice(0, limitCount) as Product[];
   }
 
@@ -635,39 +737,26 @@ export async function searchProducts(
 }
 
 export async function createProduct(
-  data: Omit<Product, "id" | "createdAt" | "updatedAt">
+  data: Partial<Product> & { name?: string; title?: string }
 ): Promise<Product> {
-  const modelNo = formatModelNumber(data.model);
-  if (!modelNo) {
-    throw new Error("Model number is required to create a product.");
-  }
-  const cleanDocId = modelNo;
+  const normalized = normalizeProduct(data as any);
+  const cleanDocId = normalized.id || (data.tallyGuid ? data.tallyGuid : `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
   const docRef = doc(db, "products", cleanDocId);
   
   const existing = await getDoc(docRef);
-  if (existing.exists()) {
-    throw new Error(`A product with Model Number "${modelNo}" already exists.`);
+  if (existing.exists() && !data.tallyGuid && !data.id) {
+    throw new Error(`A product with ID "${cleanDocId}" already exists.`);
   }
 
   const now = Date.now();
   const productData: Product = {
+    ...normalized,
     id: cleanDocId,
-    ...data,
-    name: toTitleCase(data.name),
-    brand: data.brand ? toTitleCase(data.brand) : "",
-    category: data.category ? toTitleCase(data.category) : "",
-    model: cleanDocId,
-    itemCode: data.itemCode ? data.itemCode.trim().toUpperCase() : "",
-    warranty: data.warranty ? data.warranty.trim() : "",
-    serviceCenter: data.serviceCenter ? toTitleCase(data.serviceCenter) : "",
-    description: data.description ? data.description.trim() : "",
-    showOnWebsite: data.showOnWebsite !== undefined ? data.showOnWebsite : true,
-    showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? data.showPriceOnWebsite : true,
     createdAt: now,
     updatedAt: now,
   };
 
-  await setDoc(docRef, cleanFirestoreData(productData));
+  await setDoc(docRef, cleanFirestoreData(productData), { merge: true });
 
   // Immediate local cache update for instant UI feedback
   const slimItem: ProductIndexItem = {
@@ -679,6 +768,8 @@ export async function createProduct(
     categoryId: productData.categoryId,
     category: productData.category,
     price: productData.price,
+    stockCount: productData.stockCount,
+    uom: productData.uom,
     inStock: productData.inStock,
     showOnWebsite: productData.showOnWebsite,
     showPriceOnWebsite: productData.showPriceOnWebsite,
@@ -696,12 +787,12 @@ export async function createProduct(
     } catch {}
   }
 
-  // Sync model number to service call models auto-suggest
-  if (data.categoryId) {
+  // Sync model number to service call models auto-suggest if present
+  if (productData.categoryId && productData.model) {
     getCategories().then((cats) => {
-      const cat = cats.find((c) => c.id === data.categoryId);
-      if (cat) {
-        saveDeviceModel(cat.name, cleanDocId).catch(() => {});
+      const cat = cats.find((c) => c.id === productData.categoryId);
+      if (cat && productData.model) {
+        saveDeviceModel(cat.name, productData.model).catch(() => {});
       }
     }).catch(() => {});
   }
@@ -720,8 +811,8 @@ export async function updateProduct(
     if (sanitized.name) sanitized.name = toTitleCase(sanitized.name);
     if (sanitized.brand) sanitized.brand = toTitleCase(sanitized.brand);
     if (sanitized.category) sanitized.category = toTitleCase(sanitized.category);
-    if (sanitized.model) sanitized.model = formatModelNumber(sanitized.model);
-    if (sanitized.itemCode) sanitized.itemCode = sanitized.itemCode.trim().toUpperCase();
+    if (sanitized.model !== undefined) sanitized.model = sanitized.model ? sanitized.model.trim() : "";
+    if (sanitized.itemCode !== undefined) sanitized.itemCode = sanitized.itemCode.trim().toUpperCase();
     if (sanitized.warranty !== undefined) sanitized.warranty = sanitized.warranty.trim();
     if (sanitized.serviceCenter) sanitized.serviceCenter = toTitleCase(sanitized.serviceCenter);
     if (sanitized.description) sanitized.description = sanitized.description.trim();

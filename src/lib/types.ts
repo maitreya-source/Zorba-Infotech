@@ -35,6 +35,16 @@ export interface Product {
   showOnWebsite?: boolean; // Controls public website catalog visibility (defaults to true)
   order: number | null;
   customFields: CustomField[];
+  
+  // Tally Sync & Live Inventory Metadata
+  tallyGuid?: string;
+  tallyName?: string;
+  stockCount?: number;
+  costPrice?: number;
+  uom?: string;
+  hsnCode?: string;
+  lastSyncedAt?: number;
+
   createdAt?: Timestamp | number;
   updatedAt?: Timestamp | number;
 }

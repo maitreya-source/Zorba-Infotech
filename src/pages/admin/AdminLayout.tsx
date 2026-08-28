@@ -26,6 +26,7 @@ import {
   FileText,
   Briefcase,
   Inbox,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
@@ -46,6 +47,7 @@ const navItems = [
   { label: "Products", to: "/admin/products", icon: Package },
   { label: "Categories", to: "/admin/categories", icon: Layers },
   { label: "Customers", to: "/admin/customers", icon: UserCheck },
+  { label: "Tally Live Sync", to: "/admin/tally-sync", icon: RefreshCw },
   { label: "Backup & Restore", to: "/admin/backup", icon: Database },
 ];
 

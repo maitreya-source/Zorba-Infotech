@@ -22,6 +22,7 @@ import {
   createCategory,
 } from "@/lib/firestore";
 import { toTitleCase, formatModelNumber } from "@/lib/utils";
+import { PRODUCT_UOM_OPTIONS, DEFAULT_PRODUCT_UOM } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,9 +61,10 @@ interface FormState {
   productUrl: string;
   price: string;
   showPriceOnWebsite: boolean;
+  stockCount: string;
+  uom: string;
   description: string;
   categoryId: string;
-  inStock: boolean;
   featured: boolean;
   showOnWebsite: boolean;
   order: string;
@@ -73,14 +75,15 @@ const EMPTY_FORM: FormState = {
   brand: "",
   model: "",
   itemCode: "",
-  warranty: DEFAULT_WARRANTY,
+  warranty: "",
   serviceCenter: "",
   productUrl: "",
   price: "",
   showPriceOnWebsite: true,
+  stockCount: "0",
+  uom: DEFAULT_PRODUCT_UOM,
   description: "",
   categoryId: "",
-  inStock: true,
   featured: false,
   showOnWebsite: true,
   order: "",
@@ -124,14 +127,15 @@ export default function AdminProductForm() {
           brand: product.brand ?? "",
           model: product.model ?? id,
           itemCode: product.itemCode ?? "",
-          warranty: product.warranty ?? DEFAULT_WARRANTY,
+          warranty: product.warranty ?? "",
           serviceCenter: product.serviceCenter ?? "",
           productUrl: product.productUrl ?? "",
           price: product.price != null ? String(product.price) : "",
           showPriceOnWebsite: product.showPriceOnWebsite !== false,
+          stockCount: product.stockCount != null ? String(product.stockCount) : "0",
+          uom: product.uom || DEFAULT_PRODUCT_UOM,
           description: product.description ?? "",
           categoryId: product.categoryId ?? "",
-          inStock: product.inStock ?? true,
           featured: product.featured ?? false,
           showOnWebsite: product.showOnWebsite !== false,
           order: product.order != null ? String(product.order) : "",
@@ -236,8 +240,7 @@ export default function AdminProductForm() {
 
     setSaving(true);
     try {
-      const cleanModel = formatModelNumber(form.model);
-      const productId = isEdit ? id! : cleanModel;
+      const productId = isEdit ? id! : (form.model.trim() ? formatModelNumber(form.model) : `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
 
       // Handle photo
       let photoUrl: string | null = existingPhotoUrl;
@@ -250,16 +253,18 @@ export default function AdminProductForm() {
       const payload = {
         name: toTitleCase(form.name),
         brand: form.brand.trim() ? toTitleCase(form.brand) : "",
-        model: cleanModel,
+        model: form.model.trim(),
         itemCode: form.itemCode.trim().toUpperCase(),
-        warranty: form.warranty.trim() ? toTitleCase(form.warranty) : "",
+        warranty: form.warranty.trim(),
         serviceCenter: form.serviceCenter.trim() ? toTitleCase(form.serviceCenter) : "",
         productUrl: form.productUrl.trim(),
         price: form.price !== "" ? Number(form.price) : null,
         showPriceOnWebsite: form.showPriceOnWebsite,
+        stockCount: form.stockCount !== "" ? Math.max(0, Number(form.stockCount)) : 0,
+        uom: form.uom || DEFAULT_PRODUCT_UOM,
+        inStock: (form.stockCount !== "" ? Math.max(0, Number(form.stockCount)) : 0) > 0,
         description: form.description.trim(),
         categoryId: form.categoryId,
-        inStock: form.inStock,
         featured: form.featured,
         showOnWebsite: form.showOnWebsite,
         order: form.order !== "" ? Number(form.order) : null,
@@ -268,11 +273,11 @@ export default function AdminProductForm() {
       };
 
       if (isEdit) {
-        await updateProduct(productId, payload);
+        await updateProduct(id!, payload);
         toast.success("Product updated successfully");
       } else {
         await createProduct(payload);
-        toast.success(`Product created with Model No: ${cleanModel}`);
+        toast.success(`Product created successfully`);
       }
 
       navigate("/admin/products");
@@ -399,16 +404,40 @@ export default function AdminProductForm() {
               />
             </div>
 
-            {/* In Stock Toggle */}
-            <div>
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Stock Availability
-              </Label>
-              <div className="mt-1 flex items-center justify-between h-9 px-3 rounded-xl bg-slate-50/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {form.inStock ? "🟢 In Stock" : "🔴 Out of Stock"}
-                </span>
-                <Switch checked={form.inStock} onCheckedChange={(v) => set("inStock", v)} />
+            {/* Stock Quantity & Unit Dropdown (Admin Only) */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              <div className="sm:col-span-7">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Stock Qty</span>
+                  <span className={`text-[10px] font-bold ${Number(form.stockCount) > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
+                    {Number(form.stockCount) > 0 ? "🟢 In Stock" : "⚪ Out of Stock"}
+                  </span>
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={form.stockCount}
+                  onChange={(e) => set("stockCount", e.target.value)}
+                  className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-bold"
+                />
+              </div>
+              <div className="sm:col-span-5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Unit (UOM)
+                </Label>
+                <Select value={form.uom || DEFAULT_PRODUCT_UOM} onValueChange={(v) => set("uom", v)}>
+                  <SelectTrigger className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                    <SelectValue placeholder="Select Unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_UOM_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -477,32 +506,22 @@ export default function AdminProductForm() {
               />
             </div>
 
-            {/* Model Number / Unique Key */}
+            {/* Model Number (Optional) */}
             <div className="md:col-span-6">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                 <span>
-                  Model Number <span className="text-red-500">*</span> (no spaces)
+                  Model / Part Number <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono font-normal">Indexed Key</span>
+                <span className="text-[10px] text-slate-400 font-mono font-normal">Hardware Model</span>
               </Label>
               <Input
-                placeholder="e.g. DS-2CD2043G2-I"
+                placeholder="e.g. DS-2CD2043G2-I or ThinkPad E14"
                 value={form.model}
-                onChange={(e) => set("model", e.target.value.replace(/\s+/g, "-").toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === " ") {
-                    e.preventDefault();
-                    set("model", form.model ? `${form.model}-` : "");
-                  }
-                }}
-                disabled={isEdit}
-                required
-                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono uppercase font-bold text-[#2563EB]"
+                onChange={(e) => set("model", e.target.value)}
+                className="mt-1 h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium"
               />
               <p className="text-[10px] text-slate-400 mt-1">
-                {isEdit
-                  ? "Unique Firestore document ID for this product."
-                  : "Unique identifier linking website catalog URL (/catalog/MODEL) & Service Call model auto-fill."}
+                Optional hardware model number (leave empty if product has no specific model).
               </p>
             </div>
 

@@ -18,9 +18,10 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [lastDoc, setLastDoc] = useState<any>(undefined);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [offset, setOffset] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
-  
+
   const categoryFromUrl = searchParams.get("category");
   const searchFromUrl = searchParams.get("search") || searchParams.get("q");
 
@@ -55,10 +56,12 @@ export default function Catalog() {
         categoryId: cat !== "all" ? cat : undefined,
         search: queryStr.trim(),
         pageSize: 24,
+        offset: 0,
       });
       setProducts(res.items);
       setHasMore(res.hasMore);
-      setLastDoc(res.lastDoc);
+      setTotalCount(res.totalCount || res.items.length);
+      setOffset(24);
     } catch (err: any) {
       console.error("Firebase error in Catalog:", err);
       setError(err?.message || "Failed to load catalog.");
@@ -68,18 +71,18 @@ export default function Catalog() {
   };
 
   const handleLoadMore = async () => {
-    if (!hasMore || loadingMore || !lastDoc) return;
+    if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     try {
       const res = await getPublicProducts({
         categoryId: activeCategory !== "all" ? activeCategory : undefined,
         search: search.trim(),
         pageSize: 24,
-        lastDoc,
+        offset: offset,
       });
       setProducts((prev) => [...prev, ...res.items]);
       setHasMore(res.hasMore);
-      setLastDoc(res.lastDoc);
+      setOffset((prev) => prev + 24);
     } catch (err: any) {
       console.error("Error loading more products:", err);
     } finally {
@@ -202,7 +205,7 @@ export default function Catalog() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground mb-6">
-              Showing {products.length} product{products.length !== 1 ? "s" : ""}
+              Showing {products.length} of {totalCount} {search ? "matching" : "in-stock"} product{totalCount !== 1 ? "s" : ""}
               {activeCategory !== "all" && ` in ${catMap[activeCategory] ?? "this category"}`}
               {search && ` matching "${search}"`}
             </p>
@@ -254,74 +257,151 @@ function ProductCard({
   categoryName?: string;
   onClick: () => void;
 }) {
+  const hasPhoto = Boolean(product.photoUrl);
+  const isValidModel = Boolean(product.model && !/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(product.model));
+
+  const handleWhatsApp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const msg = `Hi Zorba Infotech! I am interested in inquiring about ${product.name}${isValidModel ? ` (Model: ${product.model})` : ""}. Is this item available for quotation / order?`;
+    window.open(`https://wa.me/919425010640?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  if (hasPhoto) {
+    // 1. Visual Card (Products with High-Res Photos)
+    return (
+      <div
+        onClick={onClick}
+        className="group relative flex flex-col rounded-2xl border bg-card overflow-hidden cursor-pointer hover:shadow-xl hover:border-primary/30 transition-all duration-300"
+      >
+        <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100/50 dark:from-slate-900/40 dark:to-slate-900/80 p-6 flex items-center justify-center">
+          <img
+            src={product.photoUrl!}
+            alt={product.name}
+            loading="lazy"
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          />
+          <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+            {product.featured && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-semibold text-white shadow-xs">
+                <Star className="h-3 w-3 fill-white" /> Featured
+              </span>
+            )}
+            {!product.inStock && (
+              <span className="inline-flex items-center rounded-full bg-destructive/90 px-2 py-0.5 text-[11px] font-semibold text-white">
+                Out of Stock
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col flex-1 p-4 gap-2">
+          <div className="flex items-center justify-between gap-2">
+            {categoryName && (
+              <span className="text-[11px] font-bold text-primary uppercase tracking-wider">
+                {categoryName}
+              </span>
+            )}
+            {product.brand && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                {product.brand}
+              </span>
+            )}
+          </div>
+
+          <h3 className="font-bold text-sm leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+            {product.name}
+          </h3>
+
+          {isValidModel && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center text-[11px] font-mono font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                Model: {product.model}
+              </span>
+            </div>
+          )}
+
+          <div className="mt-auto pt-2 flex items-center justify-between">
+            {product.price != null && product.showPriceOnWebsite !== false ? (
+              <span className="text-base font-bold text-primary">
+                ₹{product.price.toLocaleString("en-IN")}
+              </span>
+            ) : (
+              <span className="text-xs font-medium text-muted-foreground">Contact for price</span>
+            )}
+            {product.inStock ? (
+              <Badge variant="outline" className="text-[11px] font-semibold text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 dark:border-emerald-800">
+                In Stock
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[11px] font-semibold text-slate-400 border-slate-200">
+                On Order
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Hardware Spec Card (Products without Photos - High-Density B2B Spec Architecture)
   return (
     <div
       onClick={onClick}
-      className="group relative flex flex-col rounded-2xl border bg-card overflow-hidden cursor-pointer hover:shadow-lg hover:border-primary/20 transition-all duration-300"
+      className="group relative flex flex-col rounded-2xl border bg-card overflow-hidden cursor-pointer hover:shadow-lg hover:border-primary/30 transition-all duration-300"
     >
-      {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-muted/30">
-        {product.photoUrl ? (
-          <img
-            src={product.photoUrl}
-            alt={product.name}
-            className="h-full w-full object-contain p-4 transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Package className="h-16 w-16 text-muted-foreground/20" />
-          </div>
-        )}
-
-        {/* Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {product.featured && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-semibold text-white">
-              <Star className="h-3 w-3 fill-white" /> Featured
-            </span>
-          )}
-          {!product.inStock && (
-            <span className="inline-flex items-center rounded-full bg-destructive/90 px-2 py-0.5 text-xs font-semibold text-white">
-              Out of Stock
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Info */}
-      <div className="flex flex-col flex-1 p-4 gap-2">
-        {categoryName && (
-          <span className="text-xs font-semibold text-primary uppercase tracking-wide">
-            {categoryName}
+      {/* Sleek Category & Brand Accent Header */}
+      <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-slate-100/60 dark:from-slate-900/60 dark:to-slate-900/30 border-b border-border/50 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 truncate">
+          <Package className="h-3.5 w-3.5 text-primary/70 shrink-0" />
+          {categoryName || "Hardware"}
+        </span>
+        {product.brand && (
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 shadow-2xs border border-border/40 text-slate-800 dark:text-slate-200 shrink-0">
+            {product.brand}
           </span>
         )}
-        <h3 className="font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+      </div>
+
+      {/* Main Spec Info */}
+      <div className="flex flex-col flex-1 p-4 gap-2.5">
+        <h3 className="font-bold text-sm leading-snug line-clamp-2 group-hover:text-primary transition-colors text-slate-900 dark:text-slate-100">
           {product.name}
         </h3>
-        {product.model && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="inline-flex items-center text-[11px] font-mono font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-              Model: {product.model}
+
+        {isValidModel && (
+          <div>
+            <span className="inline-flex items-center text-[11px] font-mono font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-200/50 dark:border-slate-700/50">
+              SKU / Model: {product.model}
             </span>
-            {product.brand && (
-              <span className="text-xs text-muted-foreground">· {product.brand}</span>
-            )}
           </div>
         )}
 
-        <div className="mt-auto pt-2 flex items-center justify-between">
-          {product.price != null && product.showPriceOnWebsite !== false ? (
-            <span className="text-lg font-bold text-primary">
-              ₹{product.price.toLocaleString("en-IN")}
-            </span>
-          ) : (
-            <span className="text-sm font-medium text-muted-foreground">Contact for price</span>
-          )}
-          {product.inStock && (
-            <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200 bg-emerald-50">
-              In Stock
-            </Badge>
-          )}
+        <div className="mt-auto pt-3 border-t border-dashed border-border/60 flex items-center justify-between gap-2">
+          <div>
+            {product.price != null && product.showPriceOnWebsite !== false ? (
+              <span className="text-base font-bold text-primary">
+                ₹{product.price.toLocaleString("en-IN")}
+              </span>
+            ) : (
+              <span className="text-xs font-medium text-muted-foreground">Price on Request</span>
+            )}
+            {product.inStock && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  In Stock
+                </span>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleWhatsApp}
+            title="Inquire on WhatsApp"
+            className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-2.5 py-1.5 transition-colors shadow-2xs flex items-center gap-1 shrink-0"
+          >
+            Quote
+          </button>
         </div>
       </div>
     </div>

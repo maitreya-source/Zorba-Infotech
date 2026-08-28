@@ -1,0 +1,2914 @@
+[
+  {
+    "_id": "1005-LASERTANK",
+    "id": "1005-LASERTANK",
+    "name": "1005 Printer Laser Tank Mfp - H P",
+    "brand": "Hp Laser Multifunction Printer",
+    "model": "1005-LASERTANK",
+    "itemCode": "1005-LASERTANK-",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 19199,
+    "description": "LASER TANK - Print+Scan+Copy+1 Year Toll Free Wty",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787599309,
+      "_nanoseconds": 82000000
+    },
+    "updatedAt": {
+      "_seconds": 1787599309,
+      "_nanoseconds": 82000000
+    }
+  },
+  {
+    "_id": "1008A",
+    "id": "1008A",
+    "name": "1008a Single Function Laser Printer Hp",
+    "brand": "Hp Laser Printer",
+    "model": "1008A",
+    "itemCode": "1008A",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 10700,
+    "description": "With 166A Cartridge - 1 Year Toll Free OnSite Warranty By HP",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787598279,
+      "_nanoseconds": 232000000
+    },
+    "updatedAt": {
+      "_seconds": 1787598279,
+      "_nanoseconds": 232000000
+    }
+  },
+  {
+    "_id": "1008W",
+    "id": "1008W",
+    "name": "1008w Laser Printer With Wi Fi H P",
+    "brand": "Hp Laser Printer",
+    "model": "1008W",
+    "itemCode": "1008W",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 12600,
+    "description": "With 166A Cartridge - WI FI - 1 Year Toll Free OnSite Warranty By HP",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787598371,
+      "_nanoseconds": 376000000
+    },
+    "updatedAt": {
+      "_seconds": 1787598371,
+      "_nanoseconds": 376000000
+    }
+  },
+  {
+    "_id": "15-FC0500AU-LAPTOP-RYZEN3-8GB-512GB-15.6-FULL-HD-H-P",
+    "id": "15-FC0500AU-LAPTOP-RYZEN3-8GB-512GB-15.6-FULL-HD-H-P",
+    "name": "Laptop",
+    "brand": "Hp",
+    "model": "15-FC0500AU-LAPTOP-RYZEN3-8GB-512GB-15.6-FULL-HD-H-P",
+    "itemCode": "L12-108-0500-008",
+    "serviceCenter": "",
+    "productUrl": "",
+    "categoryId": "laptop",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787597284,
+      "_nanoseconds": 921000000
+    },
+    "price": 54000,
+    "description": "Ryzen-3-8GB Ram- 512GB SSD-15.6 Full HD - Win 11- MSO  - PRICE WITH BAG",
+    "warranty": "1 Year Toll Free Warranty By Hp",
+    "updatedAt": {
+      "_seconds": 1787597375,
+      "_nanoseconds": 26000000
+    }
+  },
+  {
+    "_id": "250RG10",
+    "id": "250RG10",
+    "name": "250rg10-Core I 3- 100u-8-512-Dos-Silver-15.6 - Hp",
+    "model": "250RG10",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "categoryId": "laptop",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787597882,
+      "_nanoseconds": 120000000
+    },
+    "price": 48799,
+    "itemCode": "L12-108-255-8512-",
+    "description": "Core I 3 -100U-8GB-512GB-DOS-SILVER-15.6 SCREEN HP - PRICE WITH BAG",
+    "brand": "Hp",
+    "updatedAt": {
+      "_seconds": 1787597926,
+      "_nanoseconds": 248000000
+    }
+  },
+  {
+    "_id": "255RG10",
+    "id": "255RG10",
+    "name": "255r G10 Ryzen-3-8-512-Dos-Silver Hp",
+    "model": "255RG10",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "categoryId": "laptop",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787597967,
+      "_nanoseconds": 337000000
+    },
+    "itemCode": "255RG10",
+    "description": "Ryzen-3- 8GB-512GB -DOS-Silver Colour- PRICE WITHOUT BAG - NO BAG",
+    "brand": "Hp Commercial",
+    "updatedAt": {
+      "_seconds": 1787598021,
+      "_nanoseconds": 808000000
+    }
+  },
+  {
+    "_id": "4-MP-IP",
+    "id": "4-MP-IP",
+    "name": "4 Mp Ip Bullet With Audio- Metal Body Evteq",
+    "brand": "Evteq",
+    "model": "4-MP-IP",
+    "itemCode": "4 MP IP",
+    "warranty": "1.5 Year Carry In Limited Warranty By Evteq",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 1800,
+    "description": "1.5  Year Carry In Limited Warranty By EVTEQ",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787655751,
+      "_nanoseconds": 915000000
+    },
+    "updatedAt": {
+      "_seconds": 1787655751,
+      "_nanoseconds": 915000000
+    }
+  },
+  {
+    "_id": "4-MP-SOLAR-MINI-PT-4G-CAMERA-T18121-AE-TRUEVIEW",
+    "id": "4-MP-SOLAR-MINI-PT-4G-CAMERA-T18121-AE-TRUEVIEW",
+    "name": "Solar Camera",
+    "brand": "Trueview",
+    "model": "4-MP-SOLAR-MINI-PT-4G-CAMERA-T18121-AE-TRUEVIEW",
+    "itemCode": "T18121-AE",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "Audio+Video+ Night Vision+Battery 18000Mah",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787589882,
+      "_nanoseconds": 765000000
+    },
+    "updatedAt": {
+      "_seconds": 1787589882,
+      "_nanoseconds": 765000000
+    }
+  },
+  {
+    "_id": "4M-B3SL",
+    "id": "4M-B3SL",
+    "name": "4 Mp Ip Bullet Camera Cpi-4m B3sl (dual) Coreprix",
+    "brand": "Coreprix",
+    "model": "4M-B3SL",
+    "itemCode": "4M B3SL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 1850,
+    "description": "3.6 MM Dual Light - 30 Meter - inbuilt Mic -",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787654982,
+      "_nanoseconds": 567000000
+    },
+    "updatedAt": {
+      "_seconds": 1787654982,
+      "_nanoseconds": 567000000
+    }
+  },
+  {
+    "_id": "4M-D3SL",
+    "id": "4M-D3SL",
+    "name": "4 Mp Ip Dome -4m D3sl(Dual) Fiber Body Coreprix",
+    "brand": "Coreprix",
+    "model": "4M-D3SL",
+    "itemCode": "4M D3SL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 1850,
+    "description": "3.6 MM Lens - Inbuilt Mic - 20 Meter- Dual Light",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660471,
+      "_nanoseconds": 615000000
+    },
+    "updatedAt": {
+      "_seconds": 1787660471,
+      "_nanoseconds": 615000000
+    }
+  },
+  {
+    "_id": "5-MP-IP",
+    "id": "5-MP-IP",
+    "name": "5 Mp Ip Bullet Metal Body With Audio Dual Light Evteq",
+    "brand": "Evteq",
+    "model": "5-MP-IP",
+    "itemCode": "5 MP IP",
+    "warranty": "18 Months Warranty By Evteq",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2300,
+    "description": "18 Months Warranty By EVTEQ",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787656266,
+      "_nanoseconds": 33000000
+    },
+    "updatedAt": {
+      "_seconds": 1787656266,
+      "_nanoseconds": 33000000
+    }
+  },
+  {
+    "_id": "525-INK-TANK",
+    "id": "525-INK-TANK",
+    "name": "525 Ink Tank Printer P+s+c - H P",
+    "brand": "Hp Ink Tank Printer",
+    "model": "525-INK-TANK",
+    "itemCode": "525 INK TANK",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 9900,
+    "description": "Print+Scan+Copy + 1 Year Warranty",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787642077,
+      "_nanoseconds": 752000000
+    },
+    "updatedAt": {
+      "_seconds": 1787642077,
+      "_nanoseconds": 752000000
+    }
+  },
+  {
+    "_id": "5M-B3SL",
+    "id": "5M-B3SL",
+    "name": "5 Mp Ip Bullet 5m B3sl Md With Siren Metal Body Coreprix",
+    "brand": "Coreprix",
+    "model": "5M-B3SL",
+    "itemCode": "5M B3SL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3150,
+    "description": "Two Way Talk, 30 Meter, Metal Body, 3.6 MM Lens",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787656095,
+      "_nanoseconds": 921000000
+    },
+    "updatedAt": {
+      "_seconds": 1787656095,
+      "_nanoseconds": 921000000
+    }
+  },
+  {
+    "_id": "5M-B3SL-AL",
+    "id": "5M-B3SL-AL",
+    "name": "5 Mp Bullet Two Way Cpi-5m B3sl Al With Siren Metal Body-Corprix",
+    "brand": "Coreprix",
+    "model": "5M-B3SL-AL",
+    "itemCode": "5M B3SL AL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3270,
+    "description": "Metal Body-Dual Light-Alarm-Two Way Talk-COREPRIX",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787655841,
+      "_nanoseconds": 574000000
+    },
+    "updatedAt": {
+      "_seconds": 1787655841,
+      "_nanoseconds": 574000000
+    }
+  },
+  {
+    "_id": "5M-B3SL-MD",
+    "id": "5M-B3SL-MD",
+    "name": "5 Mp Ip Bullet 5m B3sl Md Dual Light -metal Boyd - Coreprix",
+    "brand": "Coreprix",
+    "model": "5M-B3SL-MD",
+    "itemCode": "5M B3SL MD",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3050,
+    "description": "3.6 MM Lens - Metal Body - Inbuilt Mic - 30 Meter",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787655917,
+      "_nanoseconds": 299000000
+    },
+    "updatedAt": {
+      "_seconds": 1787655917,
+      "_nanoseconds": 299000000
+    }
+  },
+  {
+    "_id": "5M-D3SL",
+    "id": "5M-D3SL",
+    "name": "5 Mp Ip Dome - 5m D3sl - Dual Light - With Audio - Fiber Body - Coreprix",
+    "brand": "Coreprix",
+    "model": "5M-D3SL",
+    "itemCode": "5M D3SL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2300,
+    "description": "CPI-5M D3SL-DUAL - 3.6 MM - 20 Meter - Fiber Body",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787661247,
+      "_nanoseconds": 845000000
+    },
+    "updatedAt": {
+      "_seconds": 1787661247,
+      "_nanoseconds": 845000000
+    }
+  },
+  {
+    "_id": "7616NXI-K1",
+    "id": "7616NXI-K1",
+    "name": "16 Ch Nvr 7616nxi-K1 Accusense Hikvision",
+    "brand": "Hikvision",
+    "model": "7616NXI-K1",
+    "itemCode": "",
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686441,
+      "_nanoseconds": 7000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686441,
+      "_nanoseconds": 7000000
+    }
+  },
+  {
+    "_id": "CMT-AOV-SLR4LNK-4G-PT-SOLAR-CAMERA-4-LENS-MASTEL",
+    "id": "CMT-AOV-SLR4LNK-4G-PT-SOLAR-CAMERA-4-LENS-MASTEL",
+    "name": "Solar Camera",
+    "brand": "Mastel",
+    "model": "CMT-AOV-SLR4LNK-4G-PT-SOLAR-CAMERA-4-LENS-MASTEL",
+    "itemCode": "S19-155-009",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "Four Lens-Linkage-Motion Tracking - 30 Meter",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787589149,
+      "_nanoseconds": 39000000
+    },
+    "updatedAt": {
+      "_seconds": 1787589149,
+      "_nanoseconds": 39000000
+    }
+  },
+  {
+    "_id": "CP-UNC-DA41L3C-D-LQ",
+    "id": "CP-UNC-DA41L3C-D-LQ",
+    "brand": "Cp Plus",
+    "model": "CP-UNC-DA41L3C-D-LQ",
+    "itemCode": "CP-UNC-DA41L3C-D-LQ",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3890,
+    "description": "With Voice - Cp Plus",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660345,
+      "_nanoseconds": 568000000
+    },
+    "name": "4 Mp Ip Dome 3.6 Mm Cp-Unc-Da41l3c-D-Lq",
+    "showPriceOnWebsite": true,
+    "updatedAt": {
+      "_seconds": 1787746098,
+      "_nanoseconds": 854000000
+    }
+  },
+  {
+    "_id": "CP-UNC-TA2IL3C-LQ",
+    "id": "CP-UNC-TA2IL3C-LQ",
+    "name": "2 Mp Ip Bullet Audio Cp-Unc-Ta2il3c-Lq Cp Plus",
+    "brand": "Cp Plus",
+    "model": "CP-UNC-TA2IL3C-LQ",
+    "itemCode": "CP-UNC-TA2IL3C-LQ",
+    "warranty": "2 Year Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3050,
+    "description": "Warranty: 2 Years from CP Plus Service Center",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787651049,
+      "_nanoseconds": 348000000
+    },
+    "updatedAt": {
+      "_seconds": 1787651049,
+      "_nanoseconds": 348000000
+    }
+  },
+  {
+    "_id": "CP-UNR-104F1",
+    "id": "CP-UNR-104F1",
+    "name": "4 Ch Nvr Cp-Unr-104f1 Cp Plus",
+    "brand": "Cp Plus",
+    "model": "CP-UNR-104F1",
+    "itemCode": "",
+    "warranty": "1 Year Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686676,
+      "_nanoseconds": 511000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686676,
+      "_nanoseconds": 511000000
+    }
+  },
+  {
+    "_id": "CPH-5M-FED3-A",
+    "id": "CPH-5M-FED3-A",
+    "name": "5 Mp Ip Dome Fish Eys Cph- 5m Fed3 A Coreprix",
+    "brand": "Coreprix",
+    "model": "CPH-5M-FED3-A",
+    "itemCode": "CPH- 5M FED3 A",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3450,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787661628,
+      "_nanoseconds": 797000000
+    },
+    "updatedAt": {
+      "_seconds": 1787661628,
+      "_nanoseconds": 797000000
+    }
+  },
+  {
+    "_id": "CPI-5M-D3SL",
+    "id": "CPI-5M-D3SL",
+    "name": "5 Mp Ip Dome Cpi-5m D3sl(Md) Metal Body - Coreprix",
+    "brand": "Coreprix",
+    "model": "CPI-5M-D3SL",
+    "itemCode": "CPI-5M D3SL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2950,
+    "description": "Dual Light+Two Way Talk+ 20 Meter+3.6 MM Metal",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787661479,
+      "_nanoseconds": 420000000
+    },
+    "updatedAt": {
+      "_seconds": 1787661479,
+      "_nanoseconds": 420000000
+    }
+  },
+  {
+    "_id": "CPI-5M-D3SL-AL",
+    "id": "CPI-5M-D3SL-AL",
+    "name": "5 Mp Ip Dome - Cpi-5m D3sl-Al With Siren Coreprix",
+    "brand": "Coreprix",
+    "model": "CPI-5M-D3SL-AL",
+    "itemCode": "CPI-5M D3SL-AL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "description": "Starligh Alarm-inbuild Mic-20 Meter-3.6 MM-COREPRIX",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787661342,
+      "_nanoseconds": 148000000
+    },
+    "price": 2700,
+    "updatedAt": {
+      "_seconds": 1787661375,
+      "_nanoseconds": 490000000
+    }
+  },
+  {
+    "_id": "CPI-8M-B5SL",
+    "id": "CPI-8M-B5SL",
+    "name": "8 Mp Ip Bullet Dual Light Cpi-8m B5sl(Md) Metal Body Coreprix",
+    "brand": "Coreprix",
+    "model": "CPI-8M-B5SL",
+    "itemCode": "CPI-8M B5SL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 4750,
+    "description": "40 Meter - 8 Mp Dual Light Bullet Camera Metal Body",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787656644,
+      "_nanoseconds": 846000000
+    },
+    "updatedAt": {
+      "_seconds": 1787656644,
+      "_nanoseconds": 846000000
+    }
+  },
+  {
+    "_id": "CPI-8M-D3SL",
+    "id": "CPI-8M-D3SL",
+    "name": "8 Mp Ip Dome Cpi-8m D3sl-Metal Body Coreprix",
+    "brand": "Coreprix",
+    "model": "CPI-8M-D3SL",
+    "itemCode": "CPI-8M D3SL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3950,
+    "description": "3.6 MM Lens+Metal Body- Dual Light-Inbuilt Mic-",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787661686,
+      "_nanoseconds": 630000000
+    },
+    "updatedAt": {
+      "_seconds": 1787661686,
+      "_nanoseconds": 630000000
+    }
+  },
+  {
+    "_id": "CPI-HD-5M-WP36",
+    "id": "CPI-HD-5M-WP36",
+    "name": "5 Mp Ptz Camera- Cpi Hd 5m Wp36 Sd - 150 Meter - With Poe Coreprix",
+    "brand": "Coreprix",
+    "model": "CPI-HD-5M-WP36",
+    "itemCode": "CPI HD 5M WP36",
+    "warranty": "1 Year Carry In Limited Warranty By Coreprix",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 29850,
+    "description": "1 Year Carry In Limited Warranty By COREPRIX",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787656414,
+      "_nanoseconds": 519000000
+    },
+    "updatedAt": {
+      "_seconds": 1787656414,
+      "_nanoseconds": 519000000
+    }
+  },
+  {
+    "_id": "CPUNR4K2161V4-4K",
+    "id": "CPUNR4K2161V4-4K",
+    "name": "16 Ch Nvr Cpunr4k2161v4 4k Cp Plus",
+    "model": "CPUNR4K2161V4-4K",
+    "itemCode": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686472,
+      "_nanoseconds": 188000000
+    },
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "brand": "Cp Plus",
+    "updatedAt": {
+      "_seconds": 1787686529,
+      "_nanoseconds": 500000000
+    }
+  },
+  {
+    "_id": "CS-CMT-SOLAR-PANEL-E-EZVIZ",
+    "id": "CS-CMT-SOLAR-PANEL-E-EZVIZ",
+    "name": "Solar Camera",
+    "brand": "Prama Hikvision",
+    "model": "CS-CMT-SOLAR-PANEL-E-EZVIZ",
+    "itemCode": "S19-155-CS-CMT",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "Solar Plat for Solar Camera",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787589219,
+      "_nanoseconds": 477000000
+    },
+    "updatedAt": {
+      "_seconds": 1787589219,
+      "_nanoseconds": 477000000
+    }
+  },
+  {
+    "_id": "DA21L3B-LQ",
+    "id": "DA21L3B-LQ",
+    "name": "2 Mp Ip Dome Da21l3b-Lq - Two Way Cp Plus",
+    "brand": "Cp Plus",
+    "model": "DA21L3B-LQ",
+    "itemCode": "DA21L3B-LQ",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3870,
+    "description": "2MP IP illumax Hybrid Dome Camera 3.6mm With Two Way Audio",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787659916,
+      "_nanoseconds": 51000000
+    },
+    "updatedAt": {
+      "_seconds": 1787659916,
+      "_nanoseconds": 51000000
+    }
+  },
+  {
+    "_id": "DA21L3C-LQ",
+    "id": "DA21L3C-LQ",
+    "name": "2 Mp Ip Dome Camera Cp-Unc-Da21l3c-Lq Cp Plus",
+    "brand": "Cp Plus",
+    "model": "DA21L3C-LQ",
+    "itemCode": "DA21L3C-LQ",
+    "warranty": "2 Years Carry In Limited Warranty By Brand",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3350,
+    "description": "2 Years Carry In Limited Warranty By Brand",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787657468,
+      "_nanoseconds": 173000000
+    },
+    "updatedAt": {
+      "_seconds": 1787657468,
+      "_nanoseconds": 173000000
+    }
+  },
+  {
+    "_id": "DCA3300N3PE-DL",
+    "id": "DCA3300N3PE-DL",
+    "name": "2 Mp Ip Dome - Hp-Ipc-Dca3300n3pe-Dl - Hi Focus",
+    "brand": "Hi Focus",
+    "model": "DCA3300N3PE-DL",
+    "itemCode": "DCA3300N3PE-DL",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2700,
+    "description": "Hi Focus Dome IP CAMERA",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787659976,
+      "_nanoseconds": 502000000
+    },
+    "updatedAt": {
+      "_seconds": 1787659976,
+      "_nanoseconds": 502000000
+    }
+  },
+  {
+    "_id": "DCP-B-7620WB",
+    "id": "DCP-B-7620WB",
+    "name": "Dcp-B-7620wb Laser Multifunction Brother",
+    "brand": "",
+    "model": "DCP-B-7620WB",
+    "itemCode": "DCP-B-7620WB",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "description": "1 Year Toll Free Warranty. P+S+C+DUPLEX + WI FI",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787599439,
+      "_nanoseconds": 484000000
+    },
+    "price": 19900,
+    "updatedAt": {
+      "_seconds": 1787599461,
+      "_nanoseconds": 923000000
+    }
+  },
+  {
+    "_id": "DCP-B7600DB",
+    "id": "DCP-B7600DB",
+    "name": "Dcp-B7600db Printer Multifunction Brother",
+    "brand": "Brother",
+    "model": "DCP-B7600DB",
+    "itemCode": "DCP-B7600DB",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 16400,
+    "description": "Print+Scan+Copy+ Duplex- 1 Year Toll Free Warranty.",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787599381,
+      "_nanoseconds": 300000000
+    },
+    "updatedAt": {
+      "_seconds": 1787599381,
+      "_nanoseconds": 300000000
+    }
+  },
+  {
+    "_id": "DCP-B7640DWB",
+    "id": "DCP-B7640DWB",
+    "name": "Dcp-B7640dwb Multifunction Printer Brother",
+    "brand": "",
+    "model": "DCP-B7640DWB",
+    "itemCode": "DCP-B7640DWB",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 22200,
+    "description": "Print+Scan+Copy+Duplex+ADF+NETWORK",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787599536,
+      "_nanoseconds": 508000000
+    },
+    "updatedAt": {
+      "_seconds": 1787599536,
+      "_nanoseconds": 508000000
+    }
+  },
+  {
+    "_id": "DCP-L2605DW",
+    "id": "DCP-L2605DW",
+    "name": "Dcp-L2605dw Laser Printer Multifunction Brother",
+    "brand": "Brother Laser Printer",
+    "model": "DCP-L2605DW",
+    "itemCode": "DCP-L2605DW",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 20300,
+    "description": "PRINT/SCAN/COPY/DUPLX/ WI FI / NETWORK",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787600271,
+      "_nanoseconds": 561000000
+    },
+    "updatedAt": {
+      "_seconds": 1787600271,
+      "_nanoseconds": 561000000
+    }
+  },
+  {
+    "_id": "DCP-L2640DW",
+    "id": "DCP-L2640DW",
+    "name": "Dcp-L2640dw Multifuction Laser Printer Brother",
+    "brand": "Brother",
+    "model": "DCP-L2640DW",
+    "itemCode": "DCP-L2640DW",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "description": "PRINT+ SCAN + COPY + DUPLEX +  WI FI + 1 Year Toll Free Onsite Warranty By Brand",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787600333,
+      "_nanoseconds": 353000000
+    },
+    "price": 23700,
+    "updatedAt": {
+      "_seconds": 1787600355,
+      "_nanoseconds": 178000000
+    }
+  },
+  {
+    "_id": "DCP-T230",
+    "id": "DCP-T230",
+    "name": "Dcp-T230 A4 Multi Function Ink Tank Printer Brother",
+    "brand": "Brother",
+    "model": "DCP-T230",
+    "itemCode": "DCP-T230",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 10900,
+    "description": "1 Year Toll Free Onsite Warranty By Brand",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787642520,
+      "_nanoseconds": 941000000
+    },
+    "updatedAt": {
+      "_seconds": 1787642520,
+      "_nanoseconds": 941000000
+    }
+  },
+  {
+    "_id": "DCP-T430W",
+    "id": "DCP-T430W",
+    "name": "Dcp T430w Inktank Printer P+s+c+w Brother",
+    "model": "DCP-T430W",
+    "serviceCenter": "",
+    "productUrl": "",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787642611,
+      "_nanoseconds": 375000000
+    },
+    "showOnWebsite": true,
+    "price": 12800,
+    "itemCode": "DCP-T430W",
+    "description": "Print+Scan+Copy+Wi Fi +  1 Year Toll Free",
+    "warranty": "1 Year Toll Free Warranty",
+    "brand": "Brother",
+    "updatedAt": {
+      "_seconds": 1787642731,
+      "_nanoseconds": 278000000
+    }
+  },
+  {
+    "_id": "DCP-T530DW",
+    "id": "DCP-T530DW",
+    "name": "Dcp-T530dw Inktank Printer P+s+c+wi Fi - Brother",
+    "brand": "Brother",
+    "model": "DCP-T530DW",
+    "itemCode": "DCP-T530DW",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 14800,
+    "description": "Print+Scan+Copy+Wi Fi - 1  Year Toll Free Warranty By Brother",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787642900,
+      "_nanoseconds": 185000000
+    },
+    "updatedAt": {
+      "_seconds": 1787642900,
+      "_nanoseconds": 185000000
+    }
+  },
+  {
+    "_id": "DCP-T730DW",
+    "id": "DCP-T730DW",
+    "name": "Dcp-T730dw Ink Tank With Auto Duplex Brother",
+    "brand": "Brother",
+    "model": "DCP-T730DW",
+    "itemCode": "DCP-T730DW",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 17600,
+    "description": "P+S+C+WiFi+ Duplex - 1 Year Toll Free Onsite Warranty By Brand",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787643742,
+      "_nanoseconds": 854000000
+    },
+    "updatedAt": {
+      "_seconds": 1787643742,
+      "_nanoseconds": 854000000
+    }
+  },
+  {
+    "_id": "DEFENDER-DUO-SOLARIS-DUAL-LENS-3MP-4G-SECURE-EYE",
+    "id": "DEFENDER-DUO-SOLARIS-DUAL-LENS-3MP-4G-SECURE-EYE",
+    "name": "Solar Camera",
+    "brand": "Prama Hikvision",
+    "model": "DEFENDER-DUO-SOLARIS-DUAL-LENS-3MP-4G-SECURE-EYE",
+    "itemCode": "S19-155-008",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "S-SSD-PTZ81  - 1 Year Carry In Warranty By Brand",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787589349,
+      "_nanoseconds": 27000000
+    },
+    "updatedAt": {
+      "_seconds": 1787589349,
+      "_nanoseconds": 27000000
+    }
+  },
+  {
+    "_id": "DELL-INSPIRON-3530",
+    "id": "DELL-INSPIRON-3530",
+    "name": "Dell Inspiron 3530 I5-1335u 16 Gb /512 Gb -15.6",
+    "brand": "Dell Consumer",
+    "model": "DELL-INSPIRON-3530",
+    "itemCode": "L12-104-35305",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "Core i 5- 13 GEN- 16GB -512 GB - 15.6 Full HD- PRICE WITH BAG",
+    "categoryId": "laptop",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787598134,
+      "_nanoseconds": 828000000
+    },
+    "updatedAt": {
+      "_seconds": 1787598134,
+      "_nanoseconds": 828000000
+    }
+  },
+  {
+    "_id": "DIGITAL BOARD - SG-TM-65XP VAMAA IFP",
+    "id": "DIGITAL BOARD - SG-TM-65XP VAMAA IFP",
+    "itemCode": "SG-TM-65XP",
+    "warranty": "3 Years",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "65 INCH INTERACTIVE PANEL",
+    "categoryId": "monitor-display",
+    "inStock": true,
+    "featured": true,
+    "order": null,
+    "photoUrl": "https://firebasestorage.googleapis.com/v0/b/zorba-infotech-web.firebasestorage.app/o/products%2FDIGITAL%20BOARD%20-%20SG-TM-65XP%20VAMAA%20IFP.webp?alt=media&token=b7919e84-f748-4117-b0b8-854feee64363",
+    "customFields": [],
+    "createdAt": {
+      "_seconds": 1787340612,
+      "_nanoseconds": 158000000
+    },
+    "name": "Interactive Panel",
+    "model": "DIGITAL-BOARD-SG-TM-65XP-VAMAA-IFP",
+    "brand": "Vamaa",
+    "showOnWebsite": true,
+    "updatedAt": {
+      "_seconds": 1787592160,
+      "_nanoseconds": 888000000
+    }
+  },
+  {
+    "_id": "DS-2CD1023G0-IUF",
+    "id": "DS-2CD1023G0-IUF",
+    "name": "2 Mp Ip Bullet - Ds-2cd1023g0-Iuf With Audio Hk",
+    "brand": "Hikvision",
+    "model": "DS-2CD1023G0-IUF",
+    "itemCode": "DS-2CD1023G0-IUF",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3800,
+    "description": "Hikvision With Voice",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787651273,
+      "_nanoseconds": 955000000
+    },
+    "updatedAt": {
+      "_seconds": 1787651273,
+      "_nanoseconds": 955000000
+    }
+  },
+  {
+    "_id": "DS-2CD1023GOE",
+    "id": "DS-2CD1023GOE",
+    "name": "2 Mp I P Bullet-Ds-2cd1023goe-I - Hikvision",
+    "brand": "Hikvision",
+    "model": "DS-2CD1023GOE",
+    "itemCode": "DS-2CD1023GOE",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3150,
+    "description": "Internet Protocol- IP CAMERA With Audio",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787652958,
+      "_nanoseconds": 388000000
+    },
+    "updatedAt": {
+      "_seconds": 1787652958,
+      "_nanoseconds": 388000000
+    }
+  },
+  {
+    "_id": "DS-2CD1043GOE",
+    "id": "DS-2CD1043GOE",
+    "name": "4 Mp Ip Bullet Camera-Ds-2cd1043goe-I Hikvision",
+    "brand": "Hikvision",
+    "model": "DS-2CD1043GOE",
+    "itemCode": "DS-2CD1043GOE",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 4900,
+    "description": "Without Voice",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787655303,
+      "_nanoseconds": 595000000
+    },
+    "updatedAt": {
+      "_seconds": 1787655303,
+      "_nanoseconds": 595000000
+    }
+  },
+  {
+    "_id": "DS-2CD1047G0",
+    "id": "DS-2CD1047G0",
+    "name": "4 Mp Ip Bullet Colorvu Camera Ds-2cd1047g0-L",
+    "brand": "",
+    "model": "DS-2CD1047G0",
+    "itemCode": "DS-2CD1047G0",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 5900,
+    "description": "3.6 MM - Hikvision - DS-2CD1047G0-L - Without Voice",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787655379,
+      "_nanoseconds": 364000000
+    },
+    "updatedAt": {
+      "_seconds": 1787655379,
+      "_nanoseconds": 364000000
+    }
+  },
+  {
+    "_id": "DS-2CD1323GOE-I",
+    "id": "DS-2CD1323GOE-I",
+    "name": "2 Mp Ip Dome 2.8 M M Ds-2cd1323goe-I -hikvision",
+    "brand": "Hikvision",
+    "model": "DS-2CD1323GOE-I",
+    "itemCode": "DS-2CD1323GOE-I",
+    "warranty": "2 Years Warranty By Hikvision With Audio",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2593,
+    "description": "2 Years Warranty By HIKVISION WITH AUDIO",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787657406,
+      "_nanoseconds": 690000000
+    },
+    "updatedAt": {
+      "_seconds": 1787657406,
+      "_nanoseconds": 690000000
+    }
+  },
+  {
+    "_id": "DS-2CD1327G0-L",
+    "id": "DS-2CD1327G0-L",
+    "name": "2 Mp Ip Dome Colorvu -ds-2cd1327g0-L-Hikvision",
+    "brand": "Hikvision",
+    "model": "DS-2CD1327G0-L",
+    "itemCode": "DS-2CD1327G0-L",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3900,
+    "description": "WITH VOICE DS-2CD1327G0-L   2.8 MM 2 Year Warranty",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787659539,
+      "_nanoseconds": 92000000
+    },
+    "updatedAt": {
+      "_seconds": 1787659539,
+      "_nanoseconds": 92000000
+    }
+  },
+  {
+    "_id": "DS-2CD1347G0-L",
+    "id": "DS-2CD1347G0-L",
+    "name": "4 Mp Ip Dome Colorvu Camera Ds-2cd1347g0-L",
+    "brand": "Hikvision",
+    "model": "DS-2CD1347G0-L",
+    "itemCode": "DS-2CD1347G0-L",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 4500,
+    "description": "3.6 MM - DS-2CD1347G0-L -",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660558,
+      "_nanoseconds": 6000000
+    },
+    "updatedAt": {
+      "_seconds": 1787660558,
+      "_nanoseconds": 6000000
+    }
+  },
+  {
+    "_id": "DS-7116N-Q1",
+    "id": "DS-7116N-Q1",
+    "name": "16 Ch Nvr - Ds-7116n1/Q1/M Hikvision",
+    "brand": "Hikvision",
+    "model": "DS-7116N-Q1",
+    "itemCode": "",
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686572,
+      "_nanoseconds": 492000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686572,
+      "_nanoseconds": 492000000
+    }
+  },
+  {
+    "_id": "DS-7604NI-Q1",
+    "id": "DS-7604NI-Q1",
+    "name": "4 Ch Nvr Ds-7604ni-Q1 Regular Hikvision",
+    "brand": "Hikvision",
+    "model": "DS-7604NI-Q1",
+    "itemCode": "",
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686723,
+      "_nanoseconds": 312000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686723,
+      "_nanoseconds": 312000000
+    }
+  },
+  {
+    "_id": "DS-7608NXI-K1",
+    "id": "DS-7608NXI-K1",
+    "name": "8 Ch Nvr - Ds-7608nxi-K1 -embedded Hikvision",
+    "brand": "Hikvision",
+    "model": "DS-7608NXI-K1",
+    "itemCode": "",
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686872,
+      "_nanoseconds": 240000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686872,
+      "_nanoseconds": 240000000
+    }
+  },
+  {
+    "_id": "EV-094GPT-SZ",
+    "id": "EV-094GPT-SZ",
+    "model": "EV-094GPT-SZ",
+    "itemCode": "S19-155-005",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "3 MP+3MP+ Two Way Audio+Motion Tracking",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787589430,
+      "_nanoseconds": 624000000
+    },
+    "name": "Ev-094gpt-Sz Solar Camera Dual Lens 3+3 Mp Evteq",
+    "brand": "Evteq",
+    "updatedAt": {
+      "_seconds": 1787589574,
+      "_nanoseconds": 526000000
+    }
+  },
+  {
+    "_id": "FC0805AU",
+    "id": "FC0805AU",
+    "name": "15-Fc0805au Ryzen5-8-512-Silver-Win 11",
+    "brand": "Hp",
+    "model": "FC0805AU",
+    "itemCode": "L12-108-0805-008",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 58000,
+    "description": "Ryzen5- 7520U-8GB-512-GB-Silver -Win-11 - PRICE WITH BAG",
+    "categoryId": "laptop",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787597500,
+      "_nanoseconds": 997000000
+    },
+    "updatedAt": {
+      "_seconds": 1787597500,
+      "_nanoseconds": 997000000
+    }
+  },
+  {
+    "_id": "FD0467TU",
+    "id": "FD0467TU",
+    "name": "15-Fd0467tu-Core I 5 -thirteengen-16-512-15.6-W11",
+    "brand": "Hp",
+    "model": "FD0467TU",
+    "itemCode": "L12-108-0467-008",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "categoryId": "laptop",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787597591,
+      "_nanoseconds": 316000000
+    },
+    "price": 65000,
+    "description": "Core i5-Thirteen Gen-16-512-15.6-Win11-HP - PRICE WITH BAG",
+    "updatedAt": {
+      "_seconds": 1787597637,
+      "_nanoseconds": 877000000
+    }
+  },
+  {
+    "_id": "FD0624TU",
+    "id": "FD0624TU",
+    "name": "15-Fd0624tu-Core I 3 -13 Gen-8-512-15.6 Fhd- Win-11",
+    "brand": "Hp",
+    "model": "FD0624TU",
+    "itemCode": "L12-108",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "Core i 3- 13 GEN-8GB-512GB- WIN-11-SILVER- PRICE WITH BAG -",
+    "categoryId": "laptop",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787597727,
+      "_nanoseconds": 265000000
+    },
+    "updatedAt": {
+      "_seconds": 1787597727,
+      "_nanoseconds": 265000000
+    }
+  },
+  {
+    "_id": "FD0682TU",
+    "id": "FD0682TU",
+    "name": "15-Fd0682tu- Core I 5-120u-16-512-Win11",
+    "brand": "Hp",
+    "model": "FD0682TU",
+    "itemCode": "L12-108",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "categoryId": "laptop",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787597786,
+      "_nanoseconds": 862000000
+    },
+    "description": "Core i 5-120U-16GB-512GB- 15.6 FHD- WIN-11- PRICE WITH BAG",
+    "updatedAt": {
+      "_seconds": 1787597835,
+      "_nanoseconds": 280000000
+    }
+  },
+  {
+    "_id": "G2012",
+    "id": "G2012",
+    "name": "G2012 Ink Tank Printer Multifunction Canon",
+    "brand": "Canon",
+    "model": "G2012",
+    "itemCode": "G2012",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 11500,
+    "description": "1 Year Toll Free Onsite Warranty By Brand",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787643846,
+      "_nanoseconds": 837000000
+    },
+    "updatedAt": {
+      "_seconds": 1787643846,
+      "_nanoseconds": 837000000
+    }
+  },
+  {
+    "_id": "G3012",
+    "id": "G3012",
+    "name": "G3012 Inktank Printer P+s+c+wi Fi Canon",
+    "brand": "Canon",
+    "model": "G3012",
+    "itemCode": "G3012",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 13600,
+    "description": "1 Year Toll Free Onsite Warranty By Brand",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787643924,
+      "_nanoseconds": 692000000
+    },
+    "updatedAt": {
+      "_seconds": 1787643924,
+      "_nanoseconds": 692000000
+    }
+  },
+  {
+    "_id": "HFX-SDL30T30L3-SLR-4G-SOLAR-CAMERA-HI-FOCUS",
+    "id": "HFX-SDL30T30L3-SLR-4G-SOLAR-CAMERA-HI-FOCUS",
+    "name": "Solar Camera",
+    "brand": "Hi Focus",
+    "model": "HFX-SDL30T30L3-SLR-4G-SOLAR-CAMERA-HI-FOCUS",
+    "itemCode": "S19-155-006",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "3 MP Triple Lens + Two way audio Solar Camera",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787589672,
+      "_nanoseconds": 101000000
+    },
+    "updatedAt": {
+      "_seconds": 1787589672,
+      "_nanoseconds": 101000000
+    }
+  },
+  {
+    "_id": "HIPB04CA",
+    "id": "HIPB04CA",
+    "name": "4 Mp Ip Bullet With Audio & Colour Ev-Hipb04ca Evte",
+    "brand": "Evteq",
+    "model": "HIPB04CA",
+    "itemCode": "HIPB04CA",
+    "warranty": "1.5 Year Carry In Limited Warranty By Evteq",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 1560,
+    "description": "1.5  Year Carry In Limited Warranty By EVTEQ",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787655662,
+      "_nanoseconds": 802000000
+    },
+    "updatedAt": {
+      "_seconds": 1787655662,
+      "_nanoseconds": 802000000
+    }
+  },
+  {
+    "_id": "HL-B2100DB",
+    "id": "HL-B2100DB",
+    "name": "Hl-B2100db Printer With Duplex Brother",
+    "brand": "",
+    "model": "HL-B2100DB",
+    "itemCode": "",
+    "warranty": "1 Year Toll Free Warranty By Brother",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 12000,
+    "description": "Laser Printer With Duplex",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787598456,
+      "_nanoseconds": 248000000
+    },
+    "updatedAt": {
+      "_seconds": 1787598456,
+      "_nanoseconds": 248000000
+    }
+  },
+  {
+    "_id": "HL-L2400D",
+    "id": "HL-L2400D",
+    "name": "Hl-L2400d Laser Printer With Duplex Brother",
+    "brand": "Brother Laser Printer",
+    "model": "HL-L2400D",
+    "itemCode": "HL-L2400D",
+    "warranty": "1 Year Toll Free Warranty By Brother",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 12100,
+    "description": "",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787598555,
+      "_nanoseconds": 200000000
+    },
+    "updatedAt": {
+      "_seconds": 1787598555,
+      "_nanoseconds": 200000000
+    }
+  },
+  {
+    "_id": "HL-L244DW",
+    "id": "HL-L244DW",
+    "name": "Hl-L2440dw Printer With Duplex And Wi Fi Brother",
+    "brand": "Brother Single Function Printer",
+    "model": "HL-L244DW",
+    "itemCode": "HL-L244DW",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 12900,
+    "description": "Laser Printer With Duplex + Wi Fi",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787598637,
+      "_nanoseconds": 643000000
+    },
+    "updatedAt": {
+      "_seconds": 1787598637,
+      "_nanoseconds": 643000000
+    }
+  },
+  {
+    "_id": "HL-L5100",
+    "id": "HL-L5100",
+    "name": "Hl-L5100 E Stamp Printer Brother",
+    "model": "HL-L5100",
+    "itemCode": "HL-L5100",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 24500,
+    "description": "Brother Heavy Duty Laser Printer With Duplex Printing And Lan Port and E Stamp Support.",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787598907,
+      "_nanoseconds": 99000000
+    },
+    "showPriceOnWebsite": true,
+    "brand": "Brother",
+    "updatedAt": {
+      "_seconds": 1787746013,
+      "_nanoseconds": 981000000
+    }
+  },
+  {
+    "_id": "L130",
+    "id": "L130",
+    "name": "L130 Printer Inktank Single Function Epson",
+    "brand": "Epson",
+    "model": "L130",
+    "itemCode": "L130",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 9800,
+    "description": "L130 Printer Inktank Single Function Epson",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787598965,
+      "_nanoseconds": 561000000
+    },
+    "updatedAt": {
+      "_seconds": 1787598965,
+      "_nanoseconds": 561000000
+    }
+  },
+  {
+    "_id": "L3250",
+    "id": "L3250",
+    "name": "L3250 Ink Tank Printer Black With Wi Fi Epson",
+    "brand": "Epson",
+    "model": "L3250",
+    "itemCode": "L3250",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 13500,
+    "description": "Print+Scan+Copy+Wi Fi + 1 Year Toll Free Warranty",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787644022,
+      "_nanoseconds": 489000000
+    },
+    "updatedAt": {
+      "_seconds": 1787644022,
+      "_nanoseconds": 489000000
+    }
+  },
+  {
+    "_id": "L3310",
+    "id": "L3310",
+    "name": "L3310 Inktank Printer Psc- Black -epson",
+    "brand": "Epson",
+    "model": "L3310",
+    "itemCode": "L3310",
+    "warranty": "1 Year Toll Free Warranty",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 11600,
+    "description": "Print+ Scan+ Copy+ 1 Year Onsite Warranty",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787644083,
+      "_nanoseconds": 358000000
+    },
+    "updatedAt": {
+      "_seconds": 1787644083,
+      "_nanoseconds": 358000000
+    }
+  },
+  {
+    "_id": "LBP3060B",
+    "id": "LBP3060B",
+    "name": "Lbp 6030 B Laser Printer Single Function Canon",
+    "brand": "Canon",
+    "model": "LBP3060B",
+    "itemCode": "LBP6030B",
+    "warranty": "1 Year Toll Free Warranty By Canon",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "SINGLE FUNCTION PRINTER",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787599046,
+      "_nanoseconds": 120000000
+    },
+    "updatedAt": {
+      "_seconds": 1787599046,
+      "_nanoseconds": 120000000
+    }
+  },
+  {
+    "_id": "LBP6030W",
+    "id": "LBP6030W",
+    "name": "Lbp 6030 W Laser Printer Wi Fi Canon",
+    "brand": "Canon Laser Printer",
+    "model": "LBP6030W",
+    "itemCode": "LBP6030W",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "SINGLE FUNCTION PRINTER WITH WI FI",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787599113,
+      "_nanoseconds": 392000000
+    },
+    "updatedAt": {
+      "_seconds": 1787599113,
+      "_nanoseconds": 392000000
+    }
+  },
+  {
+    "_id": "LCPI-5M-B3S",
+    "id": "LCPI-5M-B3S",
+    "name": "5 Mp Ip Bullet - Lcpi-5m B3s Dual Light-With Audio- Fiber Body - Coreprix",
+    "brand": "Coreprix",
+    "model": "LCPI-5M-B3S",
+    "itemCode": "LCPI-5M B3S",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2350,
+    "description": "5 MP Bullet- Dual LIght - With Audio - Fiber Body - COREPRIX",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787656181,
+      "_nanoseconds": 699000000
+    },
+    "updatedAt": {
+      "_seconds": 1787656181,
+      "_nanoseconds": 699000000
+    }
+  },
+  {
+    "_id": "M126A",
+    "id": "M126A",
+    "name": "M126 A Laser Jet Pro Mfp Printer Hp",
+    "brand": "Hp Laser Printer",
+    "model": "M126A",
+    "itemCode": "M126A-",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 17900,
+    "description": "Print+ Scan+ Copy + 1 Year warranty",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787600412,
+      "_nanoseconds": 810000000
+    },
+    "updatedAt": {
+      "_seconds": 1787600412,
+      "_nanoseconds": 810000000
+    }
+  },
+  {
+    "_id": "M126NW",
+    "id": "M126NW",
+    "name": "M126nw Laser Multi Function Printer Hp",
+    "brand": "",
+    "model": "M126NW",
+    "itemCode": "M126NW",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 21900,
+    "description": "Print + Scan + Copy+ Wifi + E Printing + Networking",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787600517,
+      "_nanoseconds": 95000000
+    },
+    "updatedAt": {
+      "_seconds": 1787600517,
+      "_nanoseconds": 95000000
+    }
+  },
+  {
+    "_id": "M438N",
+    "id": "M438N",
+    "name": "M438n Laser Multifunction A3 Copier H P",
+    "brand": "Hp A3 Copier Machine",
+    "model": "M438N",
+    "itemCode": "M438N",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 42000,
+    "description": "HP A3 Copier- Print+Scan+Copy",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787600583,
+      "_nanoseconds": 104000000
+    },
+    "updatedAt": {
+      "_seconds": 1787600583,
+      "_nanoseconds": 104000000
+    }
+  },
+  {
+    "_id": "MDL-SS-N8006RVA-H1",
+    "id": "MDL-SS-N8006RVA-H1",
+    "name": "6 Ch Nvr Mdl-Ss-N8006rva-H1-M5 Secure Us",
+    "brand": "Secure Us",
+    "model": "MDL-SS-N8006RVA-H1",
+    "itemCode": "",
+    "warranty": "1 Year Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686823,
+      "_nanoseconds": 116000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686823,
+      "_nanoseconds": 116000000
+    }
+  },
+  {
+    "_id": "MFP118A",
+    "id": "MFP118A",
+    "name": "Mfp 1188a Laser Printer Hp",
+    "brand": "",
+    "model": "MFP118A",
+    "itemCode": "MFP118A",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 15500,
+    "description": "PRINT + SCAN + COPY 1 YEAR WARRANTY",
+    "categoryId": "printer",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787600634,
+      "_nanoseconds": 184000000
+    },
+    "updatedAt": {
+      "_seconds": 1787600634,
+      "_nanoseconds": 184000000
+    }
+  },
+  {
+    "_id": "NC120D3-IUF",
+    "id": "NC120D3-IUF",
+    "name": "2 Mp I P Bullet Without Voice-Nc120d3-Iuf(D) 4mm Pr",
+    "brand": "Prama",
+    "model": "NC120D3-IUF",
+    "itemCode": "NC120D3-IUF",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3050,
+    "description": "Carry in Warranty By Prama - Without Voice",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787654617,
+      "_nanoseconds": 740000000
+    },
+    "updatedAt": {
+      "_seconds": 1787654617,
+      "_nanoseconds": 740000000
+    }
+  },
+  {
+    "_id": "NC20L2XP-CSF",
+    "id": "NC20L2XP-CSF",
+    "name": "3 Mp Ip Bullet Nc20l2xp-Csf-Cable Secure Us",
+    "brand": "Secure Us",
+    "model": "NC20L2XP-CSF",
+    "itemCode": "NC20L2XP-CSF",
+    "warranty": "1.5 Years Carry In Limited Warranty By Secure Us",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2660,
+    "description": "1.5 Years Carry In Limited Warranty By SECURE US",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787654759,
+      "_nanoseconds": 555000000
+    },
+    "updatedAt": {
+      "_seconds": 1787654759,
+      "_nanoseconds": 555000000
+    }
+  },
+  {
+    "_id": "NC20L2XP-SEF",
+    "id": "NC20L2XP-SEF",
+    "name": "3 Mp Ip Bullet Nc20l2xp-Sef- 4 Cable Secure Us",
+    "brand": "Secure Us",
+    "model": "NC20L2XP-SEF",
+    "itemCode": "NC20L2XP-SEF",
+    "warranty": "1.5 Years Carry In Limited Warranty By Secure Us",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2480,
+    "description": "1.5 Years Carry In Limited Warranty By SECURE US",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787654895,
+      "_nanoseconds": 966000000
+    },
+    "updatedAt": {
+      "_seconds": 1787654895,
+      "_nanoseconds": 966000000
+    }
+  },
+  {
+    "_id": "NC323P1-WNM-D2",
+    "id": "NC323P1-WNM-D2",
+    "name": "2 Mp Ip Dome Pt-Nc323p1-Wnm-D2- Project Series Prama",
+    "brand": "Prama",
+    "model": "NC323P1-WNM-D2",
+    "itemCode": "NC323P1-WNM-D2",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 4500,
+    "description": "Project Series - PRAMA",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660042,
+      "_nanoseconds": 290000000
+    },
+    "updatedAt": {
+      "_seconds": 1787660042,
+      "_nanoseconds": 290000000
+    }
+  },
+  {
+    "_id": "NR1A08-Q1",
+    "id": "NR1A08-Q1",
+    "name": "8 Ch Nvr Pt-Nr1a08-Q1 Eco Series Prama",
+    "brand": "Hikvision",
+    "model": "NR1A08-Q1",
+    "itemCode": "",
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686924,
+      "_nanoseconds": 510000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686924,
+      "_nanoseconds": 510000000
+    }
+  },
+  {
+    "_id": "PT-NC120D3-WNM",
+    "id": "PT-NC120D3-WNM",
+    "name": "2 Mp Ip Bullet With Mic-Pt-Nc120d3-Wnm(D2)- Hikvision",
+    "brand": "Hikvision",
+    "model": "PT-NC120D3-WNM",
+    "itemCode": "PT-NC120D3-WNM",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3050,
+    "description": "IP Bullet With Mike",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787654545,
+      "_nanoseconds": 129000000
+    },
+    "updatedAt": {
+      "_seconds": 1787654545,
+      "_nanoseconds": 129000000
+    }
+  },
+  {
+    "_id": "PT-NC123D3-WNM",
+    "id": "PT-NC123D3-WNM",
+    "name": "2 Mp Ip Dome With Audio Pt-Nc123d3-Wnm(D2) - Hikvision",
+    "brand": "Hikvision",
+    "model": "PT-NC123D3-WNM",
+    "itemCode": "PT-NC123D3-WNM",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3450,
+    "description": "Hybrid With Mike 2.8 MM - Smart Dual Light",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660099,
+      "_nanoseconds": 150000000
+    },
+    "updatedAt": {
+      "_seconds": 1787660099,
+      "_nanoseconds": 150000000
+    }
+  },
+  {
+    "_id": "PT-NC140D7-WNMS",
+    "id": "PT-NC140D7-WNMS",
+    "name": "4 Mp Ip Bullet Pt-Nc140d7-Wnms/Aw-D2 Prama",
+    "brand": "Prama",
+    "model": "PT-NC140D7-WNMS",
+    "itemCode": "PT-NC140D7-WNMS",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 5339,
+    "description": "Two Way Audio, Dual Light,",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787655539,
+      "_nanoseconds": 878000000
+    },
+    "updatedAt": {
+      "_seconds": 1787655539,
+      "_nanoseconds": 878000000
+    }
+  },
+  {
+    "_id": "PT-NC143D7-WNMS",
+    "id": "PT-NC143D7-WNMS",
+    "name": "4 Mp Ip Dome -pt-Nc143d7-Wnms/Aw(D2) Prama",
+    "brand": "Prama",
+    "model": "PT-NC143D7-WNMS",
+    "itemCode": "PT-NC143D7-WNMS",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 5350,
+    "description": "2.8MM Lens-Two Way Audio-Turret Camera",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660694,
+      "_nanoseconds": 163000000
+    },
+    "updatedAt": {
+      "_seconds": 1787660694,
+      "_nanoseconds": 163000000
+    }
+  },
+  {
+    "_id": "PT-NC320P1-WNM",
+    "id": "PT-NC320P1-WNM",
+    "name": "2 Mp Bullet Pt-Nc320p1-Wnm(D2) Project Series Prama",
+    "brand": "Prama",
+    "model": "PT-NC320P1-WNM",
+    "itemCode": "PT-NC320P1",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 4500,
+    "description": "Project series",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787650872,
+      "_nanoseconds": 795000000
+    },
+    "updatedAt": {
+      "_seconds": 1787650872,
+      "_nanoseconds": 795000000
+    }
+  },
+  {
+    "_id": "PT-NC343P1-WNM",
+    "id": "PT-NC343P1-WNM",
+    "name": "4mp Ip Dome - Pt-Nc343p1-Wnm(D2) Project Series Prama",
+    "brand": "Prama",
+    "model": "PT-NC343P1-WNM",
+    "itemCode": "PT-NC343P1-WNM",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 5500,
+    "description": "Project Series",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660752,
+      "_nanoseconds": 286000000
+    },
+    "updatedAt": {
+      "_seconds": 1787660752,
+      "_nanoseconds": 286000000
+    }
+  },
+  {
+    "_id": "PT-NR1A04-Q1",
+    "id": "PT-NR1A04-Q1",
+    "name": "4 Ch Nvr Pt-Nr1a04-Q1 Eco Series Prama",
+    "brand": "Hikvision",
+    "model": "PT-NR1A04-Q1",
+    "itemCode": "",
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686763,
+      "_nanoseconds": 236000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686763,
+      "_nanoseconds": 236000000
+    }
+  },
+  {
+    "_id": "PT-NR2A08-Q1",
+    "id": "PT-NR2A08-Q1",
+    "name": "8 Ch Nvr - Pt-Nr2a08-Q1 Regular Prama",
+    "brand": "Hikvision",
+    "model": "PT-NR2A08-Q1",
+    "itemCode": "",
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686964,
+      "_nanoseconds": 287000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686964,
+      "_nanoseconds": 287000000
+    }
+  },
+  {
+    "_id": "PT-NR2A16-Q2",
+    "id": "PT-NR2A16-Q2",
+    "name": "16ch Nvr Pt-Nr2a16-Q2 Eco Series Prama",
+    "brand": "",
+    "model": "PT-NR2A16-Q2",
+    "itemCode": "",
+    "warranty": "2 Years Carry-In Limited Warranty By Brand, Subject To Company Terms & Conditions.",
+    "serviceCenter": "Hikvision Prama",
+    "productUrl": "",
+    "price": null,
+    "showPriceOnWebsite": true,
+    "description": "",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787686636,
+      "_nanoseconds": 346000000
+    },
+    "updatedAt": {
+      "_seconds": 1787686636,
+      "_nanoseconds": 346000000
+    }
+  },
+  {
+    "_id": "S19-155-HB84G",
+    "id": "S19-155-HB84G",
+    "name": "Hb8 4g Soalr Camera 3mp -4g Ezviz",
+    "brand": "Prama Hikvision",
+    "model": "S19-155-HB84G",
+    "itemCode": "S19-155-HB84G",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "1 Year Carry In Limited Warranty By HIKVISION",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787589509,
+      "_nanoseconds": 211000000
+    },
+    "updatedAt": {
+      "_seconds": 1787589606,
+      "_nanoseconds": 12000000
+    }
+  },
+  {
+    "_id": "SS-NC15DXLP-CSF-4",
+    "id": "SS-NC15DXLP-CSF-4",
+    "name": "3 Mp I P Dome Ss-Nc15dxlp-Csf- 4 Cable Secure Us",
+    "brand": "Secure Us",
+    "model": "SS-NC15DXLP-CSF-4",
+    "itemCode": "SS-NC15DXLP-CSF- 4",
+    "warranty": "1.5 Years Carry In Limited Warranty By Secure Us",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2860,
+    "description": "1.5 Years Carry In Limited Warranty By SECURE US",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660181,
+      "_nanoseconds": 743000000
+    },
+    "updatedAt": {
+      "_seconds": 1787660181,
+      "_nanoseconds": 743000000
+    }
+  },
+  {
+    "_id": "SS-NC15DXLP-SEF",
+    "id": "SS-NC15DXLP-SEF",
+    "name": "3 Mp I P Dome Ss-Nc15dxlp-Sef - 4 Cable Secure Us",
+    "brand": "Secure Us",
+    "model": "SS-NC15DXLP-SEF",
+    "itemCode": "SS-NC15DXLP-SEF",
+    "warranty": "1.5 Years Carry In Limited Warranty By Secure Us",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2680,
+    "description": "1.5 Years Carry In Limited Warranty By SECURE US",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787660238,
+      "_nanoseconds": 447000000
+    },
+    "updatedAt": {
+      "_seconds": 1787660238,
+      "_nanoseconds": 447000000
+    }
+  },
+  {
+    "_id": "TA21L3B-LQ",
+    "id": "TA21L3B-LQ",
+    "name": "2 Mp Ip Bullet Ta21l3b-Lq-Two Way Cp Plus",
+    "brand": "Cp Plus",
+    "model": "TA21L3B-LQ",
+    "itemCode": "TA21L3B-LQ",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3750,
+    "description": "illumax Hybrid Bullet Camera 3.6mm With Two Way Audio",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787653789,
+      "_nanoseconds": 696000000
+    },
+    "updatedAt": {
+      "_seconds": 1787653789,
+      "_nanoseconds": 696000000
+    }
+  },
+  {
+    "_id": "TA21L3C-LQ",
+    "id": "TA21L3C-LQ",
+    "name": "2 Mp Ip Bullet Ta21l3c-Lq With Audio Cp Plus",
+    "brand": "Cp Plus",
+    "model": "TA21L3C-LQ",
+    "itemCode": "TA21L3C-LQ",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 3360,
+    "description": "illumax Hybrid Bullet Camera 3.6mm With Audio",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787654447,
+      "_nanoseconds": 224000000
+    },
+    "updatedAt": {
+      "_seconds": 1787654447,
+      "_nanoseconds": 224000000
+    }
+  },
+  {
+    "_id": "TA41L3C-D-LQ",
+    "id": "TA41L3C-D-LQ",
+    "name": "4 Mp Ip Bullet Cp-Unc-Ta41l3c-D-Lq Cp Plus",
+    "brand": "Cp Plus",
+    "model": "TA41L3C-D-LQ",
+    "itemCode": "TA41L3C-D-LQ",
+    "warranty": "2 Year Carry In Limited Warranty By",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 4050,
+    "description": "2 Year Carry In Limited Warranty By",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787655477,
+      "_nanoseconds": 261000000
+    },
+    "updatedAt": {
+      "_seconds": 1787655477,
+      "_nanoseconds": 261000000
+    }
+  },
+  {
+    "_id": "TRIPLE-LENS-SOLAR-CAMERA-30-METER-4MP-4G-STARLIGHT-COREPRIX",
+    "id": "TRIPLE-LENS-SOLAR-CAMERA-30-METER-4MP-4G-STARLIGHT-COREPRIX",
+    "name": "Solar Camera",
+    "brand": "Coreprix",
+    "model": "TRIPLE-LENS-SOLAR-CAMERA-30-METER-4MP-4G-STARLIGHT-COREPRIX",
+    "itemCode": "S19-155-",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": null,
+    "description": "30 Meter - 4 MP -4G Starlight -",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787589723,
+      "_nanoseconds": 748000000
+    },
+    "updatedAt": {
+      "_seconds": 1787589723,
+      "_nanoseconds": 748000000
+    }
+  },
+  {
+    "_id": "TSA2201N3P",
+    "id": "TSA2201N3P",
+    "name": "2 Mp Ip Bullet- Hp-Ipc-Tsa2201n3p-Dl Hi Focus",
+    "brand": "Hi Focus",
+    "model": "TSA2201N3P",
+    "itemCode": "TSA2201N3P",
+    "warranty": "",
+    "serviceCenter": "",
+    "productUrl": "",
+    "price": 2300,
+    "description": "2 MP Bullet IP Camera",
+    "categoryId": "cctv-security",
+    "inStock": true,
+    "featured": false,
+    "showOnWebsite": true,
+    "order": null,
+    "photoUrl": null,
+    "customFields": [],
+    "category": "",
+    "createdAt": {
+      "_seconds": 1787653597,
+      "_nanoseconds": 738000000
+    },
+    "updatedAt": {
+      "_seconds": 1787653597,
+      "_nanoseconds": 738000000
+    }
+  }
+]

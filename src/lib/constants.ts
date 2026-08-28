@@ -1,3 +1,18 @@
+export const DEFAULT_PRODUCT_UOM = "Nag.";
+
+export const PRODUCT_UOM_OPTIONS = [
+  { value: "Nag.", label: "Nag. (Units / Tally Standard)" },
+  { value: "Pcs", label: "Pcs (Pieces)" },
+  { value: "Box", label: "Box (Pack / Carton)" },
+  { value: "Set", label: "Set (Kit / Bundle)" },
+  { value: "Bottle", label: "Bottle (Ink / Liquid)" },
+  { value: "Roll", label: "Roll (Cable / Paper)" },
+  { value: "Mtr", label: "Mtr (Meters)" },
+  { value: "Kg", label: "Kg (Kilograms)" },
+  { value: "Gms", label: "Gms (Grams)" },
+  { value: "Pkt", label: "Pkt (Packet)" },
+] as const;
+
 export const DEFAULT_WARRANTY_PERIOD = "1 Year";
 export const DEFAULT_WARRANTY_BY = "Brand";
 export const DEFAULT_WARRANTY_TYPE = "Carry-In Limited Warranty";
@@ -6,6 +21,7 @@ export const DEFAULT_WARRANTY =
   "1 Year Carry-In Limited Warranty by Brand, subject to Company Terms & Conditions.";
 
 export const WARRANTY_PERIODS = [
+  "None / Not Specified",
   "1 Year",
   "1.5 Year",
   "2 Years",
@@ -50,7 +66,11 @@ export function buildWarrantyString(components: WarrantyComponents): string {
     return components.customText.trim();
   }
 
-  const period = components.period || DEFAULT_WARRANTY_PERIOD;
+  const period = components.period;
+  if (!period || period === "None / Not Specified" || period === "None") {
+    return "";
+  }
+
   const by = components.by || DEFAULT_WARRANTY_BY;
   const type = components.type || DEFAULT_WARRANTY_TYPE;
 
@@ -67,7 +87,7 @@ export function buildWarrantyString(components: WarrantyComponents): string {
 export function parseWarrantyString(str?: string | null): WarrantyComponents {
   if (!str || !str.trim()) {
     return {
-      period: DEFAULT_WARRANTY_PERIOD,
+      period: "None / Not Specified",
       by: DEFAULT_WARRANTY_BY,
       type: DEFAULT_WARRANTY_TYPE,
       isCustom: false,
@@ -125,6 +145,12 @@ export function parseWarrantyString(str?: string | null): WarrantyComponents {
 }
 
 export const COMMON_WARRANTY_PRESETS = [
+  {
+    label: "None (Empty)",
+    period: "None / Not Specified",
+    by: "Brand",
+    type: "Carry-In Limited Warranty",
+  },
   {
     label: "1Y Brand Carry-In (Default)",
     period: "1 Year",

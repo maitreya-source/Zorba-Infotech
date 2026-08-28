@@ -1,0 +1,3444 @@
+{
+  "projectId": "zorba-infotech-web",
+  "timestamp": "2026-08-27T19:18:08.981Z",
+  "totalCollections": 18,
+  "collections": {
+    "backups": {
+      "documentCount": 1,
+      "fieldCount": 8,
+      "fields": [
+        "id",
+        "createdAt",
+        "createdAtISO",
+        "exportedBy",
+        "scope",
+        "totalDocuments",
+        "summary",
+        "backupData"
+      ],
+      "samples": [
+        {
+          "id": "snapshot-1786829577109",
+          "fieldCount": 8,
+          "fields": [
+            "id",
+            "createdAt",
+            "createdAtISO",
+            "exportedBy",
+            "scope",
+            "totalDocuments",
+            "summary",
+            "backupData"
+          ],
+          "sample": {
+            "id": "snapshot-1786829577109",
+            "createdAt": 1786829577109,
+            "createdAtISO": "2026-08-15T21:32:57.109Z",
+            "exportedBy": "maitreyam@google.com",
+            "scope": "Complete Database Scope",
+            "totalDocuments": 39,
+            "summary": {
+              "serviceCalls": 9,
+              "customers": 1,
+              "products": 1,
+              "categories": 11,
+              "teamMembers": 6
+            },
+            "backupData": {
+              "metadata": {
+                "version": "2.1.0",
+                "scope": "Complete Database Scope",
+                "createdAt": 1786829577109,
+                "createdAtISO": "2026-08-15T21:32:57.109Z",
+                "exportedBy": "maitreyam@google.com",
+                "environment": "production",
+                "counts": {
+                  "categories": 11,
+                  "products": 1,
+                  "customers": 1,
+                  "team_members": 6,
+                  "service_centers": 3,
+                  "couriers": 7,
+                  "device_models": 0,
+                  "spare_parts": 0,
+                  "service_calls": 9,
+                  "financial_years": 1,
+                  "counters": 0,
+                  "admins": 0,
+                  "totalDocuments": 39
+                }
+              },
+              "data": {
+                "categories": [
+                  {
+                    "id": "accessories",
+                    "name": "Accessories",
+                    "description": "Cables, Adapters, Keyboards & Mice",
+                    "createdAt": {
+                      "_seconds": 1786826573,
+                      "_nanoseconds": 479000000
+                    },
+                    "order": 11,
+                    "iconName": "Package",
+                    "color": "from-slate-500/10 to-slate-600/5"
+                  },
+                  {
+                    "id": "biometric-attendance",
+                    "description": "Fingerprint & Face Recognition Devices",
+                    "color": "from-rose-500/10 to-rose-600/5",
+                    "name": "Biometric & Attendance",
+                    "order": 9,
+                    "createdAt": {
+                      "_seconds": 1786826573,
+                      "_nanoseconds": 361000000
+                    },
+                    "iconName": "Fingerprint"
+                  },
+                  {
+                    "id": "cctv-security",
+                    "createdAt": {
+                      "_seconds": 1786826572,
+                      "_nanoseconds": 880000000
+                    },
+                    "iconName": "Camera",
+                    "color": "from-blue-500/10 to-blue-600/5",
+                    "description": "DVR, NVR, Cameras & Surveillance",
+                    "name": "CCTV & Security",
+                    "order": 1
+                  },
+                  {
+                    "id": "desktop-pc",
+                    "order": 5,
+                    "name": "Desktop & PC",
+                    "description": "Desktops, CPU Towers, All-in-One PCs",
+                    "iconName": "Monitor",
+                    "color": "from-amber-500/10 to-amber-600/5",
+                    "createdAt": {
+                      "_seconds": 1786826573,
+                      "_nanoseconds": 115000000
+                    }
+                  },
+                  {
+                    "id": "laptop",
+                    "createdAt": {
+                      "_seconds": 1786826573,
+                      "_nanoseconds": 61000000
+                    },
+                    "order": 4,
+                    "iconName": "Laptop",
+                    "description": "Laptops, MacBooks & Notebooks",
+                    "color": "from-purple-500/10 to-purple-600/5",
+                    "name": "Laptop"
+                  },
+                  {
+                    "id": "monitor-display",
+                    "description": "LCD/LED Monitors, Touch Screens & Interactive Panels",
+                    "color": "from-violet-500/10 to-violet-600/5",
+                    "name": "Monitor & Display",
+                    "iconName": "Tv",
+                    "createdAt": {
+                      "_seconds": 1786826573,
+                      "_nanoseconds": 414000000
+                    },
+                    "order": 10
+                  },
+                  {
+                    "id": "printer",
+                    "iconName": "Printer",
+                    "name": "Printer",
+                    "order": 2,
+                    "createdAt": {
+                      "_seconds": 1786826572,
+                      "_nanoseconds": 931000000
+                    },
+                    "color": "from-emerald-500/10 to-emerald-600/5",
+                    "description": "Inkjet, Laser, Thermal & Multifunction Printers"
+                  },
+                  {
+                    "id": "router-networking",
+                    "iconName": "Wifi",
+                    "name": "Router & Networking",
+                    "order": 6,
+                    "color": "from-red-500/10 to-red-600/5",
+                    "createdAt": {
+                      "_seconds": 1786826573,
+                      "_nanoseconds": 187000000
+                    },
+                    "description": "Routers, Switches, Access Points, Fiber ONTs"
+                  },
+                  {
+                    "id": "scanner-billing",
+                    "color": "from-pink-500/10 to-pink-600/5",
+                    "createdAt": {
+                      "_seconds": 1786826573,
+                      "_nanoseconds": 293000000
+                    },
+                    "iconName": "Barcode",
+                    "description": "Barcode Scanners, Receipt Printers, POS Terminals",
+                    "name": "Scanner & Billing",
+                    "order": 8
+                  },
+                  {
+                    "id": "toner-cartridge",
+                    "description": "Toner refill, Drum replacement & Cartridges",
+                    "order": 3,
+                    "createdAt": {
+                      "_seconds": 1786826572,
+                      "_nanoseconds": 984000000
+                    },
+                    "iconName": "Layers",
+                    "color": "from-cyan-500/10 to-cyan-600/5",
+                    "name": "Toner / Cartridge"
+                  },
+                  {
+                    "id": "ups-inverter",
+                    "name": "UPS & Inverter",
+                    "order": 7,
+                    "iconName": "Cpu",
+                    "description": "UPS Units, Batteries & Power Supplies",
+                    "createdAt": {
+                      "_seconds": 1786826573,
+                      "_nanoseconds": 239000000
+                    },
+                    "color": "from-indigo-500/10 to-indigo-600/5"
+                  }
+                ],
+                "products": [
+                  {
+                    "id": "TAExe9xSptn85azAOzTX",
+                    "photoUrl": "https://firebasestorage.googleapis.com/v0/b/zorba-infotech-web.firebasestorage.app/o/products%2FTAExe9xSptn85azAOzTX%2Fphoto?alt=media&token=9ca14134-4b34-4e6d-b58b-ed31384f82b6",
+                    "warranty": "1 year",
+                    "brand": "Dell",
+                    "updatedAt": {
+                      "_seconds": 1780218514,
+                      "_nanoseconds": 556000000
+                    },
+                    "productUrl": "",
+                    "categoryId": "7xCGmslMWV0GVtNnOoO2",
+                    "inStock": true,
+                    "customFields": [
+                      {
+                        "key": "RAM",
+                        "value": "8GB"
+                      }
+                    ],
+                    "createdAt": {
+                      "_seconds": 1780218514,
+                      "_nanoseconds": 556000000
+                    },
+                    "itemCode": "ITEMCODE",
+                    "serviceCenter": "SC Dell",
+                    "featured": true,
+                    "description": "",
+                    "name": "Laptop Dell",
+                    "order": null,
+                    "price": 50000,
+                    "model": "Axjks"
+                  }
+                ],
+                "customers": [
+                  {
+                    "id": "rXDCyy7PIFw3Kni1AxcM",
+                    "address": "MEHNOT NAGAR",
+                    "email": "zorbainfotech@gmail.com",
+                    "name": "Rekwar Deepak, Mehnot Nagar, Nmh",
+                    "phone": "917566510497",
+                    "createdAt": 1786816257310,
+                    "companyName": "ZORBA INFOTECH NEEMUCH"
+                  }
+                ],
+                "team_members": [
+                  {
+                    "id": "1RX7AUTzZA3DcdHK3DtT",
+                    "phone": "919823055441",
+                    "email": "manoj@zorba.in",
+                    "role": "technician",
+                    "specialization": "CCTV & Security",
+                    "name": "Manoj Kumar",
+                    "createdAt": 1786827826370,
+                    "active": true
+                  },
+                  {
+                    "id": "5DWiLmTAY6PfvcL3ILcE",
+                    "createdAt": 1786827826271,
+                    "phone": "919422044556",
+                    "role": "manager",
+                    "email": "amit@zorba.in",
+                    "name": "Amit Patel",
+                    "active": true
+                  },
+                  {
+                    "id": "6McH1u1XMq8DmKQMSz3u",
+                    "email": "deepak@zorba.in",
+                    "phone": "919890033221",
+                    "active": true,
+                    "role": "technician",
+                    "createdAt": 1786827826462,
+                    "name": "Deepak Soni",
+                    "specialization": "Laptops & Networking"
+                  },
+                  {
+                    "id": "TlQYibQ1d7bdHMuN553S",
+                    "role": "backoffice",
+                    "active": true,
+                    "createdAt": 1786827826321,
+                    "phone": "919890077889",
+                    "email": "sunita@zorba.in",
+                    "name": "Sunita Verma"
+                  },
+                  {
+                    "id": "cRdhq1pi3R8jnpaXre2d",
+                    "createdAt": 1786827826014,
+                    "role": "backoffice",
+                    "active": true,
+                    "phone": "919823011223",
+                    "name": "Rajesh Sharma",
+                    "email": "rajesh@zorba.in"
+                  },
+                  {
+                    "id": "tqAZDzTEpOwQYRm0k32J",
+                    "phone": "919422088776",
+                    "createdAt": 1786827826417,
+                    "role": "technician",
+                    "email": "vikas@zorba.in",
+                    "specialization": "Printers & Toners",
+                    "name": "Vikas Sharma",
+                    "active": true
+                  }
+                ],
+                "service_centers": [
+                  {
+                    "id": "ARtLNvB4c1Bh2Qhml8lf",
+                    "email": "ZZZ",
+                    "phone": "9301508666",
+                    "createdAt": 1786817317786,
+                    "addresses": [
+                      {
+                        "address": "YES ",
+                        "city": "INDORE ",
+                        "isDefault": true,
+                        "id": "addr-1"
+                      }
+                    ],
+                    "defaultAddressId": "addr-1",
+                    "name": "HIKVISION SERVICE CENTER INDORE"
+                  },
+                  {
+                    "id": "VaDau7NSWMzVbcEgx8oT",
+                    "email": "support@dellcare.in",
+                    "phone": "+91 94220 55443",
+                    "name": "Dell Care Center",
+                    "createdAt": 1785689687113,
+                    "defaultAddressId": "addr-3",
+                    "addresses": [
+                      {
+                        "address": "Suite 302, MG Road Commercial Hub, Pune",
+                        "isDefault": true,
+                        "id": "addr-3",
+                        "city": "Pune"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "kR0c0ujIvahYhE6Hfe02",
+                    "phone": "+91 98210 11223",
+                    "createdAt": 1785689687027,
+                    "email": "hp.service@hp.com",
+                    "defaultAddressId": "addr-1",
+                    "addresses": [
+                      {
+                        "address": "Plot 45, Tech Zone, Sector 18, Gurugram",
+                        "isDefault": true,
+                        "id": "addr-1",
+                        "city": "Gurugram"
+                      },
+                      {
+                        "city": "Indore",
+                        "id": "addr-2",
+                        "isDefault": false,
+                        "address": "Shop 12, Station Road, Indore"
+                      }
+                    ],
+                    "name": "HP Authorized Service Center"
+                  }
+                ],
+                "couriers": [
+                  {
+                    "id": "27Dw8aY66aFHaPsFOTpM",
+                    "phone": "919823044446",
+                    "contactPerson": "Operations Lead",
+                    "active": true,
+                    "createdAt": 1786825892496,
+                    "name": "Delhivery"
+                  },
+                  {
+                    "id": "LqBrNbPZTgOlkZGqE2YW",
+                    "active": true,
+                    "createdAt": 1786825892428,
+                    "phone": "919823044445",
+                    "name": "Speed Post (india Post)",
+                    "contactPerson": "Post Master"
+                  },
+                  {
+                    "id": "Ry2hEgMabKORq7nKoRIi",
+                    "createdAt": 1786825892295,
+                    "name": "Dtdc Express",
+                    "contactPerson": "DTDC Booking Counter",
+                    "phone": "919823044443",
+                    "active": true
+                  },
+                  {
+                    "id": "WYhZtUPIup3nngJuSMsM",
+                    "phone": "919589199738",
+                    "contactPerson": "Internal Staff",
+                    "createdAt": 1786825892542,
+                    "name": "Self / Hand Delivered",
+                    "active": true
+                  },
+                  {
+                    "id": "xPI3071PMRbRFcuZsIVo",
+                    "name": "Reliance Logistics",
+                    "phone": "919823044442",
+                    "active": true,
+                    "contactPerson": "Branch Dispatcher",
+                    "createdAt": 1786825892245
+                  },
+                  {
+                    "id": "xvGwd8f3p5phaqvmnFXn",
+                    "active": true,
+                    "name": "Blue Dart Express",
+                    "contactPerson": "Hub Officer",
+                    "phone": "919823044444",
+                    "createdAt": 1786825892380
+                  },
+                  {
+                    "id": "yggr5YNbR3FGZ2xb9Q7M",
+                    "phone": "919823044441",
+                    "createdAt": 1786825891993,
+                    "name": "Trackon Courier",
+                    "contactPerson": "Local Hub Executive",
+                    "active": true
+                  }
+                ],
+                "device_models": [],
+                "spare_parts": [],
+                "service_calls": [
+                  {
+                    "id": "AHMCQcCBnaAg8WBrQeBb",
+                    "issueDescription": "NO POWER",
+                    "deviceCategory": "Router & Networking",
+                    "parts": [],
+                    "warrantyStatus": "in_warranty",
+                    "customerPhone": "+91 9589199730",
+                    "serviceCharges": 0,
+                    "ticketNo": "SC-2026-0002",
+                    "dateTime": "2026-08-15",
+                    "grandTotal": 0,
+                    "modelNumber": "AC10",
+                    "partsTotal": 0,
+                    "customerName": "MAITREYA MULCHANDANI",
+                    "customerEmail": "maitreya1503@gmail.com",
+                    "serialNumber": "AC1015031997",
+                    "quantity": 1,
+                    "customerId": "SlKRiKXVoxRjNGShQ615",
+                    "type": "in_house_repair",
+                    "status": "completed",
+                    "customerAddress": "VIKAS NAGAR 14-2",
+                    "createdAt": 1786816464650,
+                    "updatedAt": 1786816559354
+                  },
+                  {
+                    "id": "H2yl9UbiKoopXb077xVv",
+                    "serviceCenterAddressId": "addr-1",
+                    "quantity": 1,
+                    "serviceCenterId": "ARtLNvB4c1Bh2Qhml8lf",
+                    "serialNumber": "15082026",
+                    "updatedAt": 1786822990877,
+                    "warrantyStatus": "not_applicable",
+                    "customerPhone": "+91 9589199730",
+                    "deviceCategory": "CCTV & Security",
+                    "type": "company_service_center",
+                    "dateTime": "2026-08-15",
+                    "customerName": "MAITREYA MULCHANDANI",
+                    "partsTotal": 150,
+                    "customerAddress": "VIKAS NAGAR 14-2",
+                    "grandTotal": 150,
+                    "courierCharges": 0,
+                    "customerId": "SlKRiKXVoxRjNGShQ615",
+                    "customerEmail": "maitreya1503@gmail.com",
+                    "serviceCenterName": "HIKVISION SERVICE CENTER INDORE",
+                    "rmaNumber": "AUG-2026",
+                    "createdAt": 1786818093421,
+                    "status": "delivered",
+                    "serviceCharges": 0,
+                    "parts": [
+                      {
+                        "quantity": 1,
+                        "id": "part-1786818000398",
+                        "name": "Poe Cable for Ip Camera 9 Wire 18 Inch White",
+                        "unitPrice": 150,
+                        "totalPrice": 150
+                      }
+                    ],
+                    "serviceCenterAddress": "YES",
+                    "issueDescription": "NO POWER",
+                    "ticketNo": "SC-2026-0006",
+                    "modelNumber": "2 Mp Ip Dome 2.8 M M DS-2CD1323GOE-I -Hikvision"
+                  },
+                  {
+                    "id": "HjKJO26dm2Nf5YMx5ygO",
+                    "updatedAt": 1786822993581,
+                    "serialNumber": "15082026",
+                    "parts": [],
+                    "dateTime": "2026-08-15",
+                    "customerEmail": "maitreya1503@gmail.com",
+                    "quantity": 1,
+                    "modelNumber": "2 Mp Ip Dome 2.8 M M DS-2CD1323GOE-I -Hikvision",
+                    "serviceCenterName": "HIKVISION SERVICE CENTER INDORE",
+                    "status": "cancelled",
+                    "deviceCategory": "",
+                    "customerId": "SlKRiKXVoxRjNGShQ615",
+                    "issueDescription": "NO POWER",
+                    "partsTotal": 0,
+                    "warrantyStatus": "in_warranty",
+                    "grandTotal": 0,
+                    "customerAddress": "VIKAS NAGAR 14-2",
+                    "rmaNumber": "AUG-2026",
+                    "createdAt": 1786817730381,
+                    "serviceCenterAddressId": "addr-1",
+                    "courierCharges": 0,
+                    "serviceCenterAddress": "YES",
+                    "ticketNo": "SC-2026-0005",
+                    "customerName": "MAITREYA MULCHANDANI",
+                    "type": "company_service_center",
+                    "customerPhone": "+91 9589199730",
+                    "serviceCenterId": "ARtLNvB4c1Bh2Qhml8lf",
+                    "serviceCharges": 0
+                  },
+                  {
+                    "id": "NnTxig3sPJa9wKTT4iSc",
+                    "type": "in_house_repair",
+                    "serviceCharges": 300,
+                    "warrantyStatus": "not_applicable",
+                    "deviceCategory": "Desktop & PC",
+                    "modelNumber": "test",
+                    "status": "completed",
+                    "quantity": 1,
+                    "issueDescription": "Installation & Setup",
+                    "customerName": "test",
+                    "customerId": "9aaZLcvOJfiIOSElWnnc",
+                    "ticketNo": "SC-2026-0001",
+                    "customerPhone": "+91 123123123",
+                    "dateTime": "2026-08-02T22:11",
+                    "updatedAt": 1785692687126,
+                    "serialNumber": "test",
+                    "createdAt": 1785688902167,
+                    "grandTotal": 300,
+                    "partsTotal": 0,
+                    "parts": []
+                  },
+                  {
+                    "id": "SC-2026-08-0001",
+                    "deviceCategory": "CCTV & Security",
+                    "updatedAt": 1786824172828,
+                    "createdAt": 1786822972445,
+                    "warrantyStatus": "not_applicable",
+                    "serviceCharges": 0,
+                    "customerName": "Maitreya Mulchandani",
+                    "customerPhone": "919589199730",
+                    "parts": [
+                      {
+                        "totalPrice": 0,
+                        "name": "test",
+                        "quantity": 1,
+                        "unitPrice": 0
+                      }
+                    ],
+                    "issueDescription": "test",
+                    "customerAddress": "VIKAS NAGAR 14-2",
+                    "ticketNo": "SC-2026-08-0001",
+                    "technicianName": "test",
+                    "dateTime": "2026-08-13",
+                    "partsTotal": 0,
+                    "quantity": 1,
+                    "grandTotal": 0,
+                    "customerId": "SlKRiKXVoxRjNGShQ615",
+                    "type": "in_house_repair",
+                    "customerEmail": "maitreya1503@gmail.com",
+                    "status": "cancelled"
+                  },
+                  {
+                    "id": "SC-2026-08-0002",
+                    "issueDescription": "Power Dead Troubleshooting",
+                    "customerName": "Customer 1",
+                    "type": "in_house_repair",
+                    "customerPhone": "919800000001",
+                    "createdAt": 1786824168613,
+                    "deviceCategory": "CCTV & Security",
+                    "warrantyStatus": "not_applicable",
+                    "serviceCharges": 0,
+                    "updatedAt": 1786824174463,
+                    "quantity": 1,
+                    "ticketNo": "SC-2026-08-0002",
+                    "timeline": [
+                      {
+                        "timestamp": 1786824168613,
+                        "title": "Service Call Intake Created",
+                        "id": "evt-1786824168613",
+                        "staffId": "staff-default",
+                        "comments": "Power Dead Troubleshooting",
+                        "staffName": "Frontdesk Staff",
+                        "stage": "intake_created",
+                        "status": "received"
+                      }
+                    ],
+                    "grandTotal": 0,
+                    "partsTotal": 0,
+                    "dateTime": "2026-08-15",
+                    "customerId": "Mzxg44QW6gmmn1lvogpJ",
+                    "status": "cancelled",
+                    "parts": [],
+                    "customerAddress": "Test Address 1"
+                  },
+                  {
+                    "id": "SC-2026-08-0003",
+                    "customerId": "rXDCyy7PIFw3Kni1AxcM",
+                    "monthKey": "2026-08",
+                    "handledByStaffName": "Sunita Verma",
+                    "issueDescription": "test",
+                    "dateTime": "2026-08-15",
+                    "fyId": "FY2627",
+                    "partsTotal": 0,
+                    "ticketNo": "SC-2026-08-0003",
+                    "timeline": [
+                      {
+                        "id": "evt-1786827399729",
+                        "comments": "test",
+                        "timestamp": 1786827399729,
+                        "staffId": "Rp7Y6B40IlHyxrCGzFX1",
+                        "status": "received",
+                        "title": "Service Call Intake Created",
+                        "stage": "intake_created",
+                        "staffName": "Rajesh Sharma"
+                      }
+                    ],
+                    "grandTotal": 0,
+                    "type": "in_house_repair",
+                    "handledByStaffId": "TlQYibQ1d7bdHMuN553S",
+                    "courierName": "Trackon Courier",
+                    "serviceCharges": 0,
+                    "warrantyStatus": "not_applicable",
+                    "deviceCategory": "CCTV & Security",
+                    "status": "cancelled",
+                    "quantity": 1,
+                    "updatedAt": 1786828571672,
+                    "parts": [],
+                    "createdAt": 1786827399729
+                  },
+                  {
+                    "id": "kCiR9Buu1PhD41yfBR0S",
+                    "parts": [],
+                    "customerPhone": "+91 9589199730",
+                    "dateTime": "2026-08-15",
+                    "serviceCenterName": "HIKVISION SERVICE CENTER INDORE",
+                    "deviceCategory": "",
+                    "modelNumber": "2 Mp Ip Dome 2.8 M M DS-2CD1323GOE-I -Hikvision",
+                    "warrantyStatus": "in_warranty",
+                    "customerAddress": "VIKAS NAGAR 14-2",
+                    "serviceCenterAddress": "YES",
+                    "customerName": "MAITREYA MULCHANDANI",
+                    "quantity": 1,
+                    "serviceCenterAddressId": "addr-1",
+                    "updatedAt": 1786822193662,
+                    "ticketNo": "SC-2026-0004",
+                    "type": "company_service_center",
+                    "serviceCharges": 0,
+                    "serviceCenterId": "ARtLNvB4c1Bh2Qhml8lf",
+                    "serialNumber": "15082026",
+                    "status": "completed",
+                    "customerEmail": "maitreya1503@gmail.com",
+                    "courierCharges": 0,
+                    "createdAt": 1786817475474,
+                    "customerId": "SlKRiKXVoxRjNGShQ615",
+                    "grandTotal": 0,
+                    "partsTotal": 0,
+                    "issueDescription": "NO POWER",
+                    "rmaNumber": "AUG-2026"
+                  },
+                  {
+                    "id": "xR4alQIkqM3Cs2AcbP3B",
+                    "customerAddress": "MEHNOT NAGAR",
+                    "serviceCharges": 0,
+                    "customerEmail": "zorbainfotech@gmail.com",
+                    "warrantyStatus": "in_warranty",
+                    "createdAt": 1786816465654,
+                    "parts": [],
+                    "type": "in_house_repair",
+                    "updatedAt": 1786822190412,
+                    "deviceCategory": "Router & Networking",
+                    "quantity": 1,
+                    "ticketNo": "SC-2026-0003",
+                    "customerId": "rXDCyy7PIFw3Kni1AxcM",
+                    "dateTime": "2026-08-15",
+                    "customerName": "Rekwar Deepak, Mehnot Nagar, Nmh",
+                    "grandTotal": 0,
+                    "partsTotal": 0,
+                    "customerPhone": "+91 75665 10497",
+                    "status": "cancelled",
+                    "issueDescription": "Toner Refill & Drum Cleaning"
+                  }
+                ],
+                "hierarchicalServiceCalls": [
+                  {
+                    "id": "SC-2026-08-0003",
+                    "fyId": "FY2627",
+                    "monthKey": "2026-08",
+                    "data": {
+                      "serviceCharges": 0,
+                      "warrantyStatus": "not_applicable",
+                      "id": "SC-2026-08-0003",
+                      "courierName": "Trackon Courier",
+                      "fyId": "FY2627",
+                      "deviceCategory": "CCTV & Security",
+                      "grandTotal": 0,
+                      "partsTotal": 0,
+                      "updatedAt": 1786828571672,
+                      "monthKey": "2026-08",
+                      "type": "in_house_repair",
+                      "dateTime": "2026-08-15",
+                      "customerId": "rXDCyy7PIFw3Kni1AxcM",
+                      "timeline": [
+                        {
+                          "status": "received",
+                          "comments": "test",
+                          "stage": "intake_created",
+                          "staffName": "Rajesh Sharma",
+                          "title": "Service Call Intake Created",
+                          "staffId": "Rp7Y6B40IlHyxrCGzFX1",
+                          "id": "evt-1786827399729",
+                          "timestamp": 1786827399729
+                        }
+                      ],
+                      "ticketNo": "SC-2026-08-0003",
+                      "createdAt": 1786827399729,
+                      "quantity": 1,
+                      "issueDescription": "test",
+                      "status": "cancelled",
+                      "parts": [],
+                      "handledByStaffName": "Sunita Verma",
+                      "handledByStaffId": "TlQYibQ1d7bdHMuN553S"
+                    }
+                  }
+                ],
+                "financial_years": [
+                  {
+                    "id": "FY2627",
+                    "startYear": 2026,
+                    "label": "FY 2026-27",
+                    "startDate": "2026-04-01",
+                    "endDate": "2027-03-31",
+                    "updatedAt": {
+                      "_seconds": 1786827399,
+                      "_nanoseconds": 843000000
+                    },
+                    "endYear": 2027
+                  }
+                ],
+                "counters": [],
+                "admins": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    "categories": {
+      "documentCount": 12,
+      "fieldCount": 7,
+      "fields": [
+        "createdAt",
+        "color",
+        "iconName",
+        "name",
+        "description",
+        "id",
+        "order"
+      ],
+      "samples": [
+        {
+          "id": "accessories",
+          "fieldCount": 7,
+          "fields": [
+            "createdAt",
+            "color",
+            "iconName",
+            "name",
+            "description",
+            "id",
+            "order"
+          ],
+          "sample": {
+            "createdAt": {
+              "_seconds": 1786826573,
+              "_nanoseconds": 479000000
+            },
+            "color": "from-slate-500/10 to-slate-600/5",
+            "iconName": "Package",
+            "name": "Accessories",
+            "description": "Cables, Adapters, Keyboards & Mice",
+            "id": "accessories",
+            "order": 11
+          }
+        },
+        {
+          "id": "biometric-attendance",
+          "fieldCount": 7,
+          "fields": [
+            "createdAt",
+            "color",
+            "iconName",
+            "name",
+            "description",
+            "id",
+            "order"
+          ],
+          "sample": {
+            "createdAt": {
+              "_seconds": 1786826573,
+              "_nanoseconds": 361000000
+            },
+            "color": "from-rose-500/10 to-rose-600/5",
+            "iconName": "Fingerprint",
+            "name": "Biometric & Attendance",
+            "description": "Fingerprint & Face Recognition Devices",
+            "id": "biometric-attendance",
+            "order": 9
+          }
+        },
+        {
+          "id": "cctv-security",
+          "fieldCount": 7,
+          "fields": [
+            "createdAt",
+            "color",
+            "iconName",
+            "name",
+            "description",
+            "id",
+            "order"
+          ],
+          "sample": {
+            "createdAt": {
+              "_seconds": 1786826572,
+              "_nanoseconds": 880000000
+            },
+            "color": "from-blue-500/10 to-blue-600/5",
+            "iconName": "Camera",
+            "name": "CCTV & Security",
+            "description": "DVR, NVR, Cameras & Surveillance",
+            "id": "cctv-security",
+            "order": 1
+          }
+        },
+        {
+          "id": "desktop-pc",
+          "fieldCount": 7,
+          "fields": [
+            "createdAt",
+            "color",
+            "iconName",
+            "name",
+            "description",
+            "id",
+            "order"
+          ],
+          "sample": {
+            "createdAt": {
+              "_seconds": 1786826573,
+              "_nanoseconds": 115000000
+            },
+            "color": "from-amber-500/10 to-amber-600/5",
+            "iconName": "Monitor",
+            "name": "Desktop & PC",
+            "description": "Desktops, CPU Towers, All-in-One PCs",
+            "id": "desktop-pc",
+            "order": 5
+          }
+        },
+        {
+          "id": "laptop",
+          "fieldCount": 7,
+          "fields": [
+            "createdAt",
+            "color",
+            "iconName",
+            "name",
+            "description",
+            "id",
+            "order"
+          ],
+          "sample": {
+            "createdAt": {
+              "_seconds": 1786826573,
+              "_nanoseconds": 61000000
+            },
+            "color": "from-purple-500/10 to-purple-600/5",
+            "iconName": "Laptop",
+            "name": "Laptop",
+            "description": "Laptops, MacBooks & Notebooks",
+            "id": "laptop",
+            "order": 4
+          }
+        }
+      ]
+    },
+    "counters": {
+      "documentCount": 2,
+      "fieldCount": 2,
+      "fields": [
+        "current",
+        "updatedAt"
+      ],
+      "samples": [
+        {
+          "id": "quotations_2026-08",
+          "fieldCount": 2,
+          "fields": [
+            "current",
+            "updatedAt"
+          ],
+          "sample": {
+            "current": 4,
+            "updatedAt": {
+              "_seconds": 1787756789,
+              "_nanoseconds": 40000000
+            }
+          }
+        },
+        {
+          "id": "service_calls_2026-08",
+          "fieldCount": 2,
+          "fields": [
+            "current",
+            "updatedAt"
+          ],
+          "sample": {
+            "current": 10,
+            "updatedAt": {
+              "_seconds": 1787655945,
+              "_nanoseconds": 899000000
+            }
+          }
+        }
+      ]
+    },
+    "couriers": {
+      "documentCount": 10,
+      "fieldCount": 6,
+      "fields": [
+        "id",
+        "name",
+        "phone",
+        "contactPerson",
+        "active",
+        "createdAt"
+      ],
+      "samples": [
+        {
+          "id": "27Dw8aY66aFHaPsFOTpM",
+          "fieldCount": 6,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "contactPerson",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "27Dw8aY66aFHaPsFOTpM",
+            "name": "Delhivery",
+            "phone": "919823044446",
+            "contactPerson": "Operations Lead",
+            "active": true,
+            "createdAt": 1786825892496
+          }
+        },
+        {
+          "id": "9Rn6StamONUr2kO5Br9m",
+          "fieldCount": 6,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "contactPerson",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "9Rn6StamONUr2kO5Br9m",
+            "name": "Reliacen Courier",
+            "phone": "919827562487",
+            "contactPerson": "Mahesh Jindal, Dayanand Marg, Neemuch",
+            "active": true,
+            "createdAt": 1786911560560
+          }
+        },
+        {
+          "id": "LqBrNbPZTgOlkZGqE2YW",
+          "fieldCount": 6,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "contactPerson",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "LqBrNbPZTgOlkZGqE2YW",
+            "name": "Speed Post (india Post)",
+            "phone": "919823044445",
+            "contactPerson": "Post Master",
+            "active": true,
+            "createdAt": 1786825892428
+          }
+        },
+        {
+          "id": "PqLXnzpKpsA8ZMvcIglm",
+          "fieldCount": 5,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "PqLXnzpKpsA8ZMvcIglm",
+            "name": "Babu Travels, Manak Talkies Road,Nmh",
+            "phone": "918770649491",
+            "active": true,
+            "createdAt": 1786911684112
+          }
+        },
+        {
+          "id": "Ry2hEgMabKORq7nKoRIi",
+          "fieldCount": 6,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "contactPerson",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "Ry2hEgMabKORq7nKoRIi",
+            "name": "Dtdc Express",
+            "phone": "919823044443",
+            "contactPerson": "DTDC Booking Counter",
+            "active": true,
+            "createdAt": 1786825892295
+          }
+        }
+      ]
+    },
+    "customers": {
+      "documentCount": 6,
+      "fieldCount": 9,
+      "fields": [
+        "id",
+        "name",
+        "phone",
+        "email",
+        "address",
+        "companyName",
+        "searchTokens",
+        "createdAt",
+        "updatedAt"
+      ],
+      "samples": [
+        {
+          "id": "VpjDp7FmMwr8uv53lWYP",
+          "fieldCount": 8,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "address",
+            "companyName",
+            "searchTokens",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "VpjDp7FmMwr8uv53lWYP",
+            "name": "Octa Codes Technologies Pratuysh Gaud Nmh",
+            "phone": "919630136688",
+            "email": "octacodetechnology@gmail.com",
+            "address": "Indira Nagar, Neemuch",
+            "companyName": "Octa Code Technology",
+            "searchTokens": [
+              "oc",
+              "oct",
+              "octa",
+              "co",
+              "cod",
+              "code",
+              "codes",
+              "te",
+              "tec",
+              "tech",
+              "techn",
+              "techno",
+              "technol",
+              "technolo",
+              "technolog",
+              "technologi",
+              "technologie",
+              "technologies",
+              "pr",
+              "pra",
+              "prat",
+              "pratu",
+              "pratuy",
+              "pratuys",
+              "pratuysh",
+              "ga",
+              "gau",
+              "gaud",
+              "nm",
+              "nmh",
+              "technology",
+              "octac",
+              "octaco",
+              "octacod",
+              "octacode",
+              "octacodet",
+              "octacodete",
+              "octacodetec",
+              "octacodetech",
+              "octacodetechn",
+              "octacodetechno",
+              "octacodetechnol",
+              "com",
+              "963",
+              "688",
+              "9630",
+              "6688",
+              "96301",
+              "36688",
+              "963013",
+              "136688",
+              "9630136",
+              "0136688",
+              "96301366",
+              "30136688",
+              "963013668",
+              "630136688",
+              "9630136688",
+              "9196",
+              "91963",
+              "919630",
+              "9196301",
+              "91963013",
+              "919630136",
+              "9196301366",
+              "91963013668",
+              "919630136688",
+              "vpjdp7fmmwr8uv53lwyp"
+            ],
+            "createdAt": 1787078285526
+          }
+        },
+        {
+          "id": "Xx1DIh6hvSZCq3eTO4kY",
+          "fieldCount": 8,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "address",
+            "companyName",
+            "searchTokens",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "Xx1DIh6hvSZCq3eTO4kY",
+            "name": "Kushwaha Kanchan , Nmh",
+            "phone": "918871480022",
+            "email": "kushwahakanchan509@gmail.com",
+            "address": "137 House no. Hudco Colony near jain mandir , neemuch",
+            "companyName": "Kanchan Juice Centre , Nmh",
+            "searchTokens": [
+              "ku",
+              "kus",
+              "kush",
+              "kushw",
+              "kushwa",
+              "kushwah",
+              "kushwaha",
+              "ka",
+              "kan",
+              "kanc",
+              "kanch",
+              "kancha",
+              "kanchan",
+              "nm",
+              "nmh",
+              "ju",
+              "jui",
+              "juic",
+              "juice",
+              "ce",
+              "cen",
+              "cent",
+              "centr",
+              "centre",
+              "kushwahak",
+              "kushwahaka",
+              "kushwahakan",
+              "kushwahakanc",
+              "kushwahakanch",
+              "kushwahakancha",
+              "kushwahakanchan",
+              "co",
+              "com",
+              "887",
+              "022",
+              "8871",
+              "0022",
+              "88714",
+              "80022",
+              "887148",
+              "480022",
+              "8871480",
+              "1480022",
+              "88714800",
+              "71480022",
+              "887148002",
+              "871480022",
+              "8871480022",
+              "9188",
+              "91887",
+              "918871",
+              "9188714",
+              "91887148",
+              "918871480",
+              "9188714800",
+              "91887148002",
+              "918871480022",
+              "xx1dih6hvszcq3eto4ky"
+            ],
+            "createdAt": 1786963105911
+          }
+        },
+        {
+          "id": "hNqNwWGZ2yz44FmxMSpP",
+          "fieldCount": 8,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "address",
+            "companyName",
+            "searchTokens",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "hNqNwWGZ2yz44FmxMSpP",
+            "name": "Bairagi Laxmi, Singoli",
+            "phone": "919303927323",
+            "email": "laxmikakarishma@gmail.com",
+            "address": "SHOP 5 & 6 U SHAPE MARKET, TAGORE MARG,",
+            "companyName": "Zorba Infotech Neemuch",
+            "searchTokens": [
+              "ba",
+              "bai",
+              "bair",
+              "baira",
+              "bairag",
+              "bairagi",
+              "la",
+              "lax",
+              "laxm",
+              "laxmi",
+              "si",
+              "sin",
+              "sing",
+              "singo",
+              "singol",
+              "singoli",
+              "zo",
+              "zor",
+              "zorb",
+              "zorba",
+              "in",
+              "inf",
+              "info",
+              "infot",
+              "infote",
+              "infotec",
+              "infotech",
+              "ne",
+              "nee",
+              "neem",
+              "neemu",
+              "neemuc",
+              "neemuch",
+              "laxmik",
+              "laxmika",
+              "laxmikak",
+              "laxmikaka",
+              "laxmikakar",
+              "laxmikakari",
+              "laxmikakaris",
+              "laxmikakarish",
+              "laxmikakarishm",
+              "laxmikakarishma",
+              "co",
+              "com",
+              "930",
+              "323",
+              "9303",
+              "7323",
+              "93039",
+              "27323",
+              "930392",
+              "927323",
+              "9303927",
+              "3927323",
+              "93039273",
+              "03927323",
+              "930392732",
+              "303927323",
+              "9303927323",
+              "9193",
+              "91930",
+              "919303",
+              "9193039",
+              "91930392",
+              "919303927",
+              "9193039273",
+              "91930392732",
+              "919303927323",
+              "hnqnwwgz2yz44fmxmspp"
+            ],
+            "createdAt": 1786963304883
+          }
+        },
+        {
+          "id": "rXDCyy7PIFw3Kni1AxcM",
+          "fieldCount": 8,
+          "fields": [
+            "id",
+            "name",
+            "email",
+            "companyName",
+            "createdAt",
+            "phone",
+            "searchTokens",
+            "address"
+          ],
+          "sample": {
+            "id": "rXDCyy7PIFw3Kni1AxcM",
+            "name": "Rekwar Deepak, Mehnot Nagar, Nmh",
+            "email": "zorbainfotech@gmail.com",
+            "companyName": "ZORBA INFOTECH NEEMUCH",
+            "createdAt": 1786816257310,
+            "phone": "917566510497",
+            "searchTokens": [
+              "re",
+              "rek",
+              "rekw",
+              "rekwa",
+              "rekwar",
+              "de",
+              "dee",
+              "deep",
+              "deepa",
+              "deepak",
+              "me",
+              "meh",
+              "mehn",
+              "mehno",
+              "mehnot",
+              "na",
+              "nag",
+              "naga",
+              "nagar",
+              "nm",
+              "nmh",
+              "zo",
+              "zor",
+              "zorb",
+              "zorba",
+              "in",
+              "inf",
+              "info",
+              "infot",
+              "infote",
+              "infotec",
+              "infotech",
+              "ne",
+              "nee",
+              "neem",
+              "neemu",
+              "neemuc",
+              "neemuch",
+              "zorbai",
+              "zorbain",
+              "zorbainf",
+              "zorbainfo",
+              "zorbainfot",
+              "zorbainfote",
+              "zorbainfotec",
+              "zorbainfotech",
+              "zorbainfotech@",
+              "zorbainfotech@g",
+              "co",
+              "com",
+              "756",
+              "497",
+              "7566",
+              "0497",
+              "75665",
+              "10497",
+              "756651",
+              "510497",
+              "7566510",
+              "6510497",
+              "75665104",
+              "66510497",
+              "756651049",
+              "566510497",
+              "7566510497",
+              "9175",
+              "91756",
+              "917566",
+              "9175665",
+              "91756651",
+              "917566510",
+              "9175665104",
+              "91756651049",
+              "917566510497",
+              "rxdcyy7pifw3kni1axcm"
+            ],
+            "address": "Mehnot Nagar"
+          }
+        },
+        {
+          "id": "vlIbc9cbGMaY8xF460li",
+          "fieldCount": 6,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "address",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "vlIbc9cbGMaY8xF460li",
+            "name": "Meena Devilal, Besla - Rampura",
+            "phone": "919977507398",
+            "address": "Tehsil Rampura",
+            "createdAt": 1787655694399,
+            "updatedAt": 1787655945125
+          }
+        }
+      ]
+    },
+    "device_models": {
+      "documentCount": 103,
+      "fieldCount": 4,
+      "fields": [
+        "id",
+        "categoryName",
+        "modelName",
+        "createdAt"
+      ],
+      "samples": [
+        {
+          "id": "0APpUcfXi7Kpax37s4yS",
+          "fieldCount": 4,
+          "fields": [
+            "id",
+            "categoryName",
+            "modelName",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "0APpUcfXi7Kpax37s4yS",
+            "categoryName": "Cctv & Security",
+            "modelName": "DS-7608NXI-K1",
+            "createdAt": 1787686872369
+          }
+        },
+        {
+          "id": "1gwx5pHlGmyOCzfK49zn",
+          "fieldCount": 4,
+          "fields": [
+            "id",
+            "categoryName",
+            "modelName",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "1gwx5pHlGmyOCzfK49zn",
+            "categoryName": "Cctv & Security",
+            "modelName": "DS-7604NI-Q1",
+            "createdAt": 1787686723462
+          }
+        },
+        {
+          "id": "3Vcyouu51Wdauk8D0pO8",
+          "fieldCount": 4,
+          "fields": [
+            "id",
+            "categoryName",
+            "modelName",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "3Vcyouu51Wdauk8D0pO8",
+            "categoryName": "Printer",
+            "modelName": "DCP-T430W",
+            "createdAt": 1787642611646
+          }
+        },
+        {
+          "id": "5a9EbeAnHmoUmXwfar3T",
+          "fieldCount": 4,
+          "fields": [
+            "id",
+            "categoryName",
+            "modelName",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "5a9EbeAnHmoUmXwfar3T",
+            "categoryName": "Cctv & Security",
+            "modelName": "PT-NC343P1-WNM",
+            "createdAt": 1787660752385
+          }
+        },
+        {
+          "id": "5cyCLjvEwxTVUDM9WX8e",
+          "fieldCount": 4,
+          "fields": [
+            "id",
+            "categoryName",
+            "modelName",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "5cyCLjvEwxTVUDM9WX8e",
+            "categoryName": "Laptop",
+            "modelName": "DELL-INSPIRON-3530",
+            "createdAt": 1787598135227
+          }
+        }
+      ]
+    },
+    "financial_years": {
+      "documentCount": 1,
+      "fieldCount": 7,
+      "fields": [
+        "endDate",
+        "startYear",
+        "id",
+        "label",
+        "endYear",
+        "startDate",
+        "updatedAt"
+      ],
+      "samples": [
+        {
+          "id": "FY2627",
+          "fieldCount": 7,
+          "fields": [
+            "endDate",
+            "startYear",
+            "id",
+            "label",
+            "endYear",
+            "startDate",
+            "updatedAt"
+          ],
+          "sample": {
+            "endDate": "2027-03-31",
+            "startYear": 2026,
+            "id": "FY2627",
+            "label": "FY 2026-27",
+            "endYear": 2027,
+            "startDate": "2026-04-01",
+            "updatedAt": {
+              "_seconds": 1787655946,
+              "_nanoseconds": 26000000
+            }
+          }
+        }
+      ]
+    },
+    "products": {
+      "documentCount": 100,
+      "fieldCount": 21,
+      "fields": [
+        "id",
+        "name",
+        "brand",
+        "model",
+        "itemCode",
+        "warranty",
+        "serviceCenter",
+        "productUrl",
+        "price",
+        "description",
+        "categoryId",
+        "inStock",
+        "featured",
+        "showOnWebsite",
+        "order",
+        "photoUrl",
+        "customFields",
+        "category",
+        "createdAt",
+        "updatedAt",
+        "showPriceOnWebsite"
+      ],
+      "samples": [
+        {
+          "id": "1005-LASERTANK",
+          "fieldCount": 20,
+          "fields": [
+            "id",
+            "name",
+            "brand",
+            "model",
+            "itemCode",
+            "warranty",
+            "serviceCenter",
+            "productUrl",
+            "price",
+            "description",
+            "categoryId",
+            "inStock",
+            "featured",
+            "showOnWebsite",
+            "order",
+            "photoUrl",
+            "customFields",
+            "category",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "1005-LASERTANK",
+            "name": "1005 Printer Laser Tank Mfp - H P",
+            "brand": "Hp Laser Multifunction Printer",
+            "model": "1005-LASERTANK",
+            "itemCode": "1005-LASERTANK-",
+            "warranty": "",
+            "serviceCenter": "",
+            "productUrl": "",
+            "price": 19199,
+            "description": "LASER TANK - Print+Scan+Copy+1 Year Toll Free Wty"
+          }
+        },
+        {
+          "id": "1008A",
+          "fieldCount": 20,
+          "fields": [
+            "id",
+            "name",
+            "brand",
+            "model",
+            "itemCode",
+            "warranty",
+            "serviceCenter",
+            "productUrl",
+            "price",
+            "description",
+            "categoryId",
+            "inStock",
+            "featured",
+            "showOnWebsite",
+            "order",
+            "photoUrl",
+            "customFields",
+            "category",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "1008A",
+            "name": "1008a Single Function Laser Printer Hp",
+            "brand": "Hp Laser Printer",
+            "model": "1008A",
+            "itemCode": "1008A",
+            "warranty": "",
+            "serviceCenter": "",
+            "productUrl": "",
+            "price": 10700,
+            "description": "With 166A Cartridge - 1 Year Toll Free OnSite Warranty By HP"
+          }
+        },
+        {
+          "id": "1008W",
+          "fieldCount": 20,
+          "fields": [
+            "id",
+            "name",
+            "brand",
+            "model",
+            "itemCode",
+            "warranty",
+            "serviceCenter",
+            "productUrl",
+            "price",
+            "description",
+            "categoryId",
+            "inStock",
+            "featured",
+            "showOnWebsite",
+            "order",
+            "photoUrl",
+            "customFields",
+            "category",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "1008W",
+            "name": "1008w Laser Printer With Wi Fi H P",
+            "brand": "Hp Laser Printer",
+            "model": "1008W",
+            "itemCode": "1008W",
+            "warranty": "",
+            "serviceCenter": "",
+            "productUrl": "",
+            "price": 12600,
+            "description": "With 166A Cartridge - WI FI - 1 Year Toll Free OnSite Warranty By HP"
+          }
+        },
+        {
+          "id": "15-FC0500AU-LAPTOP-RYZEN3-8GB-512GB-15.6-FULL-HD-H-P",
+          "fieldCount": 20,
+          "fields": [
+            "id",
+            "name",
+            "brand",
+            "model",
+            "itemCode",
+            "serviceCenter",
+            "productUrl",
+            "categoryId",
+            "inStock",
+            "featured",
+            "showOnWebsite",
+            "order",
+            "photoUrl",
+            "customFields",
+            "category",
+            "createdAt",
+            "price",
+            "description",
+            "warranty",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "15-FC0500AU-LAPTOP-RYZEN3-8GB-512GB-15.6-FULL-HD-H-P",
+            "name": "Laptop",
+            "brand": "Hp",
+            "model": "15-FC0500AU-LAPTOP-RYZEN3-8GB-512GB-15.6-FULL-HD-H-P",
+            "itemCode": "L12-108-0500-008",
+            "serviceCenter": "",
+            "productUrl": "",
+            "categoryId": "laptop",
+            "inStock": true,
+            "featured": false
+          }
+        },
+        {
+          "id": "250RG10",
+          "fieldCount": 20,
+          "fields": [
+            "id",
+            "name",
+            "model",
+            "warranty",
+            "serviceCenter",
+            "productUrl",
+            "categoryId",
+            "inStock",
+            "featured",
+            "showOnWebsite",
+            "order",
+            "photoUrl",
+            "customFields",
+            "category",
+            "createdAt",
+            "price",
+            "itemCode",
+            "description",
+            "brand",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "250RG10",
+            "name": "250rg10-Core I 3- 100u-8-512-Dos-Silver-15.6 - Hp",
+            "model": "250RG10",
+            "warranty": "",
+            "serviceCenter": "",
+            "productUrl": "",
+            "categoryId": "laptop",
+            "inStock": true,
+            "featured": false,
+            "showOnWebsite": true
+          }
+        }
+      ]
+    },
+    "quotation_templates": {
+      "documentCount": 1,
+      "fieldCount": 7,
+      "fields": [
+        "id",
+        "name",
+        "category",
+        "items",
+        "estimatedGrandTotal",
+        "createdAt",
+        "updatedAt"
+      ],
+      "samples": [
+        {
+          "id": "vbyLCu4HUQTzv0NhdcUk",
+          "fieldCount": 7,
+          "fields": [
+            "id",
+            "name",
+            "category",
+            "items",
+            "estimatedGrandTotal",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "vbyLCu4HUQTzv0NhdcUk",
+            "name": "QUOTATION FOR ASSEMBLED PC - CORE I 5 SIX GENERATION",
+            "category": "ASSEMBLED PC",
+            "items": [
+              {
+                "id": "item-1787686998313",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 2050,
+                "totalPrice": 2050
+              },
+              {
+                "id": "item-1787687274022-tom",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 200,
+                "totalPrice": 200
+              },
+              {
+                "id": "item-1787687324373-gdg",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 4500,
+                "totalPrice": 4500
+              },
+              {
+                "id": "item-1787687420661-ake",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 3800,
+                "totalPrice": 3800
+              },
+              {
+                "id": "item-1787687472093-ul9",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 4200,
+                "totalPrice": 4200
+              },
+              {
+                "id": "item-1787687513853-k2y",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 1100,
+                "totalPrice": 1100
+              },
+              {
+                "id": "item-1787687515836-42e",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 980,
+                "totalPrice": 980
+              },
+              {
+                "id": "item-1787687603428-9yh",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 6350,
+                "totalPrice": 6350
+              },
+              {
+                "id": "item-1787687627484-c5k",
+                "productName": "",
+                "category": "General",
+                "modelNumber": "",
+                "description": "",
+                "quantity": 1,
+                "estimatedPrice": 300,
+                "totalPrice": 300
+              }
+            ],
+            "estimatedGrandTotal": 23480,
+            "createdAt": 1787687781861,
+            "updatedAt": 1787687781861
+          }
+        }
+      ]
+    },
+    "service_calls": {
+      "documentCount": 16,
+      "fieldCount": 45,
+      "fields": [
+        "id",
+        "ticketNo",
+        "type",
+        "dateTime",
+        "customerId",
+        "customerName",
+        "customerPhone",
+        "customerEmail",
+        "customerAddress",
+        "deviceCategory",
+        "modelNumber",
+        "serialNumber",
+        "quantity",
+        "issueDescription",
+        "warrantyStatus",
+        "parts",
+        "partsTotal",
+        "serviceCharges",
+        "grandTotal",
+        "createdAt",
+        "status",
+        "deletedAt",
+        "isDeleted",
+        "updatedAt",
+        "serviceCenterId",
+        "serviceCenterName",
+        "serviceCenterAddressId",
+        "serviceCenterAddress",
+        "rmaNumber",
+        "courierCharges",
+        "technicianName",
+        "timeline",
+        "fyId",
+        "monthKey",
+        "courierName",
+        "handledByStaffName",
+        "handledByStaffId",
+        "dateOfPurchase",
+        "billNumber",
+        "discount",
+        "technicianId",
+        "amountPaid",
+        "paymentMode",
+        "paymentDate",
+        "paymentStatus"
+      ],
+      "samples": [
+        {
+          "id": "AHMCQcCBnaAg8WBrQeBb",
+          "fieldCount": 24,
+          "fields": [
+            "id",
+            "ticketNo",
+            "type",
+            "dateTime",
+            "customerId",
+            "customerName",
+            "customerPhone",
+            "customerEmail",
+            "customerAddress",
+            "deviceCategory",
+            "modelNumber",
+            "serialNumber",
+            "quantity",
+            "issueDescription",
+            "warrantyStatus",
+            "parts",
+            "partsTotal",
+            "serviceCharges",
+            "grandTotal",
+            "createdAt",
+            "status",
+            "deletedAt",
+            "isDeleted",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "AHMCQcCBnaAg8WBrQeBb",
+            "ticketNo": "SC-2026-0002",
+            "type": "in_house_repair",
+            "dateTime": "2026-08-15",
+            "customerId": "SlKRiKXVoxRjNGShQ615",
+            "customerName": "MAITREYA MULCHANDANI",
+            "customerPhone": "+91 9589199730",
+            "customerEmail": "maitreya1503@gmail.com",
+            "customerAddress": "VIKAS NAGAR 14-2",
+            "deviceCategory": "Router & Networking"
+          }
+        },
+        {
+          "id": "H2yl9UbiKoopXb077xVv",
+          "fieldCount": 30,
+          "fields": [
+            "id",
+            "ticketNo",
+            "type",
+            "dateTime",
+            "customerId",
+            "customerName",
+            "customerPhone",
+            "customerEmail",
+            "customerAddress",
+            "deviceCategory",
+            "modelNumber",
+            "serialNumber",
+            "quantity",
+            "issueDescription",
+            "warrantyStatus",
+            "serviceCenterId",
+            "serviceCenterName",
+            "serviceCenterAddressId",
+            "serviceCenterAddress",
+            "rmaNumber",
+            "courierCharges",
+            "parts",
+            "partsTotal",
+            "serviceCharges",
+            "grandTotal",
+            "createdAt",
+            "status",
+            "deletedAt",
+            "isDeleted",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "H2yl9UbiKoopXb077xVv",
+            "ticketNo": "SC-2026-0006",
+            "type": "company_service_center",
+            "dateTime": "2026-08-15",
+            "customerId": "SlKRiKXVoxRjNGShQ615",
+            "customerName": "MAITREYA MULCHANDANI",
+            "customerPhone": "+91 9589199730",
+            "customerEmail": "maitreya1503@gmail.com",
+            "customerAddress": "VIKAS NAGAR 14-2",
+            "deviceCategory": "CCTV & Security"
+          }
+        },
+        {
+          "id": "HjKJO26dm2Nf5YMx5ygO",
+          "fieldCount": 28,
+          "fields": [
+            "id",
+            "ticketNo",
+            "type",
+            "dateTime",
+            "customerId",
+            "customerName",
+            "customerPhone",
+            "customerEmail",
+            "customerAddress",
+            "modelNumber",
+            "serialNumber",
+            "quantity",
+            "issueDescription",
+            "warrantyStatus",
+            "serviceCenterId",
+            "serviceCenterName",
+            "serviceCenterAddressId",
+            "serviceCenterAddress",
+            "rmaNumber",
+            "courierCharges",
+            "parts",
+            "partsTotal",
+            "serviceCharges",
+            "grandTotal",
+            "createdAt",
+            "deviceCategory",
+            "status",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "HjKJO26dm2Nf5YMx5ygO",
+            "ticketNo": "SC-2026-0005",
+            "type": "company_service_center",
+            "dateTime": "2026-08-15",
+            "customerId": "SlKRiKXVoxRjNGShQ615",
+            "customerName": "MAITREYA MULCHANDANI",
+            "customerPhone": "+91 9589199730",
+            "customerEmail": "maitreya1503@gmail.com",
+            "customerAddress": "VIKAS NAGAR 14-2",
+            "modelNumber": "2 Mp Ip Dome 2.8 M M DS-2CD1323GOE-I -Hikvision"
+          }
+        },
+        {
+          "id": "NnTxig3sPJa9wKTT4iSc",
+          "fieldCount": 22,
+          "fields": [
+            "id",
+            "ticketNo",
+            "type",
+            "dateTime",
+            "customerId",
+            "customerName",
+            "customerPhone",
+            "modelNumber",
+            "serialNumber",
+            "quantity",
+            "parts",
+            "partsTotal",
+            "serviceCharges",
+            "grandTotal",
+            "createdAt",
+            "deviceCategory",
+            "status",
+            "warrantyStatus",
+            "issueDescription",
+            "deletedAt",
+            "isDeleted",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "NnTxig3sPJa9wKTT4iSc",
+            "ticketNo": "SC-2026-0001",
+            "type": "in_house_repair",
+            "dateTime": "2026-08-02T22:11",
+            "customerId": "9aaZLcvOJfiIOSElWnnc",
+            "customerName": "test",
+            "customerPhone": "+91 123123123",
+            "modelNumber": "test",
+            "serialNumber": "test",
+            "quantity": 1
+          }
+        },
+        {
+          "id": "SC-2026-08-0001",
+          "fieldCount": 23,
+          "fields": [
+            "id",
+            "ticketNo",
+            "type",
+            "dateTime",
+            "customerId",
+            "customerName",
+            "customerPhone",
+            "customerEmail",
+            "customerAddress",
+            "deviceCategory",
+            "quantity",
+            "issueDescription",
+            "warrantyStatus",
+            "technicianName",
+            "parts",
+            "partsTotal",
+            "serviceCharges",
+            "grandTotal",
+            "createdAt",
+            "status",
+            "deletedAt",
+            "isDeleted",
+            "updatedAt"
+          ],
+          "sample": {
+            "id": "SC-2026-08-0001",
+            "ticketNo": "SC-2026-08-0001",
+            "type": "in_house_repair",
+            "dateTime": "2026-08-13",
+            "customerId": "SlKRiKXVoxRjNGShQ615",
+            "customerName": "Maitreya Mulchandani",
+            "customerPhone": "919589199730",
+            "customerEmail": "maitreya1503@gmail.com",
+            "customerAddress": "VIKAS NAGAR 14-2",
+            "deviceCategory": "CCTV & Security"
+          }
+        }
+      ]
+    },
+    "service_centers": {
+      "documentCount": 4,
+      "fieldCount": 10,
+      "fields": [
+        "id",
+        "defaultAddressId",
+        "createdAt",
+        "phone",
+        "name",
+        "active",
+        "pocs",
+        "email",
+        "addresses",
+        "whatsappPhone"
+      ],
+      "samples": [
+        {
+          "id": "ARtLNvB4c1Bh2Qhml8lf",
+          "fieldCount": 9,
+          "fields": [
+            "id",
+            "defaultAddressId",
+            "createdAt",
+            "phone",
+            "name",
+            "active",
+            "pocs",
+            "email",
+            "addresses"
+          ],
+          "sample": {
+            "id": "ARtLNvB4c1Bh2Qhml8lf",
+            "defaultAddressId": "addr-1",
+            "createdAt": 1786817317786,
+            "phone": "919301508666",
+            "name": "Hikvision Service Center Indore",
+            "active": true,
+            "pocs": [],
+            "email": "test@test.com",
+            "addresses": [
+              {
+                "city": "Indore",
+                "address": "test",
+                "isDefault": true,
+                "id": "addr-1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "T7F2sP46pK7sIDktbLRU",
+          "fieldCount": 8,
+          "fields": [
+            "id",
+            "name",
+            "whatsappPhone",
+            "addresses",
+            "defaultAddressId",
+            "pocs",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "T7F2sP46pK7sIDktbLRU",
+            "name": "Mantra Softech India Pvt Ltd. , Rajpur - Gujrat",
+            "whatsappPhone": "919725486560",
+            "addresses": [
+              {
+                "id": "addr-1",
+                "city": "Rajpur Gujrat",
+                "address": "Ls No. 2376/1a 13501, Near Rainbow, Company Jhulasan Road, Village-Rajpur , Taluka-Kadi,Mahesana, Gujarat, India",
+                "isDefault": true
+              }
+            ],
+            "defaultAddressId": "addr-1",
+            "pocs": [],
+            "active": true,
+            "createdAt": 1787655929656
+          }
+        },
+        {
+          "id": "VaDau7NSWMzVbcEgx8oT",
+          "fieldCount": 7,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "addresses",
+            "defaultAddressId",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "VaDau7NSWMzVbcEgx8oT",
+            "name": "Dell Care Center",
+            "phone": "+91 94220 55443",
+            "email": "support@dellcare.in",
+            "addresses": [
+              {
+                "id": "addr-3",
+                "address": "Suite 302, MG Road Commercial Hub, Pune",
+                "city": "Pune",
+                "isDefault": true
+              }
+            ],
+            "defaultAddressId": "addr-3",
+            "createdAt": 1785689687113
+          }
+        },
+        {
+          "id": "kR0c0ujIvahYhE6Hfe02",
+          "fieldCount": 7,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "addresses",
+            "defaultAddressId",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "kR0c0ujIvahYhE6Hfe02",
+            "name": "HP Authorized Service Center",
+            "phone": "+91 98210 11223",
+            "email": "hp.service@hp.com",
+            "addresses": [
+              {
+                "id": "addr-1",
+                "address": "Plot 45, Tech Zone, Sector 18, Gurugram",
+                "city": "Gurugram",
+                "isDefault": true
+              },
+              {
+                "id": "addr-2",
+                "address": "Shop 12, Station Road, Indore",
+                "city": "Indore",
+                "isDefault": false
+              }
+            ],
+            "defaultAddressId": "addr-1",
+            "createdAt": 1785689687027
+          }
+        }
+      ]
+    },
+    "spare_parts": {
+      "documentCount": 4,
+      "fieldCount": 5,
+      "fields": [
+        "id",
+        "name",
+        "unitPrice",
+        "category",
+        "createdAt"
+      ],
+      "samples": [
+        {
+          "id": "5ZZj5jHEAf5cb9zKCn96",
+          "fieldCount": 5,
+          "fields": [
+            "id",
+            "name",
+            "unitPrice",
+            "category",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "5ZZj5jHEAf5cb9zKCn96",
+            "name": "test",
+            "unitPrice": "80",
+            "category": "CCTV & Security",
+            "createdAt": 1787334135485
+          }
+        },
+        {
+          "id": "7KhWPdFkgaAS70fjTWzr",
+          "fieldCount": 5,
+          "fields": [
+            "id",
+            "name",
+            "unitPrice",
+            "category",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "7KhWPdFkgaAS70fjTWzr",
+            "name": "test2",
+            "unitPrice": "200",
+            "category": "CCTV & Security",
+            "createdAt": 1787334135486
+          }
+        },
+        {
+          "id": "NUGaknJlme57Fdrqyiwd",
+          "fieldCount": 5,
+          "fields": [
+            "id",
+            "name",
+            "unitPrice",
+            "category",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "NUGaknJlme57Fdrqyiwd",
+            "name": "test",
+            "unitPrice": "90",
+            "category": "CCTV & Security",
+            "createdAt": 1787334135486
+          }
+        },
+        {
+          "id": "pUTQqDi00mUYiUOLhyfz",
+          "fieldCount": 5,
+          "fields": [
+            "id",
+            "name",
+            "unitPrice",
+            "category",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "pUTQqDi00mUYiUOLhyfz",
+            "name": "test3",
+            "unitPrice": 0,
+            "category": "CCTV & Security",
+            "createdAt": 1787334135487
+          }
+        }
+      ]
+    },
+    "staff": {
+      "documentCount": 3,
+      "fieldCount": 6,
+      "fields": [
+        "id",
+        "name",
+        "role",
+        "phone",
+        "active",
+        "createdAt"
+      ],
+      "samples": [
+        {
+          "id": "NYYt9E0GIS6EQjwqu5CS",
+          "fieldCount": 6,
+          "fields": [
+            "id",
+            "name",
+            "role",
+            "phone",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "NYYt9E0GIS6EQjwqu5CS",
+            "name": "Amit Patel",
+            "role": "Service Operations Manager",
+            "phone": "+91 94220 44556",
+            "active": true,
+            "createdAt": 1786827976765
+          }
+        },
+        {
+          "id": "aHpeU4VDMLNr4c4wQ8UA",
+          "fieldCount": 6,
+          "fields": [
+            "id",
+            "name",
+            "role",
+            "phone",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "aHpeU4VDMLNr4c4wQ8UA",
+            "name": "Sunita Verma",
+            "role": "Support & Dispatch Lead",
+            "phone": "+91 98900 77889",
+            "active": true,
+            "createdAt": 1786827976834
+          }
+        },
+        {
+          "id": "qF6njiGVdDU9tAyKOCdF",
+          "fieldCount": 6,
+          "fields": [
+            "id",
+            "name",
+            "role",
+            "phone",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "qF6njiGVdDU9tAyKOCdF",
+            "name": "Rajesh Sharma",
+            "role": "Frontdesk / Backoffice Coordinator",
+            "phone": "+91 98230 11223",
+            "active": true,
+            "createdAt": 1786827976629
+          }
+        }
+      ]
+    },
+    "staff_members": {
+      "documentCount": 2,
+      "fieldCount": 5,
+      "fields": [
+        "id",
+        "role",
+        "active",
+        "createdAt",
+        "name"
+      ],
+      "samples": [
+        {
+          "id": "Y646CXivogjRmxtCZ4TE",
+          "fieldCount": 5,
+          "fields": [
+            "id",
+            "role",
+            "active",
+            "createdAt",
+            "name"
+          ],
+          "sample": {
+            "id": "Y646CXivogjRmxtCZ4TE",
+            "role": "Dispatch & Logistics",
+            "active": true,
+            "createdAt": 1786824233610,
+            "name": "Madam 1"
+          }
+        },
+        {
+          "id": "ZQ21jZN78JW84U9EipcS",
+          "fieldCount": 5,
+          "fields": [
+            "id",
+            "active",
+            "createdAt",
+            "name",
+            "role"
+          ],
+          "sample": {
+            "id": "ZQ21jZN78JW84U9EipcS",
+            "active": true,
+            "createdAt": 1786824233398,
+            "name": "Accountant 1",
+            "role": "Accountant"
+          }
+        }
+      ]
+    },
+    "tally_inspection_snapshots": {
+      "documentCount": 7,
+      "fieldCount": 13,
+      "fields": [
+        "id",
+        "receivedAt",
+        "timestamp",
+        "contentType",
+        "contentLength",
+        "sourceIP",
+        "userAgent",
+        "parsedFormat",
+        "itemCount",
+        "samplePreview",
+        "rawData",
+        "parsedData",
+        "metadata"
+      ],
+      "samples": [
+        {
+          "id": "snap_20260827143539_4925",
+          "fieldCount": 12,
+          "fields": [
+            "id",
+            "receivedAt",
+            "timestamp",
+            "contentType",
+            "contentLength",
+            "sourceIP",
+            "userAgent",
+            "parsedFormat",
+            "itemCount",
+            "samplePreview",
+            "rawData",
+            "parsedData"
+          ],
+          "sample": {
+            "id": "snap_20260827143539_4925",
+            "receivedAt": "2026-08-27T14:35:39.177Z",
+            "timestamp": 1787841339177,
+            "contentType": "application/json",
+            "contentLength": 122,
+            "sourceIP": "0.0.0.0",
+            "userAgent": "curl/8.21.0-rc3",
+            "parsedFormat": "json_items",
+            "itemCount": 1,
+            "samplePreview": [
+              {
+                "tallyName": "001 Black Ink Bottle 127 ML - Epson",
+                "closingBalance": 4,
+                "rate": 688.6
+              }
+            ]
+          }
+        },
+        {
+          "id": "snap_20260827_160715_161802",
+          "fieldCount": 12,
+          "fields": [
+            "itemCount",
+            "rawData",
+            "metadata",
+            "id",
+            "contentLength",
+            "userAgent",
+            "samplePreview",
+            "receivedAt",
+            "timestamp",
+            "parsedFormat",
+            "contentType",
+            "sourceIP"
+          ],
+          "sample": {
+            "itemCount": 4,
+            "rawData": "{\"source\":\"zorba_tally_windows_agent\",\"timestamp\":1787846835724,\"version\":\"1.0.0...",
+            "metadata": {
+              "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "ZorbaTallySync/1.0.0"
+              },
+              "receivedBytes": 95
+            },
+            "id": "snap_20260827_160715_161802",
+            "contentLength": 95,
+            "userAgent": "ZorbaTallySync/1.0.0",
+            "samplePreview": [
+              {
+                "value": "zorba_tally_windows_agent",
+                "key": "source"
+              },
+              {
+                "key": "timestamp",
+                "value": 1787846835724
+              },
+              {
+                "key": "version",
+                "value": "1.0.0"
+              },
+              {
+                "key": "items",
+                "value": null
+              }
+            ],
+            "receivedAt": "2026-08-27T16:07:15Z",
+            "timestamp": 1787846835962,
+            "parsedFormat": "json_object"
+          }
+        },
+        {
+          "id": "snap_20260827_161707_659543",
+          "fieldCount": 12,
+          "fields": [
+            "itemCount",
+            "samplePreview",
+            "id",
+            "rawData",
+            "metadata",
+            "timestamp",
+            "contentLength",
+            "userAgent",
+            "contentType",
+            "receivedAt",
+            "sourceIP",
+            "parsedFormat"
+          ],
+          "sample": {
+            "itemCount": 4,
+            "samplePreview": [
+              {
+                "key": "items",
+                "value": null
+              },
+              {
+                "key": "source",
+                "value": "zorba_tally_windows_agent"
+              },
+              {
+                "key": "timestamp",
+                "value": 1787847427315
+              },
+              {
+                "key": "version",
+                "value": "1.0.0"
+              }
+            ],
+            "id": "snap_20260827_161707_659543",
+            "rawData": "{\"source\":\"zorba_tally_windows_agent\",\"timestamp\":1787847427315,\"version\":\"1.0.0...",
+            "metadata": {
+              "receivedBytes": 95,
+              "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "ZorbaTallySync/1.0.0"
+              }
+            },
+            "timestamp": 1787847427667,
+            "contentLength": 95,
+            "userAgent": "ZorbaTallySync/1.0.0",
+            "contentType": "application/json",
+            "receivedAt": "2026-08-27T16:17:07Z"
+          }
+        },
+        {
+          "id": "snap_20260827_162931_101262",
+          "fieldCount": 12,
+          "fields": [
+            "id",
+            "timestamp",
+            "contentType",
+            "itemCount",
+            "parsedFormat",
+            "metadata",
+            "receivedAt",
+            "contentLength",
+            "userAgent",
+            "rawData",
+            "sourceIP",
+            "samplePreview"
+          ],
+          "sample": {
+            "id": "snap_20260827_162931_101262",
+            "timestamp": 1787848171165,
+            "contentType": "application/json",
+            "itemCount": 4,
+            "parsedFormat": "json_object",
+            "metadata": {
+              "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "ZorbaTallySync/1.0.0"
+              },
+              "receivedBytes": 95
+            },
+            "receivedAt": "2026-08-27T16:29:31Z",
+            "contentLength": 95,
+            "userAgent": "ZorbaTallySync/1.0.0",
+            "rawData": "{\"source\":\"zorba_tally_windows_agent\",\"timestamp\":1787848170927,\"version\":\"1.0.0..."
+          }
+        },
+        {
+          "id": "snap_20260827_162938_137581",
+          "fieldCount": 12,
+          "fields": [
+            "timestamp",
+            "contentLength",
+            "userAgent",
+            "contentType",
+            "parsedFormat",
+            "receivedAt",
+            "sourceIP",
+            "itemCount",
+            "samplePreview",
+            "rawData",
+            "metadata",
+            "id"
+          ],
+          "sample": {
+            "timestamp": 1787848178287,
+            "contentLength": 95,
+            "userAgent": "ZorbaTallySync/1.0.0",
+            "contentType": "application/json",
+            "parsedFormat": "json_object",
+            "receivedAt": "2026-08-27T16:29:38Z",
+            "sourceIP": "169.254.169.126:1866",
+            "itemCount": 4,
+            "samplePreview": [
+              {
+                "key": "source",
+                "value": "zorba_tally_windows_agent"
+              },
+              {
+                "key": "timestamp",
+                "value": 1787848178025
+              },
+              {
+                "key": "version",
+                "value": "1.0.0"
+              },
+              {
+                "key": "items",
+                "value": null
+              }
+            ],
+            "rawData": "{\"source\":\"zorba_tally_windows_agent\",\"timestamp\":1787848178025,\"version\":\"1.0.0..."
+          }
+        }
+      ]
+    },
+    "team_members": {
+      "documentCount": 10,
+      "fieldCount": 11,
+      "fields": [
+        "id",
+        "name",
+        "role",
+        "phone",
+        "avatar",
+        "active",
+        "createdAt",
+        "specialization",
+        "commissionPercentage",
+        "pin",
+        "email"
+      ],
+      "samples": [
+        {
+          "id": "0ntjagHTWCykoEux9S5O",
+          "fieldCount": 7,
+          "fields": [
+            "id",
+            "name",
+            "role",
+            "phone",
+            "avatar",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "0ntjagHTWCykoEux9S5O",
+            "name": "Kuldeep Meena",
+            "role": "manager",
+            "phone": "919664400713",
+            "avatar": "penguin",
+            "active": true,
+            "createdAt": 1787083301351
+          }
+        },
+        {
+          "id": "1RX7AUTzZA3DcdHK3DtT",
+          "fieldCount": 10,
+          "fields": [
+            "id",
+            "role",
+            "active",
+            "createdAt",
+            "phone",
+            "name",
+            "specialization",
+            "avatar",
+            "commissionPercentage",
+            "pin"
+          ],
+          "sample": {
+            "id": "1RX7AUTzZA3DcdHK3DtT",
+            "role": "technician",
+            "active": true,
+            "createdAt": 1786827826370,
+            "phone": "919179699730",
+            "name": "Hemakshi Meena",
+            "specialization": "COUNTER 1",
+            "avatar": "penguin",
+            "commissionPercentage": 50,
+            "pin": "59973"
+          }
+        },
+        {
+          "id": "5DWiLmTAY6PfvcL3ILcE",
+          "fieldCount": 7,
+          "fields": [
+            "id",
+            "active",
+            "createdAt",
+            "role",
+            "phone",
+            "name",
+            "avatar"
+          ],
+          "sample": {
+            "id": "5DWiLmTAY6PfvcL3ILcE",
+            "active": true,
+            "createdAt": 1786827826271,
+            "role": "backoffice",
+            "phone": "919302199730",
+            "name": "Laxmi Bairagi",
+            "avatar": "raccoon"
+          }
+        },
+        {
+          "id": "5rY2h2Jasd0jirXv0vUg",
+          "fieldCount": 8,
+          "fields": [
+            "id",
+            "name",
+            "role",
+            "phone",
+            "avatar",
+            "active",
+            "createdAt",
+            "pin"
+          ],
+          "sample": {
+            "id": "5rY2h2Jasd0jirXv0vUg",
+            "name": "Swami Owner",
+            "role": "proprietor",
+            "phone": "919993599730",
+            "avatar": "penguin",
+            "active": true,
+            "createdAt": 1787078365098,
+            "pin": "59973"
+          }
+        },
+        {
+          "id": "6McH1u1XMq8DmKQMSz3u",
+          "fieldCount": 8,
+          "fields": [
+            "id",
+            "specialization",
+            "active",
+            "createdAt",
+            "avatar",
+            "role",
+            "phone",
+            "name"
+          ],
+          "sample": {
+            "id": "6McH1u1XMq8DmKQMSz3u",
+            "specialization": "Laptops & Networking",
+            "active": true,
+            "createdAt": 1786827826462,
+            "avatar": "dog",
+            "role": "backoffice",
+            "phone": "919424899730",
+            "name": "Kanchan Kushwah"
+          }
+        }
+      ]
+    },
+    "technicians": {
+      "documentCount": 3,
+      "fieldCount": 7,
+      "fields": [
+        "id",
+        "name",
+        "phone",
+        "email",
+        "specialization",
+        "active",
+        "createdAt"
+      ],
+      "samples": [
+        {
+          "id": "QLCw0YqbnvfLElBjF20e",
+          "fieldCount": 7,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "specialization",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "QLCw0YqbnvfLElBjF20e",
+            "name": "Deepak Soni",
+            "phone": "+91 98900 33221",
+            "email": "deepak@zorba.in",
+            "specialization": "Laptops & Networking",
+            "active": true,
+            "createdAt": 1786828458985
+          }
+        },
+        {
+          "id": "X6J75LkmhyaYvxkydqET",
+          "fieldCount": 7,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "specialization",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "X6J75LkmhyaYvxkydqET",
+            "name": "Vikas Sharma",
+            "phone": "+91 94220 88776",
+            "email": "vikas@zorba.in",
+            "specialization": "Printers & Toners",
+            "active": true,
+            "createdAt": 1786828458906
+          }
+        },
+        {
+          "id": "ks7WNVP0rqfkSQOG1Kjv",
+          "fieldCount": 7,
+          "fields": [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "specialization",
+            "active",
+            "createdAt"
+          ],
+          "sample": {
+            "id": "ks7WNVP0rqfkSQOG1Kjv",
+            "name": "Manoj Kumar",
+            "phone": "+91 98230 55441",
+            "email": "manoj@zorba.in",
+            "specialization": "CCTV & Security",
+            "active": true,
+            "createdAt": 1786828458633
+          }
+        }
+      ]
+    },
+    "whatsapp_templates": {
+      "documentCount": 7,
+      "fieldCount": 14,
+      "fields": [
+        "targetModule",
+        "variables",
+        "buttons",
+        "displayName",
+        "active",
+        "language",
+        "metaStatus",
+        "bodyText",
+        "name",
+        "headerType",
+        "id",
+        "category",
+        "createdAt",
+        "updatedAt"
+      ],
+      "samples": [
+        {
+          "id": "zorba_courier_delivery_inquiry",
+          "fieldCount": 14,
+          "fields": [
+            "targetModule",
+            "variables",
+            "buttons",
+            "displayName",
+            "active",
+            "language",
+            "metaStatus",
+            "bodyText",
+            "name",
+            "headerType",
+            "id",
+            "category",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "targetModule": "couriers",
+            "variables": [
+              {
+                "index": 1,
+                "label": "Courier Partner Name",
+                "fallbackValue": "Courier",
+                "erpKey": "courierName"
+              },
+              {
+                "index": 2,
+                "label": "Docket / AWB No",
+                "fallbackValue": "Pending Docket",
+                "erpKey": "rmaNumber"
+              },
+              {
+                "index": 3,
+                "label": "Ticket Number",
+                "fallbackValue": "SC-XXXX",
+                "erpKey": "ticketNo"
+              },
+              {
+                "index": 4,
+                "label": "Consignee",
+                "fallbackValue": "OEM Service Center",
+                "erpKey": "serviceCenterName"
+              },
+              {
+                "index": 5,
+                "label": "Destination",
+                "fallbackValue": "Destination City",
+                "erpKey": "destinationAddress"
+              },
+              {
+                "index": 6,
+                "label": "Dispatch Date",
+                "fallbackValue": "Today",
+                "erpKey": "dateTime"
+              }
+            ],
+            "buttons": [
+              {
+                "type": "phone_number",
+                "text": "Call Logistics Desk",
+                "urlOrPhone": "+919302199730"
+              }
+            ],
+            "displayName": "Courier Shipment Delivery Inquiry",
+            "active": true,
+            "language": "en_US",
+            "metaStatus": "approved",
+            "bodyText": "*ZORBA INFOTECH - SHIPMENT DELIVERY INQUIRY*\n\nHello *{{1}}* Team,\nWe would like ...",
+            "name": "zorba_courier_delivery_inquiry",
+            "headerType": "none"
+          }
+        },
+        {
+          "id": "zorba_courier_pickup_request",
+          "fieldCount": 14,
+          "fields": [
+            "targetModule",
+            "active",
+            "language",
+            "metaStatus",
+            "name",
+            "headerType",
+            "id",
+            "category",
+            "variables",
+            "buttons",
+            "bodyText",
+            "displayName",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "targetModule": "couriers",
+            "active": true,
+            "language": "en_US",
+            "metaStatus": "approved",
+            "name": "zorba_courier_pickup_request",
+            "headerType": "none",
+            "id": "zorba_courier_pickup_request",
+            "category": "utility",
+            "variables": [
+              {
+                "index": 1,
+                "label": "Courier Partner Name",
+                "fallbackValue": "Courier",
+                "erpKey": "courierName"
+              },
+              {
+                "index": 2,
+                "label": "Ticket / Ref No",
+                "fallbackValue": "SC-XXXX",
+                "erpKey": "ticketNo"
+              },
+              {
+                "index": 3,
+                "label": "Consignee Center",
+                "fallbackValue": "OEM Service Center",
+                "erpKey": "serviceCenterName"
+              },
+              {
+                "index": 4,
+                "label": "Delivery Address",
+                "fallbackValue": "Destination City",
+                "erpKey": "destinationAddress"
+              },
+              {
+                "index": 5,
+                "label": "RMA / Ref Number",
+                "fallbackValue": "N/A",
+                "erpKey": "rmaNumber"
+              },
+              {
+                "index": 6,
+                "label": "Request Date",
+                "fallbackValue": "Today",
+                "erpKey": "dateTime"
+              }
+            ],
+            "buttons": [
+              {
+                "type": "phone_number",
+                "text": "Call Logistics Desk",
+                "urlOrPhone": "+919302199730"
+              }
+            ]
+          }
+        },
+        {
+          "id": "zorba_customer_service_update",
+          "fieldCount": 14,
+          "fields": [
+            "targetModule",
+            "variables",
+            "buttons",
+            "displayName",
+            "active",
+            "language",
+            "metaStatus",
+            "bodyText",
+            "name",
+            "headerType",
+            "id",
+            "category",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "targetModule": "service_calls",
+            "variables": [
+              {
+                "index": 1,
+                "label": "Notice Header",
+                "fallbackValue": "SERVICE INTAKE CONFIRMATION",
+                "erpKey": "noticeHeader"
+              },
+              {
+                "index": 2,
+                "label": "Customer Name",
+                "fallbackValue": "Customer",
+                "erpKey": "customer.name"
+              },
+              {
+                "index": 3,
+                "label": "Ticket No",
+                "fallbackValue": "SC-XXXX",
+                "erpKey": "ticketNo"
+              },
+              {
+                "index": 4,
+                "label": "Date & Time",
+                "fallbackValue": "Today",
+                "erpKey": "dateTime"
+              },
+              {
+                "index": 5,
+                "label": "Device & Model",
+                "fallbackValue": "Device Unit",
+                "erpKey": "deviceCategory"
+              },
+              {
+                "index": 6,
+                "label": "Reported Issue",
+                "fallbackValue": "Service Intake",
+                "erpKey": "issueDescription"
+              },
+              {
+                "index": 7,
+                "label": "Status Stage",
+                "fallbackValue": "RECEIVED",
+                "erpKey": "status"
+              },
+              {
+                "index": 8,
+                "label": "Estimated Total",
+                "fallbackValue": "0",
+                "erpKey": "grandTotal"
+              }
+            ],
+            "buttons": [
+              {
+                "type": "url",
+                "text": "Visit Website",
+                "urlOrPhone": "https://www.zorbainfotech.in"
+              },
+              {
+                "type": "phone_number",
+                "text": "Call Support",
+                "urlOrPhone": "+919302199730"
+              }
+            ],
+            "displayName": "Customer Service Call Update & Job Card Summary",
+            "active": true,
+            "language": "en_US",
+            "metaStatus": "approved",
+            "bodyText": "*ZORBA INFOTECH - {{1}}*\n\nDear *{{2}}*,\nYour service request has been updated. H...",
+            "name": "zorba_customer_service_update",
+            "headerType": "none"
+          }
+        },
+        {
+          "id": "zorba_service_center_dispatch",
+          "fieldCount": 13,
+          "fields": [
+            "targetModule",
+            "variables",
+            "displayName",
+            "active",
+            "language",
+            "metaStatus",
+            "createdAt",
+            "bodyText",
+            "name",
+            "headerType",
+            "id",
+            "category",
+            "updatedAt"
+          ],
+          "sample": {
+            "targetModule": "service_centers",
+            "variables": [
+              {
+                "index": 1,
+                "label": "Service Center Name",
+                "fallbackValue": "Authorized Service Center",
+                "erpKey": "serviceCenterName"
+              },
+              {
+                "index": 2,
+                "label": "Ticket Number",
+                "fallbackValue": "SC-XXXX-XX-000",
+                "erpKey": "ticketNo"
+              },
+              {
+                "index": 3,
+                "label": "Device & Model",
+                "fallbackValue": "Device Unit",
+                "erpKey": "deviceCategory"
+              },
+              {
+                "index": 4,
+                "label": "Serial Number",
+                "fallbackValue": "N/A",
+                "erpKey": "serialNumber"
+              },
+              {
+                "index": 5,
+                "label": "Fault Description",
+                "fallbackValue": "Hardware Fault",
+                "erpKey": "issueDescription"
+              },
+              {
+                "index": 6,
+                "label": "RMA / Docket No",
+                "fallbackValue": "Pending",
+                "erpKey": "rmaNumber"
+              },
+              {
+                "index": 7,
+                "label": "Courier Partner",
+                "fallbackValue": "Direct Handover",
+                "erpKey": "courierName"
+              }
+            ],
+            "displayName": "OEM Service Center Dispatch & Warranty Alert",
+            "active": true,
+            "language": "en_US",
+            "metaStatus": "approved",
+            "createdAt": 1786881487899,
+            "bodyText": "Dear {{1}} Team,\n\nDispatch alert from Zorba Infotech for ticket #{{2}}:\nDevice: ...",
+            "name": "zorba_service_center_dispatch",
+            "headerType": "none"
+          }
+        },
+        {
+          "id": "zorba_service_center_followup",
+          "fieldCount": 14,
+          "fields": [
+            "targetModule",
+            "variables",
+            "buttons",
+            "displayName",
+            "active",
+            "language",
+            "metaStatus",
+            "bodyText",
+            "name",
+            "headerType",
+            "id",
+            "category",
+            "createdAt",
+            "updatedAt"
+          ],
+          "sample": {
+            "targetModule": "service_centers",
+            "variables": [
+              {
+                "index": 1,
+                "label": "Service Center Name",
+                "fallbackValue": "Authorized Service Center",
+                "erpKey": "serviceCenterName"
+              },
+              {
+                "index": 2,
+                "label": "Ticket Number",
+                "fallbackValue": "SC-XXXX",
+                "erpKey": "ticketNo"
+              },
+              {
+                "index": 3,
+                "label": "RMA / Ref No",
+                "fallbackValue": "N/A",
+                "erpKey": "rmaNumber"
+              },
+              {
+                "index": 4,
+                "label": "Dispatched Date",
+                "fallbackValue": "Recent",
+                "erpKey": "dateTime"
+              },
+              {
+                "index": 5,
+                "label": "Device & Model",
+                "fallbackValue": "IT Hardware",
+                "erpKey": "deviceCategory"
+              },
+              {
+                "index": 6,
+                "label": "Serial Number",
+                "fallbackValue": "N/A",
+                "erpKey": "serialNumber"
+              },
+              {
+                "index": 7,
+                "label": "Reported Defect",
+                "fallbackValue": "Hardware Fault",
+                "erpKey": "issueDescription"
+              }
+            ],
+            "buttons": [
+              {
+                "type": "phone_number",
+                "text": "Call Service Desk",
+                "urlOrPhone": "+919302199730"
+              }
+            ],
+            "displayName": "OEM Service Center RMA & Repair Inquiry",
+            "active": true,
+            "language": "en_US",
+            "metaStatus": "approved",
+            "bodyText": "*ZORBA INFOTECH - SERVICE CENTER RMA / REPAIR STATUS INQUIRY*\n\nDear *{{1}}* Supp...",
+            "name": "zorba_service_center_followup",
+            "headerType": "none"
+          }
+        }
+      ]
+    }
+  }
+}

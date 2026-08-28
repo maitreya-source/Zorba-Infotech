@@ -12,6 +12,8 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Sparkles,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -58,7 +60,7 @@ export default function AdminProducts() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
-  const [visibilityFilter, setVisibilityFilter] = useState<"all" | "website" | "erp">("all");
+  const [visibilityFilter, setVisibilityFilter] = useState<"all" | "website" | "erp" | "needs_review" | "scrap">("all");
   
   // Interactive sorting state
   const [sortField, setSortField] = useState<SortField>("name");
@@ -96,7 +98,7 @@ export default function AdminProducts() {
   };
 
   useEffect(() => {
-    loadData(true);
+    loadData(false);
 
     // Real-time zero-cost product catalog table refresh
     const unsub = subscribeSyncSignal("products", () => {
@@ -123,6 +125,17 @@ export default function AdminProducts() {
         return false;
       }
       if (visibilityFilter === "erp" && p.showOnWebsite !== false) {
+        return false;
+      }
+      if (visibilityFilter === "needs_review") {
+        const isAccessory = p.categoryId === "accessories" || p.categoryId === "unassigned" || !p.categoryId;
+        const isGeneralBrand = !p.brand || p.brand === "General" || p.brand === "OEM";
+        const isMissingModel = !p.model || p.model === p.name;
+        if (!isAccessory && !isGeneralBrand && !isMissingModel) {
+          return false;
+        }
+      }
+      if (visibilityFilter === "scrap" && !(p as any).isScrap && p.showOnWebsite !== false) {
         return false;
       }
 
@@ -324,6 +337,16 @@ export default function AdminProducts() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => navigate("/admin/tally-sync")}
+              className="gap-1.5 font-semibold text-slate-200 border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
+              title="View Tally live sync runs and classification rules"
+            >
+              <RefreshCw className="h-3.5 w-3.5 text-primary" />
+              Tally Live Sync
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => loadData(true)}
               disabled={loading || refreshing}
               className="gap-1.5 font-semibold text-slate-200 border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
@@ -367,13 +390,15 @@ export default function AdminProducts() {
         </Select>
 
         <Select value={visibilityFilter} onValueChange={(v: any) => setVisibilityFilter(v)}>
-          <SelectTrigger className="w-full sm:w-36 h-9 text-xs rounded-xl">
+          <SelectTrigger className="w-full sm:w-44 h-9 text-xs rounded-xl">
             <SelectValue placeholder="All Visibility" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Visibility</SelectItem>
+            <SelectItem value="all">All Items</SelectItem>
             <SelectItem value="website">🌐 Visible on Web</SelectItem>
-            <SelectItem value="erp">🔒 ERP Only</SelectItem>
+            <SelectItem value="erp">🔒 ERP / Internal Only</SelectItem>
+            <SelectItem value="needs_review">⚠️ Needs Categorization</SelectItem>
+            <SelectItem value="scrap">🗑️ Scrap & Filtered</SelectItem>
           </SelectContent>
         </Select>
 
@@ -457,16 +482,13 @@ export default function AdminProducts() {
                             )}
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            {product.model && (
+                            {product.model && !/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(product.model) && product.model.length <= 30 ? (
                               <span className="font-mono text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.2 rounded border border-blue-200 dark:border-blue-800">
                                 {product.model}
                               </span>
-                            )}
+                            ) : null}
                             {product.brand && (
                               <span className="text-[11px] text-slate-400">· {product.brand}</span>
-                            )}
-                            {product.itemCode && (
-                              <span className="text-[10px] text-slate-400 font-mono">[{product.itemCode}]</span>
                             )}
                           </div>
                         </div>
@@ -492,16 +514,23 @@ export default function AdminProducts() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge
-                        variant={product.inStock ? "default" : "secondary"}
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          product.inStock
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
-                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                        }`}
-                      >
-                        {product.inStock ? "In Stock" : "Out of Stock"}
-                      </Badge>
+                      <div className="flex flex-col gap-1 items-start">
+                        {typeof product.stockCount === "number" && (
+                          <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {product.stockCount} {product.uom || "Nag."}
+                          </span>
+                        )}
+                        <Badge
+                          variant={product.inStock ? "default" : "secondary"}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            product.inStock
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
+                              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                          }`}
+                        >
+                          {product.inStock ? "In Stock" : "Out of Stock"}
+                        </Badge>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <button

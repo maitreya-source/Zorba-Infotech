@@ -25,7 +25,7 @@ import {
 import { getCategories, createProduct, createCategory } from "@/lib/firestore";
 import { toTitleCase, formatModelNumber } from "@/lib/utils";
 import type { Category, Product } from "@/lib/types";
-import { DEFAULT_WARRANTY } from "@/lib/constants";
+import { DEFAULT_WARRANTY, PRODUCT_UOM_OPTIONS, DEFAULT_PRODUCT_UOM } from "@/lib/constants";
 import WarrantySelector from "@/components/admin/WarrantySelector";
 import BrandTypeahead from "@/components/admin/BrandTypeahead";
 
@@ -51,7 +51,9 @@ export default function CreateProductModal({
   const [categoryId, setCategoryId] = useState(defaultCategoryId || "");
   const [price, setPrice] = useState("");
   const [showPriceOnWebsite, setShowPriceOnWebsite] = useState(true);
-  const [warranty, setWarranty] = useState(DEFAULT_WARRANTY);
+  const [stockCount, setStockCount] = useState("1");
+  const [uom, setUom] = useState("Nag.");
+  const [warranty, setWarranty] = useState("");
   const [description, setDescription] = useState("");
   const [showOnWebsite, setShowOnWebsite] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -143,10 +145,12 @@ export default function CreateProductModal({
         productUrl: "",
         price: isNaN(priceNum as number) ? null : priceNum,
         showPriceOnWebsite,
+        stockCount: stockCount.trim() ? Math.max(0, Number(stockCount)) : 1,
+        uom: uom.trim() || "Nag.",
         description: description.trim(),
         photoUrl: null,
         categoryId,
-        inStock: true,
+        inStock: Number(stockCount) > 0,
         featured: false,
         showOnWebsite,
         order: null,
@@ -237,20 +241,51 @@ export default function CreateProductModal({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Model / Part No. <span className="text-slate-400 font-normal text-[10px]">(no spaces)</span>
+                  Model / Part No. <span className="text-slate-400 font-normal text-[10px]">(Optional)</span>
                 </Label>
                 <Input
-                  placeholder="e.g. LATITUDE-5420"
+                  placeholder="e.g. LATITUDE 5420"
                   value={model}
-                  onChange={(e) => setModel(e.target.value.replace(/\s+/g, "-").toUpperCase())}
-                  onKeyDown={(e) => {
-                    if (e.key === " ") {
-                      e.preventDefault();
-                      setModel((prev) => (prev ? `${prev}-` : ""));
-                    }
-                  }}
-                  className="h-9 text-xs font-mono uppercase rounded-xl"
+                  onChange={(e) => setModel(e.target.value)}
+                  className="h-9 text-xs rounded-xl"
                 />
+              </div>
+            </div>
+
+            {/* Stock Quantity & Unit Dropdown (Admin Only) */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-7 space-y-1">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Stock Quantity</span>
+                  <span className={`text-[10px] font-bold ${Number(stockCount) > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
+                    {Number(stockCount) > 0 ? "🟢 In Stock" : "⚪ Out of Stock"}
+                  </span>
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="1"
+                  value={stockCount}
+                  onChange={(e) => setStockCount(e.target.value)}
+                  className="h-9 text-xs font-mono font-bold rounded-xl"
+                />
+              </div>
+              <div className="sm:col-span-5 space-y-1">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Unit (UOM)
+                </Label>
+                <Select value={uom || DEFAULT_PRODUCT_UOM} onValueChange={(v) => setUom(v)}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium">
+                    <SelectValue placeholder="Select Unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_UOM_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
