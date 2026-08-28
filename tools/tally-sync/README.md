@@ -1,4 +1,4 @@
-# Zorba Infotech — Tally Smart Sync Windows Engine (v3.0)
+# Zorba Infotech — Tally Smart Sync Windows Engine (v3.0.0)
 
 This folder contains the standalone, zero-dependency Windows synchronization client that connects directly to Tally Prime / Tally ERP 9 via XML HTTP and synchronizes live stock inventory, new product SKUs, and customer accounts with Google Cloud and the Zorba Admin Panel.
 
@@ -82,6 +82,26 @@ IntervalHours = 4
 LogFile = zorba_sync.log
 Verbose = true
 ```
+
+---
+
+## 📦 Release Packaging & Distribution Instructions
+
+When distributing the sync tool package via email or cloud archive:
+1. **Version Naming Rule:**
+   - In code (`main.go`), `AppVersion` is always strict semantic versioning `X.Y.Z` (e.g. `3.0.0`) with **no prefixes** (`v`) and **no suffixes/tags** (`-delta-sync`).
+2. **Zip Archive Naming Rule:**
+   - Distribution zip archives **must always** be named:
+     ```
+     zorba-website-tally-sync-v<X.Y.Z>.zip
+     ```
+     *(Example for v3.0.0: `zorba-website-tally-sync-v3.0.0.zip`)*
+3. **Build & Package Command:**
+   ```bash
+   cd tools/tally-sync
+   GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ZorbaTallySync.exe .
+   zip -r ../../zorba-website-tally-sync-v3.0.0.zip . -x ".*" -x "*.go" -x "go.mod" -x "go.sum" -x "mock_*" -x "test_*" -x "ZorbaTallySync"
+   ```
 
 ---
 

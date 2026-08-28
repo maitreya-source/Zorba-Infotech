@@ -18,7 +18,10 @@ import (
 	"time"
 )
 
-const AppVersion = "2.0.0-delta-sync"
+// AppVersion follows semantic versioning (e.g. "3.0.0").
+// NOTE: Always format version numbers strictly as X.Y.Z with no prefixes or suffixes (no "-delta-sync", etc.).
+// Release zip archives must always follow the naming convention: zorba-website-tally-sync-v<X.Y.Z>.zip (e.g. zorba-website-tally-sync-v3.0.0.zip).
+const AppVersion = "3.0.0"
 
 type Config struct {
 	TallyHost       string
@@ -288,8 +291,6 @@ m.Name = val
 }
 case "parent", "fldparent":
 m.Parent = val
-case "closingbalance":
-m.Balance = val
 case "guid":
 m.GUID = val
 case "gstin", "partygstin":
@@ -546,7 +547,7 @@ fmt.Printf("      ✅ Found %d Godowns.\n", len(payload.Godowns))
 
 // 6. Export Ledgers (Accounts / Suppliers / Customers)
 fmt.Println("[6/6] Exporting Ledgers & Accounts...")
-ledgerReq := buildTallyCollectionRequest("ZorbaLedgers", "Ledger", "NAME, PARENT, CLOSINGBALANCE, OPENINGBALANCE, GSTIN, INCOMETAXNUMBER, LEDGERPHONE, LEDGERMOBILE, LEDGERCONTACT, EMAIL, ADDRESS, STATENAME, PINCODE, GUID, NARRATION", cfg.TallyUsername, cfg.TallyPassword, cfg.TallyCompany)
+ledgerReq := buildTallyCollectionRequest("ZorbaLedgers", "Ledger", "NAME, PARENT, GSTIN, INCOMETAXNUMBER, LEDGERPHONE, LEDGERMOBILE, LEDGERCONTACT, EMAIL, ADDRESS, STATENAME, PINCODE, GUID, NARRATION", cfg.TallyUsername, cfg.TallyPassword, cfg.TallyCompany)
 if xmlBytes, err := executeTallyQuery(cfg, ledgerReq); err == nil {
 payload.RawXmlDumps["ledgers"] = string(xmlBytes)
 payload.Ledgers = parseGenericMasters(xmlBytes, "Ledger")
@@ -854,7 +855,7 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 	// 2. Export Ledgers (Customers / Sundry Debtors) (if target is customers or all)
 	var ledgers []GenericTallyMaster
 	if targetScope != "stock" {
-		ledgerReq := buildTallyCollectionRequest("ZorbaLedgers", "Ledger", "NAME, PARENT, CLOSINGBALANCE, OPENINGBALANCE, GSTIN, INCOMETAXNUMBER, LEDGERPHONE, LEDGERMOBILE, LEDGERCONTACT, EMAIL, ADDRESS, STATENAME, PINCODE, GUID, NARRATION", cfg.TallyUsername, cfg.TallyPassword, cfg.TallyCompany)
+		ledgerReq := buildTallyCollectionRequest("ZorbaLedgers", "Ledger", "NAME, PARENT, GSTIN, INCOMETAXNUMBER, LEDGERPHONE, LEDGERMOBILE, LEDGERCONTACT, EMAIL, ADDRESS, STATENAME, PINCODE, GUID, NARRATION", cfg.TallyUsername, cfg.TallyPassword, cfg.TallyCompany)
 		if ledgerBytes, err := executeTallyQuery(cfg, ledgerReq); err == nil {
 			ledgers = parseGenericMasters(ledgerBytes, "Ledger")
 			fmt.Printf("      Live Tally returned %d total Ledgers/Accounts.\n", len(ledgers))

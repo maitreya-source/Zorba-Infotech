@@ -35,4 +35,4 @@ dist-ssr
 *.exe
 __pycache__/
 *.pyc
-
+*.zip

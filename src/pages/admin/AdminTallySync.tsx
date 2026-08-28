@@ -94,9 +94,15 @@ export interface TallySyncRunDoc {
   createdCustomers?: Array<{
     guid: string;
     name: string;
+    rawName?: string;
     parent: string;
+    group?: string;
+    phone?: string;
+    additionalPhones?: string[];
+    city?: string;
+    address?: string;
     gstin?: string;
-    closingBalance?: number;
+    notes?: string;
   }>;
   scrapItems?: Array<{
     name: string;
@@ -1130,7 +1136,7 @@ export default function AdminTallySync() {
                           c.name.toLowerCase().includes(modalSearch.toLowerCase()) ||
                           (c.phone && c.phone.includes(modalSearch))
                         )
-                        .map((c: any, idx) => (
+                        .map((c, idx) => (
                           <tr key={idx} className="hover:bg-slate-50">
                             <td className="p-2.5 pl-3 font-medium text-purple-900">
                               {c.name}
