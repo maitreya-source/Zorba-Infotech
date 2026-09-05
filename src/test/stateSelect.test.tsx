@@ -61,4 +61,43 @@ describe("StateSelect Component & Indian States Dataset", () => {
     expect(screen.getByRole("button", { name: /Rajasthan/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Uttar Pradesh/i })).toBeInTheDocument();
   });
+
+  it("selects matching state when typing 2-letter code and pressing Enter", () => {
+    const onChange = vi.fn();
+    render(<StateSelect value="Madhya Pradesh" onChange={onChange} />);
+
+    const input = screen.getByRole("textbox");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "DL" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onChange).toHaveBeenLastCalledWith("Delhi");
+    expect(input).toHaveValue("Delhi");
+  });
+
+  it("selects Madhya Pradesh when typing 'MP' and pressing Enter", () => {
+    const onChange = vi.fn();
+    render(<StateSelect value="" onChange={onChange} />);
+
+    const input = screen.getByRole("textbox");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "MP" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onChange).toHaveBeenLastCalledWith("Madhya Pradesh");
+    expect(input).toHaveValue("Madhya Pradesh");
+  });
+
+  it("clears state when clicking the Clear (X) button", () => {
+    const onChange = vi.fn();
+    render(<StateSelect value="Maharashtra" onChange={onChange} />);
+
+    const clearBtn = screen.getByTitle(/Clear state/i);
+    fireEvent.click(clearBtn);
+
+    expect(onChange).toHaveBeenCalledWith("");
+    const input = screen.getByRole("textbox");
+    expect(input).toHaveValue("");
+  });
 });
+

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { INDIAN_STATES, IndianState, searchIndianStates } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -15,81 +15,120 @@ interface StateSelectProps {
 export default function StateSelect({
   value,
   onChange,
-  placeholder = "Select or type state (e.g. MP)",
+  placeholder = "Select or type state (e.g. MP, Delhi)",
   className = "",
   disabled = false,
 }: StateSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(value || "");
-  const [isTyping, setIsTyping] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const [isSearching, setIsSearching] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(0);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const shouldSelectAllRef = useRef(false);
 
-  // Sync internal search term when external value changes
+  // Sync external value when dropdown is closed (e.g. data load from server or form reset)
   useEffect(() => {
-    setSearchTerm(value || "");
-    setIsTyping(false);
+    if (!isOpen) {
+      setSearchTerm(value || "");
+      setIsSearching(false);
+    }
   }, [value]);
 
-  // Show all 36 states/UTs when dropdown is opened, only filter when user actively types a search
+  // Determine filtered states:
+  // When dropdown is opened without typing or search is empty, show all 36 states.
+  // When user actively types a query, filter using searchIndianStates (matches both name & 2-letter code).
   const filteredStates: IndianState[] = useMemo(() => {
-    if (!isTyping) {
+    if (!isSearching || !searchTerm.trim()) {
       return INDIAN_STATES;
     }
     return searchIndianStates(searchTerm);
-  }, [searchTerm, isTyping]);
+  }, [searchTerm, isSearching]);
 
-  // Click outside listener to close dropdown
+  // When filtered states change, reset highlighted index to 0 so Enter immediately selects top match
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-        setIsTyping(false);
-        // Normalize typed query if it matches a known state or code
-        normalizeValue(searchTerm);
+    setHighlightedIndex(0);
+  }, [filteredStates]);
+
+  // Scroll highlighted item into view during keyboard navigation
+  useEffect(() => {
+    if (isOpen && listRef.current && highlightedIndex >= 0) {
+      const item = listRef.current.children[highlightedIndex] as HTMLElement | undefined;
+      if (typeof item?.scrollIntoView === "function") {
+        item.scrollIntoView({ block: "nearest" });
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [searchTerm]);
+  }, [highlightedIndex, isOpen]);
 
-  const normalizeValue = (text: string) => {
+  const commitState = (stateName: string) => {
+    setSearchTerm(stateName);
+    setIsSearching(false);
+    setIsOpen(false);
+    onChange(stateName);
+  };
+
+  const normalizeAndCommit = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) {
-      onChange("");
+      commitState("");
       return;
     }
+    // Match exact code (e.g. "mp" -> "Madhya Pradesh") or exact name
     const match = INDIAN_STATES.find(
       (s) =>
         s.name.toLowerCase() === trimmed.toLowerCase() ||
         s.code.toLowerCase() === trimmed.toLowerCase()
     );
     if (match) {
-      setSearchTerm(match.name);
-      onChange(match.name);
+      commitState(match.name);
     } else {
-      onChange(trimmed);
+      // Check prefix/contains search
+      const searchResults = searchIndianStates(trimmed);
+      if (searchResults.length > 0 && trimmed.length >= 2) {
+        commitState(searchResults[0].name);
+      } else {
+        commitState(trimmed);
+      }
     }
   };
 
-  const handleSelect = (state: IndianState) => {
-    setSearchTerm(state.name);
-    onChange(state.name);
-    setIsTyping(false);
-    setIsOpen(false);
-    setHighlightedIndex(-1);
+  const handleSelect = (st: IndianState) => {
+    commitState(st.name);
   };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSearchTerm("");
+    setIsSearching(false);
+    onChange("");
+    setIsOpen(true);
+    inputRef.current?.focus();
+  };
+
+  // Close dropdown and normalize state name/code on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        if (isOpen) {
+          normalizeAndCommit(searchTerm);
+        }
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, searchTerm]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        setIsTyping(false);
-        setIsOpen(true);
         e.preventDefault();
+        setIsOpen(true);
+        setIsSearching(false);
       }
       return;
     }
@@ -102,22 +141,26 @@ export default function StateSelect({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlightedIndex((prev) =>
-        prev > 0 ? prev - 1 : filteredStates.length - 1
+        prev > 0 ? prev - 1 : Math.max(0, filteredStates.length - 1)
       );
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (highlightedIndex >= 0 && filteredStates[highlightedIndex]) {
+      if (filteredStates.length > 0 && highlightedIndex >= 0 && highlightedIndex < filteredStates.length) {
         handleSelect(filteredStates[highlightedIndex]);
-      } else if (filteredStates.length > 0) {
-        handleSelect(filteredStates[0]);
       } else {
-        normalizeValue(searchTerm);
-        setIsTyping(false);
-        setIsOpen(false);
+        normalizeAndCommit(searchTerm);
       }
     } else if (e.key === "Escape") {
-      setIsTyping(false);
+      e.preventDefault();
+      setSearchTerm(value || "");
+      setIsSearching(false);
       setIsOpen(false);
+    } else if (e.key === "Tab") {
+      if (filteredStates.length > 0 && highlightedIndex >= 0 && highlightedIndex < filteredStates.length) {
+        handleSelect(filteredStates[highlightedIndex]);
+      } else {
+        normalizeAndCommit(searchTerm);
+      }
     }
   };
 
@@ -131,52 +174,82 @@ export default function StateSelect({
           disabled={disabled}
           placeholder={placeholder}
           onFocus={(e) => {
-            setIsTyping(false);
             setIsOpen(true);
+            setIsSearching(false);
+            shouldSelectAllRef.current = true;
             e.target.select();
           }}
-          onClick={() => {
+          onMouseDown={() => {
             if (!isOpen) {
-              setIsTyping(false);
-              setIsOpen(true);
+              shouldSelectAllRef.current = true;
+            }
+          }}
+          onMouseUp={(e) => {
+            if (shouldSelectAllRef.current) {
+              shouldSelectAllRef.current = false;
+              e.currentTarget.select();
             }
           }}
           onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setIsTyping(true);
-            onChange(e.target.value);
+            const nextVal = e.target.value;
+            setSearchTerm(nextVal);
+            setIsSearching(true);
             setIsOpen(true);
-            setHighlightedIndex(-1);
+            onChange(nextVal);
           }}
           onKeyDown={handleKeyDown}
-          className="h-8 text-xs rounded-lg pr-7 bg-white dark:bg-slate-950 font-medium"
+          className="h-8 text-xs rounded-lg pr-12 bg-white dark:bg-slate-950 font-medium"
         />
-        <button
-          type="button"
-          tabIndex={-1}
-          disabled={disabled}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            setIsTyping(false);
-            setIsOpen((prev) => !prev);
-          }}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
-          title="Toggle Indian states list"
-        >
-          <ChevronDown
-            className={cn(
-              "h-3.5 w-3.5 transition-transform duration-200",
-              isOpen && "rotate-180 text-blue-600"
-            )}
-          />
-        </button>
+
+        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+          {searchTerm && !disabled && (
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={handleClear}
+              className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer rounded-full"
+              title="Clear state"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+          <button
+            type="button"
+            tabIndex={-1}
+            disabled={disabled}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              if (isOpen) {
+                setIsOpen(false);
+                normalizeAndCommit(searchTerm);
+              } else {
+                setIsOpen(true);
+                setIsSearching(false);
+                inputRef.current?.focus();
+                inputRef.current?.select();
+              }
+            }}
+            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer rounded-full"
+            title="Toggle Indian states list"
+          >
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200",
+                isOpen && "rotate-180 text-blue-600"
+              )}
+            />
+          </button>
+        </div>
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-xl z-50 py-1 text-xs">
+        <div
+          ref={listRef}
+          className="absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-xl z-50 py-1 text-xs"
+        >
           {filteredStates.length === 0 ? (
             <div className="p-2.5 text-center text-slate-400 italic text-[11px]">
-              No state found. Press Enter to use "{searchTerm}".
+              No state found for "{searchTerm}". Press Enter to use as-is.
             </div>
           ) : (
             filteredStates.map((st, idx) => {
@@ -205,7 +278,7 @@ export default function StateSelect({
                     </span>
                   </span>
                   {isSelected && (
-                    <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                   )}
                 </button>
               );
@@ -216,3 +289,4 @@ export default function StateSelect({
     </div>
   );
 }
+

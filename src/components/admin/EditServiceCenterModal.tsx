@@ -483,7 +483,7 @@ export default function EditServiceCenterModal({
                         </Label>
                       </div>
                       <StateSelect
-                        value={addr.state || DEFAULT_INDIAN_STATE}
+                        value={addr.state ?? DEFAULT_INDIAN_STATE}
                         onChange={(val) => handleUpdateAddressState(idx, val)}
                       />
                     </div>
