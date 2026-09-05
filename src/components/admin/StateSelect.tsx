@@ -21,6 +21,7 @@ export default function StateSelect({
 }: StateSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(value || "");
+  const [isTyping, setIsTyping] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,12 +29,16 @@ export default function StateSelect({
   // Sync internal search term when external value changes
   useEffect(() => {
     setSearchTerm(value || "");
+    setIsTyping(false);
   }, [value]);
 
-  // Filtered states based on search query (or all states when empty)
+  // Show all 36 states/UTs when dropdown is opened, only filter when user actively types a search
   const filteredStates: IndianState[] = useMemo(() => {
+    if (!isTyping) {
+      return INDIAN_STATES;
+    }
     return searchIndianStates(searchTerm);
-  }, [searchTerm]);
+  }, [searchTerm, isTyping]);
 
   // Click outside listener to close dropdown
   useEffect(() => {
@@ -43,6 +48,7 @@ export default function StateSelect({
         !containerRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
+        setIsTyping(false);
         // Normalize typed query if it matches a known state or code
         normalizeValue(searchTerm);
       }
@@ -73,6 +79,7 @@ export default function StateSelect({
   const handleSelect = (state: IndianState) => {
     setSearchTerm(state.name);
     onChange(state.name);
+    setIsTyping(false);
     setIsOpen(false);
     setHighlightedIndex(-1);
   };
@@ -80,6 +87,7 @@ export default function StateSelect({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        setIsTyping(false);
         setIsOpen(true);
         e.preventDefault();
       }
@@ -104,9 +112,11 @@ export default function StateSelect({
         handleSelect(filteredStates[0]);
       } else {
         normalizeValue(searchTerm);
+        setIsTyping(false);
         setIsOpen(false);
       }
     } else if (e.key === "Escape") {
+      setIsTyping(false);
       setIsOpen(false);
     }
   };
@@ -120,9 +130,20 @@ export default function StateSelect({
           value={searchTerm}
           disabled={disabled}
           placeholder={placeholder}
-          onFocus={() => setIsOpen(true)}
+          onFocus={(e) => {
+            setIsTyping(false);
+            setIsOpen(true);
+            e.target.select();
+          }}
+          onClick={() => {
+            if (!isOpen) {
+              setIsTyping(false);
+              setIsOpen(true);
+            }
+          }}
           onChange={(e) => {
             setSearchTerm(e.target.value);
+            setIsTyping(true);
             onChange(e.target.value);
             setIsOpen(true);
             setHighlightedIndex(-1);
@@ -135,7 +156,10 @@ export default function StateSelect({
           tabIndex={-1}
           disabled={disabled}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setIsOpen((prev) => !prev)}
+          onClick={() => {
+            setIsTyping(false);
+            setIsOpen((prev) => !prev);
+          }}
           className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
           title="Toggle Indian states list"
         >

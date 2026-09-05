@@ -46,4 +46,19 @@ describe("StateSelect Component & Indian States Dataset", () => {
 
     expect(onChange).toHaveBeenCalledWith("Gujarat");
   });
+
+  it("displays all Indian states when opening dropdown even if a state is already selected", () => {
+    const onChange = vi.fn();
+    render(<StateSelect value="Madhya Pradesh" onChange={onChange} />);
+
+    const toggleBtn = screen.getByTitle(/Toggle Indian states list/i);
+    fireEvent.click(toggleBtn);
+
+    // Other states must be present and selectable, not just Madhya Pradesh!
+    expect(screen.getByRole("button", { name: /Maharashtra/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gujarat/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Delhi/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Rajasthan/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Uttar Pradesh/i })).toBeInTheDocument();
+  });
 });

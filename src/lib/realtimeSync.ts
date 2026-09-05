@@ -396,6 +396,7 @@ export function useResourcePresence(
 export interface OnlineStaffDutyMember {
   staffId: string;
   name: string;
+  lastSeen?: number;
 }
 
 /**
@@ -472,6 +473,7 @@ export function useStaffDutyPresence(activeProfile?: {
             set(myDutyRef, {
               staffId,
               name: staffName,
+              lastSeen: Date.now(),
             }).catch(() => {});
           };
 
@@ -494,6 +496,8 @@ export function useStaffDutyPresence(activeProfile?: {
               return;
             }
             const staffMap = new Map<string, OnlineStaffDutyMember>();
+            const now = Date.now();
+            const STALE_HEARTBEAT_THRESHOLD_MS = 60000; // 60s TTL
 
             Object.keys(data).forEach((sKey) => {
               const userDevices = data[sKey];
@@ -507,9 +511,22 @@ export function useStaffDutyPresence(activeProfile?: {
                       return;
                     }
 
+                    // Stale ghost session check:
+                    // If device hasn't reported within 60s (or lacks lastSeen from an old dead session),
+                    // auto-prune this dead device node from RTDB and do not show as online
+                    const isFresh =
+                      typeof item.lastSeen === "number" &&
+                      now - item.lastSeen < STALE_HEARTBEAT_THRESHOLD_MS;
+
+                    if (!isFresh) {
+                      remove(ref(rtdb!, `staff_presence/${sKey}/${dKey}`)).catch(() => {});
+                      return;
+                    }
+
                     staffMap.set(item.staffId, {
                       staffId: item.staffId,
                       name: item.name || "Staff Member",
+                      lastSeen: item.lastSeen,
                     });
                   }
                 });
