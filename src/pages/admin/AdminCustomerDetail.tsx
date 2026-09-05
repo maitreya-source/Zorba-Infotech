@@ -36,6 +36,7 @@ import {
 import type { Customer, ServiceCall, ServiceCallStatus, Quotation } from "@/lib/types";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
+import DispatchSlipPrintModal from "@/components/admin/DispatchSlipPrintModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
 import EmailPreviewModal from "@/components/admin/EmailPreviewModal";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
@@ -103,6 +104,7 @@ export default function AdminCustomerDetail() {
   const [search, setSearch] = useState("");
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
   const [printCall, setPrintCall] = useState<ServiceCall | null>(null);
+  const [dispatchPrintCall, setDispatchPrintCall] = useState<ServiceCall | null>(null);
 
   // Quotation Modals
   const [selectedQuoteForModal, setSelectedQuoteForModal] = useState<Quotation | null>(null);
@@ -906,6 +908,16 @@ export default function AdminCustomerDetail() {
                               <Printer className="h-4 w-4" />
                             </Button>
 
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDispatchPrintCall(item)}
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer"
+                              title="Print Dispatch Slip / Shipping Label"
+                            >
+                              <Truck className="h-4 w-4" />
+                            </Button>
+
                             <Link to={`/admin/service-calls/${item.id}/edit`}>
                               <Button
                                 variant="outline"
@@ -945,6 +957,27 @@ export default function AdminCustomerDetail() {
           open={Boolean(printCall)}
           onOpenChange={(open) => {
             if (!open) setPrintCall(null);
+          }}
+          onOpenDispatchSlip={() => {
+            const c = printCall;
+            setPrintCall(null);
+            setDispatchPrintCall(c);
+          }}
+        />
+      )}
+
+      {/* Print Dispatch Slip Modal */}
+      {dispatchPrintCall && (
+        <DispatchSlipPrintModal
+          serviceCall={dispatchPrintCall}
+          open={Boolean(dispatchPrintCall)}
+          onOpenChange={(open) => {
+            if (!open) setDispatchPrintCall(null);
+          }}
+          onSwitchToJobCard={() => {
+            const c = dispatchPrintCall;
+            setDispatchPrintCall(null);
+            setPrintCall(c);
           }}
         />
       )}

@@ -195,6 +195,7 @@ export default function AdminWhatsAppTemplates() {
       const metaRes = await fetchMetaTemplates();
       if (metaRes.success && metaRes.templates) {
         let updatedCount = 0;
+        let importedCount = 0;
         for (const metaTpl of metaRes.templates) {
           const localMatch = templates.find(
             (t) => t.name.toLowerCase() === metaTpl.name.toLowerCase()
@@ -205,9 +206,40 @@ export default function AdminWhatsAppTemplates() {
               metaStatus: newStatus as any,
             });
             updatedCount++;
+          } else {
+            const bodyComp = metaTpl.components?.find((c: any) => c.type === "BODY");
+            const bodyText = bodyComp?.text || "";
+            const category: WhatsAppCategory = metaTpl.category?.toLowerCase() === "marketing" ? "marketing" : "utility";
+
+            const matches = bodyText.match(/\{\{(\d+)\}\}/g) || [];
+            const vars = Array.from(new Set(matches.map((m: string) => parseInt(m.replace(/\D/g, ""), 10))))
+              .sort((a: number, b: number) => a - b)
+              .map((idx: number) => ({
+                index: idx,
+                label: `Variable {{${idx}}}`,
+                fallbackValue: `Val-${idx}`,
+              }));
+
+            await createWhatsAppTemplate({
+              name: metaTpl.name.toLowerCase(),
+              displayName: metaTpl.name.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+              category,
+              targetModule: "service_calls",
+              language: metaTpl.language || "en",
+              headerType: "none",
+              bodyText,
+              variables: vars,
+              active: true,
+              metaStatus: (metaTpl.status?.toLowerCase() || "approved") as any,
+            });
+            importedCount++;
           }
         }
-        toast.success(`Synced with Meta WABA! Updated ${updatedCount} template statuses.`);
+        if (importedCount > 0) {
+          toast.success(`Synced with Meta! Imported ${importedCount} live templates from your account.`);
+        } else {
+          toast.success(`Synced with Meta WABA! ${updatedCount} templates updated.`);
+        }
       } else {
         if (metaRes.error?.includes("VITE_META_WABA_ID")) {
           toast.info("Service templates verified locally. Configure VITE_META_WABA_ID in .env for live Meta status sync.");
@@ -617,9 +649,15 @@ export default function AdminWhatsAppTemplates() {
                 }
                 setTestSending(true);
                 try {
+                  const params = testTemplate?.variables
+                    ? testTemplate.variables.sort((a, b) => a.index - b.index).map((v) => v.fallbackValue || `Val-${v.index}`)
+                    : [];
+
                   const res = await sendWhatsAppMessage({
                     to: testPhone,
                     message: testTemplate?.bodyText || "",
+                    templateName: testTemplate?.name,
+                    templateParams: params.length > 0 ? params : undefined,
                   });
                   if (res.success) {
                     toast.success("Test message dispatched successfully via Meta API!");

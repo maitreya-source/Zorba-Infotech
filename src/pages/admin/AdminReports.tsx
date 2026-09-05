@@ -117,11 +117,26 @@ export default function AdminReports() {
         @media print {
           @page {
             size: portrait;
-            margin: 10mm;
+            margin: 8mm 10mm;
           }
-          body {
+          html, body {
             background-color: #ffffff !important;
             color: #000000 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+          }
+          /* Release layout locks from AdminLayout so pages print without trapped trailing blank pages */
+          .overflow-y-auto,
+          .overflow-hidden,
+          .h-screen {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+          }
+          .break-inside-avoid {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
@@ -186,7 +201,7 @@ export default function AdminReports() {
         ) : (
           <div className="space-y-4">
             {dailyList.map((day) => (
-              <div key={day.date} className="rounded-xl border bg-muted/20 p-3 space-y-2">
+              <div key={day.date} className="rounded-xl border bg-muted/20 p-3 space-y-2 break-inside-avoid print:border-black print:bg-transparent print:p-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b pb-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-xs text-foreground font-mono">

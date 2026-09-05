@@ -23,6 +23,7 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ import type { ServiceCall, ServiceCallStatus, FinancialYearDoc } from "@/lib/typ
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
+import DispatchSlipPrintModal from "@/components/admin/DispatchSlipPrintModal";
 import ShortcutsHelpModal from "@/components/admin/ShortcutsHelpModal";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 
@@ -155,6 +157,7 @@ export default function AdminServiceCalls() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [printCall, setPrintCall] = useState<ServiceCall | null>(null);
+  const [dispatchPrintCall, setDispatchPrintCall] = useState<ServiceCall | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -834,6 +837,15 @@ export default function AdminServiceCalls() {
                                   <DropdownMenuItem
                                     onSelect={(e) => {
                                       e.preventDefault();
+                                      setDispatchPrintCall(item);
+                                    }}
+                                    className="gap-2 cursor-pointer text-blue-600 dark:text-blue-400 font-medium"
+                                  >
+                                    <Truck className="h-3.5 w-3.5 text-blue-500" /> Print Dispatch Slip
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
                                       navigate(`/admin/service-calls/${item.id}/edit`);
                                     }}
                                     className="gap-2 cursor-pointer"
@@ -877,7 +889,26 @@ export default function AdminServiceCalls() {
       <CreateCustomerModal open={showCustomerModal} onOpenChange={setShowCustomerModal} />
       <CreateDeviceCategoryModal open={showCategoryModal} onOpenChange={setShowCategoryModal} />
       <ShortcutsHelpModal open={showShortcutsModal} onOpenChange={setShowShortcutsModal} />
-      <JobCardPrintModal serviceCall={printCall} open={!!printCall} onOpenChange={(open) => !open && setPrintCall(null)} />
+      <JobCardPrintModal
+        serviceCall={printCall}
+        open={!!printCall}
+        onOpenChange={(open) => !open && setPrintCall(null)}
+        onOpenDispatchSlip={() => {
+          const c = printCall;
+          setPrintCall(null);
+          setDispatchPrintCall(c);
+        }}
+      />
+      <DispatchSlipPrintModal
+        serviceCall={dispatchPrintCall}
+        open={!!dispatchPrintCall}
+        onOpenChange={(open) => !open && setDispatchPrintCall(null)}
+        onSwitchToJobCard={() => {
+          const c = dispatchPrintCall;
+          setDispatchPrintCall(null);
+          setPrintCall(c);
+        }}
+      />
 
       {/* Delete / Move to Trash Confirmation Dialog */}
       <ConfirmDeleteDialog

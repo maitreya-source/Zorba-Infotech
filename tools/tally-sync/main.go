@@ -818,14 +818,19 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 	var unchangedCount int
 	cachePath := getCacheFilePath(cfg)
 	oldCache := loadHashCache(cachePath)
+	var stockQueryErr error
+	var ledgerQueryErr error
 
 	// 1. Export Stock Items (if target is stock or all)
 	if targetScope != "customers" {
 		stockReq := buildTallyCollectionRequest("ZorbaStockItems", "StockItem", "NAME, PARENT, CATEGORY, BASEUNITS, CLOSINGBALANCE, CLOSINGRATE, CLOSINGVALUE, PARTNO, OPENINGBALANCE, OPENINGRATE, OPENINGVALUE, DESCRIPTION, HSNCODE, GUID", cfg.TallyUsername, cfg.TallyPassword, cfg.TallyCompany)
 		xmlBytes, err := executeTallyQuery(cfg, stockReq)
 		if err != nil {
-			log.Printf("Failed to query Tally Stock Items: %v\n", err)
+			stockQueryErr = err
+			fmt.Printf("      ❌ FAILED querying Tally Stock Items: %v\n", err)
 			if targetScope == "stock" {
+				fmt.Println("      💡 Fix: Ensure Tally is open on screen, company is loaded, and Port 9000 is enabled.")
+				fmt.Println("      💡 Run Test_Connection.bat to verify local Tally connectivity.")
 				return
 			}
 		} else {
@@ -856,12 +861,36 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 	var ledgers []GenericTallyMaster
 	if targetScope != "stock" {
 		ledgerReq := buildTallyCollectionRequest("ZorbaLedgers", "Ledger", "NAME, PARENT, GSTIN, INCOMETAXNUMBER, LEDGERPHONE, LEDGERMOBILE, LEDGERCONTACT, EMAIL, ADDRESS, STATENAME, PINCODE, GUID, NARRATION", cfg.TallyUsername, cfg.TallyPassword, cfg.TallyCompany)
-		if ledgerBytes, err := executeTallyQuery(cfg, ledgerReq); err == nil {
+		ledgerBytes, err := executeTallyQuery(cfg, ledgerReq)
+		if err != nil {
+			ledgerQueryErr = err
+			fmt.Printf("      ❌ FAILED querying Tally Ledgers: %v\n", err)
+			if targetScope == "customers" {
+				fmt.Println("      💡 Fix: Ensure Tally is open on screen, company is loaded, and Port 9000 is enabled.")
+				fmt.Println("      💡 Run Test_Connection.bat to verify local Tally connectivity.")
+				return
+			}
+		} else {
 			ledgers = parseGenericMasters(ledgerBytes, "Ledger")
 			fmt.Printf("      Live Tally returned %d total Ledgers/Accounts.\n", len(ledgers))
-		} else {
-			fmt.Printf("      Notice reading ledgers: %v\n", err)
 		}
+	}
+
+	// Abort if connectivity to Tally completely failed
+	if stockQueryErr != nil && ledgerQueryErr != nil {
+		fmt.Println()
+		fmt.Println("❌ SYNC ABORTED: Could not connect to local Tally.")
+		fmt.Println("💡 Please run Test_Connection.bat to verify local Tally status on port 9000.")
+		fmt.Println("================================================================")
+		return
+	}
+
+	if targetScope == "customers" && len(ledgers) == 0 {
+		fmt.Println()
+		fmt.Println("⚠️ NOTICE: 0 ledgers/customers were returned by Tally.")
+		fmt.Println("💡 Make sure your active company contains Customer / Sundry Debtors accounts.")
+		fmt.Println("================================================================")
+		return
 	}
 
 	if len(changedItems) == 0 && len(ledgers) == 0 {

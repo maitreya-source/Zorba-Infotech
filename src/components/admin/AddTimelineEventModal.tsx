@@ -187,15 +187,23 @@ export default function AddTimelineEventModal({
           </div>
 
           {/* Service Center Courier Info Indicator (Only attached when sending to SC) */}
-          {isSentToServiceCenterMilestone && (defaultCourierName || defaultDocketNumber) && (
-            <div className="flex items-center gap-2 p-2.5 bg-amber-50/70 dark:bg-amber-950/30 rounded-xl border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200">
-              <Truck className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <div className="flex-1 truncate">
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Dispatch Courier: </span>
-                <span className="font-medium">{defaultCourierName}</span>
-                {defaultDocketNumber && (
-                  <span className="font-mono ml-1 text-slate-500 dark:text-slate-400">({defaultDocketNumber})</span>
-                )}
+          {isSentToServiceCenterMilestone && (
+            <div className="space-y-1.5">
+              {(defaultCourierName || defaultDocketNumber) && (
+                <div className="flex items-center gap-2 p-2.5 bg-amber-50/70 dark:bg-amber-950/30 rounded-xl border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200">
+                  <Truck className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <div className="flex-1 truncate">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Dispatch Courier: </span>
+                    <span className="font-medium">{defaultCourierName}</span>
+                    {defaultDocketNumber && (
+                      <span className="font-mono ml-1 text-slate-500 dark:text-slate-400">({defaultDocketNumber})</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="text-[11px] text-slate-600 dark:text-slate-400 bg-blue-50/70 dark:bg-blue-950/30 p-2 rounded-lg border border-blue-100 dark:border-blue-900/40 flex items-center gap-1.5">
+                <Truck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span>Tip: Print the Parcel Dispatch Slip & Box Shipping Label from Ticket Controls before handing to courier.</span>
               </div>
             </div>
           )}

@@ -56,6 +56,7 @@ interface ServiceCallLifecycleRailProps {
   onOpenCourierPickupWhatsApp: () => void;
   onOpenCourierDeliveryWhatsApp: () => void;
   onOpenPrintModal: () => void;
+  onOpenDispatchPrintModal?: () => void;
   onOpenDeleteModal: () => void;
   onOpenCustomerModal: () => void;
   onOpenCenterModal: () => void;
@@ -88,6 +89,7 @@ export default function ServiceCallLifecycleRail({
   onOpenCourierPickupWhatsApp,
   onOpenCourierDeliveryWhatsApp,
   onOpenPrintModal,
+  onOpenDispatchPrintModal,
   onOpenDeleteModal,
   onOpenCustomerModal,
   onOpenCenterModal,
@@ -165,16 +167,31 @@ export default function ServiceCallLifecycleRail({
             <p className="text-[11px] text-slate-400">Audits, WhatsApp updates & milestone progression</p>
           </div>
           {isEditing && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onOpenPrintModal}
-              className="h-8 text-xs font-semibold rounded-lg gap-1.5 cursor-pointer"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              <span>Print</span>
-            </Button>
+            <div className="flex items-center gap-1.5">
+              {onOpenDispatchPrintModal && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenDispatchPrintModal}
+                  className="h-8 text-xs font-semibold rounded-lg gap-1.5 cursor-pointer text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                  title="Print Dispatch Slip for Service Center"
+                >
+                  <Truck className="h-3.5 w-3.5" />
+                  <span>Dispatch</span>
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenPrintModal}
+                className="h-8 text-xs font-semibold rounded-lg gap-1.5 cursor-pointer"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>Print</span>
+              </Button>
+            </div>
           )}
         </div>
 
@@ -644,6 +661,20 @@ export default function ServiceCallLifecycleRail({
                       </div>
                       <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                     </button>
+
+                    {onOpenDispatchPrintModal && (
+                      <button
+                        type="button"
+                        onClick={onOpenDispatchPrintModal}
+                        className="w-full flex items-center justify-between rounded-xl py-2.5 px-3 text-xs font-semibold text-white hover:bg-slate-800 transition-all border border-slate-800 hover:border-slate-700 bg-[#141e30] cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Truck className="h-4 w-4 shrink-0 text-blue-400" />
+                          <span>Print Dispatch Slip</span>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    )}
 
                     <button
                       type="button"

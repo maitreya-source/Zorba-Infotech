@@ -88,6 +88,7 @@ import ResourceCollisionAlert from "@/components/admin/ResourceCollisionAlert";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
+import DispatchSlipPrintModal from "@/components/admin/DispatchSlipPrintModal";
 import ServiceCallCustomerCard from "@/components/admin/service-call/ServiceCallCustomerCard";
 import ServiceCallDeviceDetailsCard from "@/components/admin/service-call/ServiceCallDeviceDetailsCard";
 import ServiceCallBillingPartsCard from "@/components/admin/service-call/ServiceCallBillingPartsCard";
@@ -281,6 +282,7 @@ export default function AdminServiceCallForm() {
   const [showCenterModal, setShowCenterModal] = useState(false);
   const [showCourierModal, setShowCourierModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showDispatchPrintModal, setShowDispatchPrintModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [whatsAppModal, setWhatsAppModal] = useState<{
     open: boolean;
@@ -615,6 +617,7 @@ export default function AdminServiceCallForm() {
       showQuickTimelineModal ||
       showEventsListModal ||
       showPrintModal ||
+      showDispatchPrintModal ||
       showDeleteModal ||
       whatsAppModal.open ||
       emailModal.open ||
@@ -631,6 +634,7 @@ export default function AdminServiceCallForm() {
       if (showQuickTimelineModal) setShowQuickTimelineModal(false);
       if (showEventsListModal) setShowEventsListModal(false);
       if (showPrintModal) setShowPrintModal(false);
+      if (showDispatchPrintModal) setShowDispatchPrintModal(false);
       if (showDeleteModal) setShowDeleteModal(false);
       if (whatsAppModal.open) setWhatsAppModal((prev) => ({ ...prev, open: false }));
       if (emailModal.open) setEmailModal((prev) => ({ ...prev, open: false }));
@@ -917,6 +921,13 @@ export default function AdminServiceCallForm() {
     setShowPrintModal(true);
   };
 
+  const handleOpenDispatchPrintModal = () => {
+    if (!serviceCenterName && !selectedServiceCenterId) {
+      toast.info("Tip: Select a Service Center to pre-fill the delivery address on the dispatch slip.");
+    }
+    setShowDispatchPrintModal(true);
+  };
+
   // WhatsApp Message Preview Triggers (Opens editable preview modal with pre-compiled text)
   const handleOpenCustomerWhatsApp = () => {
     if (!(customerPhone || "").trim() && !(customerName || "").trim()) {
@@ -947,7 +958,7 @@ export default function AdminServiceCallForm() {
       defaultPhone: customerPhone || "",
       defaultMessage: compiled,
       targetModule: "service_calls",
-      templateName: "zorba_customer_service_update",
+      templateName: "11",
     });
   };
 
@@ -1300,6 +1311,7 @@ export default function AdminServiceCallForm() {
           onsiteAddress={onsiteAddress}
           onOnsiteAddressChange={setOnsiteAddress}
           quickTags={QUICK_TAGS}
+          onOpenDispatchPrint={handleOpenDispatchPrintModal}
         />
 
         {/* Section 4: Spare Parts & Service Charges */}
@@ -1343,6 +1355,7 @@ export default function AdminServiceCallForm() {
         onOpenCourierPickupWhatsApp={handleOpenCourierPickupWhatsApp}
         onOpenCourierDeliveryWhatsApp={handleOpenCourierDeliveryWhatsApp}
         onOpenPrintModal={handleOpenPrintModal}
+        onOpenDispatchPrintModal={handleOpenDispatchPrintModal}
         onOpenDeleteModal={() => setShowDeleteModal(true)}
         onOpenCustomerModal={() => setShowCustomerModal(true)}
         onOpenCenterModal={() => setShowCenterModal(true)}
@@ -1526,6 +1539,7 @@ export default function AdminServiceCallForm() {
           serviceCenterId: selectedServiceCenterId,
           serviceCenterName,
           serviceCenterAddress,
+          courierName,
           rmaNumber,
           courierCharges: courierChargesNum,
           technicianId: selectedTechnicianId,
@@ -1537,11 +1551,65 @@ export default function AdminServiceCallForm() {
           discount: discountNum > 0 ? discountNum : undefined,
           grandTotal,
           notes: internalComments,
+          dateOfPurchase,
+          billNumber,
+          handledByStaffName,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }}
         open={showPrintModal}
         onOpenChange={setShowPrintModal}
+        onOpenDispatchSlip={() => {
+          setShowPrintModal(false);
+          setShowDispatchPrintModal(true);
+        }}
+      />
+      <DispatchSlipPrintModal
+        serviceCall={{
+          id: id || "preview",
+          ticketNo: ticketNo || "SC-PREVIEW",
+          type,
+          dateTime,
+          customerId: selectedCustomerId,
+          customerName,
+          customerPhone,
+          customerEmail,
+          customerAddress,
+          deviceCategory,
+          modelNumber,
+          serialNumber,
+          quantity: Number(quantity) || 1,
+          issueDescription,
+          warrantyStatus,
+          status,
+          serviceCenterId: selectedServiceCenterId,
+          serviceCenterName,
+          serviceCenterAddress,
+          courierName,
+          rmaNumber,
+          courierCharges: courierChargesNum,
+          technicianId: selectedTechnicianId,
+          technicianName,
+          onsiteAddress,
+          parts: cleanParts,
+          partsTotal,
+          serviceCharges: serviceChargesNum,
+          discount: discountNum > 0 ? discountNum : undefined,
+          grandTotal,
+          notes: internalComments,
+          dateOfPurchase,
+          billNumber,
+          handledByStaffName,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }}
+        open={showDispatchPrintModal}
+        onOpenChange={setShowDispatchPrintModal}
+        serviceCenters={serviceCenters}
+        onSwitchToJobCard={() => {
+          setShowDispatchPrintModal(false);
+          setShowPrintModal(true);
+        }}
       />
 
       {/* Delete Ticket Confirmation Dialog */}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Printer, CheckSquare, Tag, FileText, Receipt } from "lucide-react";
+import { Printer, CheckSquare, Tag, FileText, Receipt, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
 import type { ServiceCall } from "@/lib/types";
+import { formatPhoneForPrint } from "@/lib/utils";
 
 // Vector Code 39 Barcode SVG Component for crisp single-page A4 printing
 function TicketBarcode({ value }: { value: string }) {
@@ -70,12 +71,14 @@ interface JobCardPrintModalProps {
   serviceCall: ServiceCall | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenDispatchSlip?: () => void;
 }
 
 export default function JobCardPrintModal({
   serviceCall,
   open,
   onOpenChange,
+  onOpenDispatchSlip,
 }: JobCardPrintModalProps) {
   // Section Visibility Toggles for Selective Printing
   const [showCustomer, setShowCustomer] = useState(true);
@@ -144,23 +147,52 @@ export default function JobCardPrintModal({
               color: #000000 !important;
               margin: 0 !important;
               padding: 0 !important;
+              height: 100% !important;
+              max-height: 100% !important;
+              overflow: hidden !important;
+            }
+
+            /* CRITICAL: Completely remove background React app (#root) from print layout */
+            #root {
+              display: none !important;
+              height: 0 !important;
+              max-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              visibility: hidden !important;
+            }
+
+            /* CRITICAL: Completely hide modal overlay backdrop, action buttons, and non-printable elements */
+            [data-radix-portal] > div[data-state="open"]:not([role="dialog"]),
+            [data-radix-portal] > div:first-child:not([role="dialog"]),
+            div[data-radix-dialog-overlay],
+            .fixed.inset-0,
+            button,
+            .print\\:hidden {
+              display: none !important;
+              height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              visibility: hidden !important;
             }
 
             body * {
               visibility: hidden !important;
             }
 
-            /* Strip Radix Dialog centering offsets so content aligns to top of page */
+            /* Strip Radix Dialog centering offsets so content flows naturally on single page */
             [data-radix-portal],
-            div[role="dialog"],
-            [data-state="open"] {
+            div[role="dialog"] {
               position: static !important;
+              display: block !important;
               transform: none !important;
               margin: 0 !important;
               padding: 0 !important;
               width: 100% !important;
               max-width: 100% !important;
               height: auto !important;
+              max-height: none !important;
               border: none !important;
               box-shadow: none !important;
               background: transparent !important;
@@ -179,11 +211,12 @@ export default function JobCardPrintModal({
             }
 
             #printable-job-card-area {
-              position: absolute !important;
+              position: relative !important;
               left: 0 !important;
               top: 0 !important;
               width: 100% !important;
-              max-height: 270mm !important;
+              max-height: 275mm !important;
+              overflow: hidden !important;
               margin: 0 !important;
               padding: 0 !important;
               background-color: #ffffff !important;
@@ -196,10 +229,6 @@ export default function JobCardPrintModal({
               break-after: avoid !important;
               break-inside: avoid !important;
             }
-
-            .print\\:hidden {
-              display: none !important;
-            }
           }
         `}</style>
 
@@ -208,6 +237,17 @@ export default function JobCardPrintModal({
             <Printer className="h-5 w-5 text-primary" /> Service Print & Barcode Manager
           </DialogTitle>
           <div className="flex items-center gap-2">
+            {onOpenDispatchSlip && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenDispatchSlip}
+                className="gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40 print:hidden"
+              >
+                <Truck className="h-4 w-4" /> Dispatch Slip
+              </Button>
+            )}
             <Button size="sm" onClick={handlePrint} className="gap-1.5 font-bold print:hidden">
               <Printer className="h-4 w-4" /> Print Single Page A4
             </Button>
@@ -314,10 +354,10 @@ export default function JobCardPrintModal({
                   Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch 458 441 (M.P.)
                 </p>
                 <p className="text-[8.5px] text-black mt-0.5 leading-tight">
-                  📞 Main: <strong>99935 99730</strong> | Support: <strong>93021 99730</strong> | Sales: <strong>94248 99730</strong> | Accounts: <strong>91796 99730</strong>
+                  Phone: Main: <strong>{formatPhoneForPrint("9993599730")}</strong> | Support: <strong>{formatPhoneForPrint("9302199730")}</strong> | Sales: <strong>{formatPhoneForPrint("9424899730")}</strong> | Accounts: <strong>{formatPhoneForPrint("9179699730")}</strong>
                 </p>
                 <p className="text-[8.5px] text-black mt-0.5 leading-tight">
-                  ✉️ zorbainfotech@gmail.com | zorba99730@gmail.com
+                  Email: zorbainfotech@gmail.com | zorba99730@gmail.com
                 </p>
               </div>
             </div>
@@ -343,9 +383,11 @@ export default function JobCardPrintModal({
                     Customer Information
                   </h3>
                   <p className="font-bold text-[11px] text-black">{serviceCall.customerName}</p>
-                  <p className="text-[11px] font-mono text-black">📞 {serviceCall.customerPhone}</p>
-                  {serviceCall.customerEmail && <p className="text-[10px] text-black">✉️ {serviceCall.customerEmail}</p>}
-                  {serviceCall.customerAddress && <p className="text-[10px] text-black mt-0.5">📍 {serviceCall.customerAddress}</p>}
+                  <p className="text-[11px] font-sans font-bold text-black tabular-nums">
+                    Phone: {formatPhoneForPrint(serviceCall.customerPhone)}
+                  </p>
+                  {serviceCall.customerEmail && <p className="text-[10px] text-black">Email: {serviceCall.customerEmail}</p>}
+                  {serviceCall.customerAddress && <p className="text-[10px] text-black mt-0.5">Address: {serviceCall.customerAddress}</p>}
                 </div>
               ) : (
                 <div />

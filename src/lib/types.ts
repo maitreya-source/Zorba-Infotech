@@ -410,11 +410,12 @@ export interface WhatsAppTemplateDoc {
   language: string;
   headerType: WhatsAppHeaderType;
   headerContent?: string;
+  headerImageUrl?: string;
   bodyText: string;
   variables: WhatsAppTemplateVariable[];
   buttons?: WhatsAppTemplateButton[];
   active: boolean;
-  metaStatus?: "approved" | "pending" | "rejected";
+  metaStatus?: "approved" | "pending" | "rejected" | "draft";
   createdAt: number;
   updatedAt?: number;
 }

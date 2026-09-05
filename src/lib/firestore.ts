@@ -2882,6 +2882,37 @@ export async function saveSparePartToCatalog(
 
 export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" | "updatedAt">[] = [
   {
+    id: "11",
+    name: "11",
+    displayName: "Customer Service Confirmation & Ticket Update",
+    category: "utility",
+    targetModule: "service_calls",
+    language: "en",
+    headerType: "image",
+    headerImageUrl: "https://zorbainfotech.in/zorba-logo.png",
+    bodyText:
+      "Hello Sir/Ma'am\n\n" +
+      "{{1}}\n\n" +
+      "{{2}}\n\n" +
+      "{{3}}\n\n" +
+      "{{4}}\n\n" +
+      "{{5}}\n\n" +
+      "You can check the details above for your convenience.\n\n" +
+      "🙂 Thanks for taking a moment to read this message.",
+    variables: [
+      { index: 1, label: "Ticket Number & Date", fallbackValue: "Ticket Details", erpKey: "ticketNo" },
+      { index: 2, label: "Customer Name", fallbackValue: "Valued Customer", erpKey: "customer.name" },
+      { index: 3, label: "Device & Reported Fault", fallbackValue: "Hardware Fault", erpKey: "deviceCategory" },
+      { index: 4, label: "Current Status & Est Charges", fallbackValue: "In Progress", erpKey: "status" },
+      { index: 5, label: "Zorba Support Desk Contact", fallbackValue: "Zorba Helpdesk: +91 94248 99730", erpKey: "handledByStaffName" },
+    ],
+    buttons: [
+      { type: "quick_reply", text: "View Details" },
+    ],
+    active: true,
+    metaStatus: "approved",
+  },
+  {
     id: "zorba_payment_received",
     name: "zorba_payment_received",
     displayName: "Customer Payment Received Receipt",
@@ -2912,7 +2943,7 @@ export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" |
       { type: "phone_number", text: "Call Support", urlOrPhone: "+919589199738" },
     ],
     active: true,
-    metaStatus: "approved",
+    metaStatus: "draft",
   },
   {
     id: "zorba_customer_service_update",
@@ -2954,7 +2985,7 @@ export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" |
       { type: "phone_number", text: "Call Support", urlOrPhone: "+919302199730" },
     ],
     active: true,
-    metaStatus: "approved",
+    metaStatus: "draft",
   },
   {
     id: "zorba_service_center_followup",
@@ -2991,7 +3022,7 @@ export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" |
       { type: "phone_number", text: "Call Service Desk", urlOrPhone: "+919302199730" },
     ],
     active: true,
-    metaStatus: "approved",
+    metaStatus: "draft",
   },
   {
     id: "zorba_courier_pickup_request",
@@ -3027,7 +3058,7 @@ export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" |
       { type: "phone_number", text: "Call Logistics Desk", urlOrPhone: "+919302199730" },
     ],
     active: true,
-    metaStatus: "approved",
+    metaStatus: "draft",
   },
   {
     id: "zorba_courier_delivery_inquiry",
@@ -3062,7 +3093,7 @@ export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" |
       { type: "phone_number", text: "Call Logistics Desk", urlOrPhone: "+919302199730" },
     ],
     active: true,
-    metaStatus: "approved",
+    metaStatus: "draft",
   },
 ];
 

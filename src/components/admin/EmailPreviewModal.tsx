@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import {
   Mail,
@@ -82,6 +82,8 @@ export default function EmailPreviewModal({
   const [sending, setSending] = useState(false);
   const [previewTab, setPreviewTab] = useState<"html" | "text">("html");
 
+  const prevOpenRef = useRef(false);
+
   // Selected Service Call Object
   const currentServiceCall = useMemo(() => {
     if (serviceCall) return serviceCall;
@@ -92,36 +94,39 @@ export default function EmailPreviewModal({
     return null;
   }, [serviceCall, selectedCallId, serviceCallsList]);
 
-  // Initializer
+  // Initializer: ONLY initialize when modal transitions from closed to open
   useEffect(() => {
-    if (!open) return;
-    setEmailAddress(defaultEmail || "");
+    if (open && !prevOpenRef.current) {
+      setEmailAddress(defaultEmail || "");
+      setSelectedCallId(ticketId || serviceCall?.id || "");
 
-    // Determine default template based on service call status
-    let tplType: EmailTemplateType = defaultTemplateType;
-    if (currentServiceCall?.status === "delivered") {
-      tplType = "device_delivered";
-    } else if (currentServiceCall?.status === "completed") {
-      tplType = "service_completed";
-    } else if (currentServiceCall?.status === "waiting_for_parts") {
-      tplType = "estimate_notice";
-    } else if (currentServiceCall?.status === "in_progress") {
-      tplType = "status_update";
-    } else if (currentServiceCall?.status === "received") {
-      tplType = "service_intake";
+      // Determine default template based on service call status
+      let tplType: EmailTemplateType = defaultTemplateType;
+      if (currentServiceCall?.status === "delivered") {
+        tplType = "device_delivered";
+      } else if (currentServiceCall?.status === "completed") {
+        tplType = "service_completed";
+      } else if (currentServiceCall?.status === "waiting_for_parts") {
+        tplType = "estimate_notice";
+      } else if (currentServiceCall?.status === "in_progress") {
+        tplType = "status_update";
+      } else if (currentServiceCall?.status === "received") {
+        tplType = "service_intake";
+      }
+      setSelectedTemplate(tplType);
+
+      const generatedSubj = buildEmailSubject({
+        templateType: tplType,
+        customerName: recipientName,
+        ticketNo: currentServiceCall?.ticketNo || ticketId || "SC-SERVICE",
+        deviceCategory: currentServiceCall?.deviceCategory,
+      });
+      setSubject(defaultSubject || generatedSubj);
+      setCustomBody(defaultMessage || "");
+      setCopied(false);
     }
-    setSelectedTemplate(tplType);
-
-    const generatedSubj = buildEmailSubject({
-      templateType: tplType,
-      customerName: recipientName,
-      ticketNo: currentServiceCall?.ticketNo || ticketId || "SC-SERVICE",
-      deviceCategory: currentServiceCall?.deviceCategory,
-    });
-    setSubject(defaultSubject || generatedSubj);
-    setCustomBody(defaultMessage || "");
-    setCopied(false);
-  }, [open, defaultEmail, defaultSubject, defaultMessage, currentServiceCall, ticketId, defaultTemplateType, recipientName]);
+    prevOpenRef.current = open;
+  }, [open, defaultEmail, defaultSubject, defaultMessage, currentServiceCall, ticketId, defaultTemplateType, recipientName, serviceCall?.id]);
 
   // Handle template change
   const handleTemplateChange = (val: EmailTemplateType) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import {
   MessageSquare,
@@ -13,6 +13,8 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,6 +99,9 @@ export default function WhatsAppPreviewModal({
   const [sending, setSending] = useState(false);
   const [showVariableEditor, setShowVariableEditor] = useState(false);
 
+  const prevOpenRef = useRef(false);
+  const initializedSessionRef = useRef(false);
+
   // Load registered WhatsApp templates from Firestore
   useEffect(() => {
     if (!open) return;
@@ -125,10 +130,25 @@ export default function WhatsAppPreviewModal({
     return null;
   }, [serviceCall, selectedCallId, serviceCallsList]);
 
-  // Determine initial template and initialize variable values
+  // 1. Initialize modal form state ONLY when modal transitions from closed to open
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setPhoneNumber(defaultPhone || "");
+      setCustomFreeformMessage(defaultMessage || "");
+      setSelectedCallId(ticketId || serviceCall?.id || "");
+      setCopied(false);
+      initializedSessionRef.current = false;
+    } else if (!open) {
+      initializedSessionRef.current = false;
+    }
+    prevOpenRef.current = open;
+  }, [open, defaultPhone, defaultMessage, ticketId, serviceCall?.id]);
+
+  // 2. Determine initial template and initialize variable values ONCE per modal session
   useEffect(() => {
     if (!open) return;
-    setPhoneNumber(defaultPhone || "");
+    if (initializedSessionRef.current) return;
+    if (templates.length === 0) return;
 
     const effectiveTargetModule =
       targetModule ||
@@ -163,7 +183,11 @@ export default function WhatsAppPreviewModal({
     }
 
     if (!match && (recipientRole === "Customer" || effectiveTargetModule === "service_calls")) {
-      match = available.find((t) => t.id === "zorba_customer_service_update") || available.find((t) => t.targetModule === "service_calls");
+      match =
+        available.find((t) => (t.id === "11" || t.name === "11") && t.metaStatus === "approved") ||
+        available.find((t) => t.id === "11" || t.name === "11") ||
+        available.find((t) => t.id === "zorba_customer_service_update") ||
+        available.find((t) => t.targetModule === "service_calls");
     }
 
     if (!match && available.length > 0) {
@@ -177,8 +201,8 @@ export default function WhatsAppPreviewModal({
       setSelectedTemplateId("freeform");
       setCustomFreeformMessage(defaultMessage || "");
     }
-    setCopied(false);
-  }, [open, templates, initialTemplateName, defaultPhone, defaultMessage, targetModule, recipientRole, title, currentServiceCall]);
+    initializedSessionRef.current = true;
+  }, [open, templates, initialTemplateName, targetModule, recipientRole, title, currentServiceCall, defaultMessage]);
 
   // Populate variables from ticket details
   const populateVariablesForTemplate = (
@@ -190,7 +214,19 @@ export default function WhatsAppPreviewModal({
 
     tpl.variables.forEach((v) => {
       let val = v.fallbackValue || "";
-      if (v.erpKey === "noticeHeader") {
+      if (tpl.name === "11" || tpl.id === "11") {
+        if (v.index === 1) {
+          val = `Ticket #${call?.ticketNo || ticketId || "SC-XXXX"} (${call?.dateTime || new Date().toISOString().split("T")[0]})`;
+        } else if (v.index === 2) {
+          val = `Customer: ${(recipientRole === "Customer" ? recipientName : "") || call?.customerName || "Valued Customer"}`;
+        } else if (v.index === 3) {
+          val = `Device: ${call?.deviceCategory || "IT Hardware"}${call?.modelNumber ? ` (${call.modelNumber})` : ""} - Defect: ${call?.issueDescription || "Service Request"}`;
+        } else if (v.index === 4) {
+          val = `Status: ${call?.status ? call.status.replace(/_/g, " ").toUpperCase() : "RECEIVED"}${call?.grandTotal ? ` | Est: ₹${call.grandTotal}` : ""}`;
+        } else if (v.index === 5) {
+          val = `Zorba Infotech Support Desk: +91 93021 99730 / +91 99935 99730`;
+        }
+      } else if (v.erpKey === "noticeHeader") {
         val = call?.status === "delivered"
           ? "DEVICE DELIVERED TO CUSTOMER"
           : call?.status === "completed"
@@ -292,6 +328,18 @@ export default function WhatsAppPreviewModal({
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleOpenInWhatsApp = () => {
+    const cleanPhone = formatPhoneForMetaApi(phoneNumber);
+    if (!cleanPhone) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    const encoded = encodeURIComponent(compiledMessage);
+    window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, "_blank");
+    toast.success("Opening WhatsApp chat with customer...");
+    onOpenChange(false);
+  };
+
   const handleSend = async () => {
     const cleanPhone = formatPhoneForMetaApi(phoneNumber);
     if (!cleanPhone) {
@@ -300,6 +348,27 @@ export default function WhatsAppPreviewModal({
     }
     if (!compiledMessage.trim()) {
       toast.error("Message content cannot be empty");
+      return;
+    }
+
+    // CRITICAL: Meta Cloud API ONLY permits sending templates that are APPROVED by Meta.
+    // If an unapproved / draft template is selected, do NOT call Meta API (which causes Error 132001).
+    // Instead, route it seamlessly to WhatsApp Web/App with 1-click!
+    if (activeTemplate && activeTemplate.metaStatus !== "approved") {
+      toast.warning(
+        `"${activeTemplate.displayName || activeTemplate.name}" is an ERP template not approved in Meta WABA. Opening WhatsApp directly to send this message with full terms & details...`,
+        { duration: 5000 }
+      );
+      handleOpenInWhatsApp();
+      return;
+    }
+
+    if (!activeTemplate && selectedTemplateId === "freeform") {
+      toast.info(
+        "Meta API requires pre-approved templates outside 24h customer sessions. Opening WhatsApp directly to send freeform message...",
+        { duration: 4000 }
+      );
+      handleOpenInWhatsApp();
       return;
     }
 
@@ -314,7 +383,9 @@ export default function WhatsAppPreviewModal({
         to: cleanPhone,
         message: compiledMessage.trim(),
         templateName: activeTemplate ? activeTemplate.name : undefined,
-        templateParams: activeTemplate ? compiledParamsList : undefined,
+        templateParams: activeTemplate && compiledParamsList.length > 0 ? compiledParamsList : undefined,
+        templateLanguage: activeTemplate?.language || "en",
+        headerImageUrl: activeTemplate?.name === "11" ? "https://zorbainfotech.in/zorba-logo.png" : undefined,
       });
 
       if (result.success) {
@@ -399,7 +470,22 @@ export default function WhatsAppPreviewModal({
                 <SelectContent className="max-h-60 text-xs">
                   {templates.map((tpl) => (
                     <SelectItem key={tpl.id} value={tpl.id} className="text-xs">
-                      {tpl.displayName}
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <span className="truncate">{tpl.displayName || tpl.name}</span>
+                        {tpl.metaStatus === "approved" ? (
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
+                            🟢 Approved API
+                          </span>
+                        ) : tpl.metaStatus === "pending" ? (
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold shrink-0">
+                            🟡 Pending Review
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-semibold shrink-0">
+                            📝 ERP Format
+                          </span>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                   <SelectItem value="freeform" className="text-xs text-blue-600 font-semibold">
@@ -503,6 +589,28 @@ export default function WhatsAppPreviewModal({
             </div>
           ) : null}
 
+          {/* Status Indicator Banner */}
+          {activeTemplate && activeTemplate.metaStatus !== "approved" ? (
+            <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div className="flex-1 leading-relaxed">
+                <span className="font-bold">ERP Formatted Message ({activeTemplate.displayName || activeTemplate.name}): </span>
+                This template contains complete ticket terms & disclaimers and is not registered in Meta WABA.
+                <div className="mt-1 font-medium">
+                  👉 Click <strong className="underline cursor-pointer" onClick={handleOpenInWhatsApp}>Open in WhatsApp</strong> below to send this complete message immediately without Meta API restrictions!
+                </div>
+              </div>
+            </div>
+          ) : activeTemplate && activeTemplate.metaStatus === "approved" ? (
+            <div className="flex items-center gap-2 p-2 px-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs">
+              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span>
+                <strong className="font-bold">Meta Approved Template ({activeTemplate.name}): </strong>
+                Verified for direct automated dispatch via Meta Cloud API.
+              </span>
+            </div>
+          ) : null}
+
           {/* Live Message Preview Container */}
           <div className="space-y-1">
             <div className="flex items-center justify-between px-0.5">
@@ -548,6 +656,18 @@ export default function WhatsAppPreviewModal({
               type="button"
               variant="outline"
               size="sm"
+              onClick={handleOpenInWhatsApp}
+              className="text-xs rounded-xl h-8 cursor-pointer border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 shadow-2xs font-semibold gap-1.5"
+              title="Open directly in WhatsApp Web or Mobile App without Meta API"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span>Open in WhatsApp</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => onOpenChange(false)}
               className="text-xs rounded-xl h-8 cursor-pointer border-slate-200 dark:border-slate-700 shadow-2xs"
             >
@@ -559,17 +679,31 @@ export default function WhatsAppPreviewModal({
               size="sm"
               onClick={handleSend}
               disabled={sending}
-              className="text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs gap-1.5 cursor-pointer px-4 h-8"
+              className={`text-xs font-bold rounded-xl text-white shadow-xs gap-1.5 cursor-pointer px-4 h-8 ${
+                activeTemplate && activeTemplate.metaStatus !== "approved"
+                  ? "bg-amber-600 hover:bg-amber-700"
+                  : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
+              title={
+                activeTemplate && activeTemplate.metaStatus !== "approved"
+                  ? "ERP Template (Will open in WhatsApp)"
+                  : "Send via Meta Cloud API"
+              }
             >
               {sending ? (
                 <>
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                   <span>Sending...</span>
                 </>
+              ) : activeTemplate && activeTemplate.metaStatus !== "approved" ? (
+                <>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Send (WhatsApp Web)</span>
+                </>
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" />
-                  <span>Send WhatsApp</span>
+                  <span>Send via API</span>
                 </>
               )}
             </Button>

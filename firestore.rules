@@ -141,5 +141,29 @@ service cloud.firestore {
     match /financial_years/{fyId}/{allSubcollections=**} {
       allow read, write: if isAdmin();
     }
+
+    // Tally Live Sync & Integration Execution Metadata
+    match /tally_sync_runs/{runId} {
+      allow read, write: if isAdmin();
+      match /{allSubcollections=**} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // Tally Raw Inspection & Diagnostics Snapshots
+    match /tally_inspection_snapshots/{snapshotId} {
+      allow read, write: if isAdmin();
+      match /{allSubcollections=**} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // System Settings & Dynamic Sync Rules (e.g. settings/tally_rules)
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+      match /{allSubcollections=**} {
+        allow read, write: if isAdmin();
+      }
+    }
   }
 }

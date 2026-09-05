@@ -76,6 +76,8 @@ export interface SendWhatsAppMessageParams {
   message: string;
   templateName?: string;
   templateParams?: string[];
+  templateLanguage?: string;
+  headerImageUrl?: string;
 }
 
 /**
@@ -86,6 +88,8 @@ export async function sendWhatsAppMessage({
   message,
   templateName,
   templateParams,
+  templateLanguage,
+  headerImageUrl,
 }: SendWhatsAppMessageParams): Promise<SendWhatsAppResult> {
   const config = getWhatsAppApiConfig();
   const formattedPhone = formatPhoneForMetaApi(to);
@@ -105,6 +109,8 @@ export async function sendWhatsAppMessage({
       message: message.trim(),
       templateName,
       templateParams,
+      templateLanguage,
+      headerImageUrl,
     });
     if (result.data?.success) {
       return {
@@ -135,6 +141,7 @@ export async function sendWhatsAppMessage({
           message: message.trim(),
           templateName,
           templateParams,
+          templateLanguage,
         }),
       });
 
@@ -164,25 +171,45 @@ export async function sendWhatsAppMessage({
       const url = `https://graph.facebook.com/v19.0/${config.phoneNumberId}/messages`;
 
       let payload: any;
-      if (templateName && templateParams && templateParams.length > 0) {
+      if (templateName) {
+        const templateComponents: any[] = [];
+        if (headerImageUrl || templateName === "11") {
+          templateComponents.push({
+            type: "header",
+            parameters: [
+              {
+                type: "image",
+                image: {
+                  link: headerImageUrl || "https://zorbainfotech.in/zorba-logo.png",
+                },
+              },
+            ],
+          });
+        }
+        if (templateParams && templateParams.length > 0) {
+          templateComponents.push({
+            type: "body",
+            parameters: templateParams.map((param) => ({
+              type: "text",
+              text: param,
+            })),
+          });
+        }
+
+        const tplObj: any = {
+          name: templateName,
+          language: { code: templateLanguage || "en" },
+        };
+        if (templateComponents.length > 0) {
+          tplObj.components = templateComponents;
+        }
+
         payload = {
           messaging_product: "whatsapp",
           recipient_type: "individual",
           to: formattedPhone,
           type: "template",
-          template: {
-            name: templateName,
-            language: { code: "en_US" },
-            components: [
-              {
-                type: "body",
-                parameters: templateParams.map((param) => ({
-                  type: "text",
-                  text: param,
-                })),
-              },
-            ],
-          },
+          template: tplObj,
         };
       } else {
         payload = {

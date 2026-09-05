@@ -175,3 +175,55 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
 }
+
+/* =========================================================================
+   Global Anti-Blank-Page & High-Legibility Print Engine
+   Eliminates extra blank pages when printing modals or reports across the app
+   ========================================================================= */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* When printing any modal dialog, completely remove #root from the print flow */
+  body:has([role="dialog"]) #root {
+    display: none !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+  }
+
+  /* When printing a modal, ensure backdrop overlays take zero space */
+  body:has([role="dialog"]) [data-radix-portal] > div[data-state="open"]:not([role="dialog"]),
+  body:has([role="dialog"]) div[data-radix-dialog-overlay] {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Strictly hide all print-hidden elements without leaving layout whitespace */
+  .no-print,
+  .print\\:hidden {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Prevent orphan headings and broken blocks */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  table, figure, img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+

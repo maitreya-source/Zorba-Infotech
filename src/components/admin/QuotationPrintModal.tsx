@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
 import type { Quotation } from "@/lib/types";
+import { formatPhoneForPrint } from "@/lib/utils";
 
 // Vector Code 39 Barcode SVG Component for crisp single-page A4 printing
 function QuotationBarcode({ value }: { value: string }) {
@@ -116,38 +117,60 @@ export default function QuotationPrintModal({
               color: #000000 !important;
               margin: 0 !important;
               padding: 0 !important;
+              height: 100% !important;
+              max-height: 100% !important;
+              overflow: hidden !important;
             }
 
-            body * {
+            /* CRITICAL: Completely remove background React app (#root) from print layout */
+            #root {
+              display: none !important;
+              height: 0 !important;
+              max-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
               visibility: hidden !important;
             }
 
-            /* Strip Radix Dialog centering and hide all close/action buttons */
-            [data-radix-portal],
-            div[role="dialog"],
-            [data-state="open"] {
-              position: static !important;
-              transform: none !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-              height: auto !important;
-              border: none !important;
-              box-shadow: none !important;
-              background: transparent !important;
-              overflow: visible !important;
-            }
-
-            /* Hide Radix Close X button and any other buttons */
+            /* CRITICAL: Completely hide modal overlay backdrop, action buttons, and non-printable elements */
+            [data-radix-portal] > div[data-state="open"]:not([role="dialog"]),
+            [data-radix-portal] > div:first-child:not([role="dialog"]),
+            div[data-radix-dialog-overlay],
+            .fixed.inset-0,
             button,
             button.absolute,
             [data-radix-portal] button,
             [data-radix-dialog-content] > button,
             .print\\:hidden {
               display: none !important;
+              height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
               visibility: hidden !important;
               opacity: 0 !important;
+            }
+
+            body * {
+              visibility: hidden !important;
+            }
+
+            /* Strip Radix Dialog centering and flow naturally on single page */
+            [data-radix-portal],
+            div[role="dialog"] {
+              position: static !important;
+              display: block !important;
+              transform: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              height: auto !important;
+              max-height: none !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: transparent !important;
+              overflow: visible !important;
             }
 
             /* Make printable card area and all its children visible */
@@ -162,11 +185,12 @@ export default function QuotationPrintModal({
             }
 
             #printable-quotation-area {
-              position: absolute !important;
+              position: relative !important;
               left: 0 !important;
               top: 0 !important;
               width: 100% !important;
-              max-height: 270mm !important;
+              max-height: 275mm !important;
+              overflow: hidden !important;
               margin: 0 !important;
               padding: 0 !important;
               background-color: #ffffff !important;
@@ -285,10 +309,10 @@ export default function QuotationPrintModal({
                   Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch 458 441 (M.P.)
                 </p>
                 <p className="text-[8.5px] text-black mt-0.5 leading-tight">
-                  📞 Main: <strong>99935 99730</strong> | Support: <strong>93021 99730</strong> | Sales: <strong>94248 99730</strong> | Accounts: <strong>91796 99730</strong>
+                  Phone: Main: <strong>{formatPhoneForPrint("9993599730")}</strong> | Support: <strong>{formatPhoneForPrint("9302199730")}</strong> | Sales: <strong>{formatPhoneForPrint("9424899730")}</strong> | Accounts: <strong>{formatPhoneForPrint("9179699730")}</strong>
                 </p>
                 <p className="text-[8.5px] text-black mt-0.5 leading-tight">
-                  ✉️ zorbainfotech@gmail.com | zorba99730@gmail.com
+                  Email: zorbainfotech@gmail.com | zorba99730@gmail.com
                 </p>
               </div>
             </div>
@@ -314,10 +338,12 @@ export default function QuotationPrintModal({
                 </h3>
                 <p className="font-bold text-[11px] text-black">{quotation.customerName || "Valued Customer"}</p>
                 {quotation.customerPhone && (
-                  <p className="text-[11px] font-mono text-black">📞 {quotation.customerPhone}</p>
+                  <p className="text-[11px] font-sans font-bold text-black tabular-nums">
+                    Phone: {formatPhoneForPrint(quotation.customerPhone)}
+                  </p>
                 )}
                 {quotation.customerEmail && (
-                  <p className="text-[10px] text-black">✉️ {quotation.customerEmail}</p>
+                  <p className="text-[10px] text-black">Email: {quotation.customerEmail}</p>
                 )}
               </div>
 
@@ -326,7 +352,7 @@ export default function QuotationPrintModal({
                   Delivery / Site Address
                 </h3>
                 <p className="text-[10px] text-black whitespace-pre-wrap">
-                  {quotation.customerAddress ? `📍 ${quotation.customerAddress}` : "Over Counter / Site Delivery"}
+                  {quotation.customerAddress ? `Address: ${quotation.customerAddress}` : "Over Counter / Site Delivery"}
                 </p>
                 {quotation.templateName && (
                   <p className="text-[10px] font-semibold text-black mt-0.5">

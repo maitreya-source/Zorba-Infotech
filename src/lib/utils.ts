@@ -101,6 +101,46 @@ export function formatPhoneForDisplay(phone: string): string {
 }
 
 /**
+ * Formats a phone number for print documents according to Indian standard readability:
+ * If it's a 10-digit mobile number (with or without 91 / 0 / +91 prefix):
+ * formats as: +91 <5 digits> <5 digits> (e.g. +91 99935 99730)
+ * Also cleanly handles multiple phone numbers separated by comma or slash.
+ */
+export function formatPhoneForPrint(phone?: string | null): string {
+  if (!phone) return "";
+  const raw = String(phone).trim();
+  if (!raw) return "";
+
+  // Support multiple numbers separated by slash or comma
+  if (raw.includes("/") || raw.includes(",")) {
+    const parts = raw
+      .split(/[/,]/)
+      .map((p) => formatPhoneForPrint(p.trim()))
+      .filter(Boolean);
+    return parts.join(" / ");
+  }
+
+  const digits = raw.replace(/\D/g, "");
+
+  // 10-digit mobile number
+  if (digits.length === 10) {
+    return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  }
+  // 11 digits starting with 0
+  if (digits.length === 11 && digits.startsWith("0")) {
+    const ten = digits.slice(1);
+    return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
+  }
+  // 12 digits starting with 91
+  if (digits.length === 12 && digits.startsWith("91")) {
+    const ten = digits.slice(2);
+    return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
+  }
+
+  return raw;
+}
+
+/**
  * Generates search tokens (n-grams/prefixes) for indexing Firestore customer records.
  * Supports efficient server-side searching for 5,000+ customers.
  */

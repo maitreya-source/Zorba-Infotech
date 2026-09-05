@@ -1,6 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Truck } from "lucide-react";
 import ModelTypeahead from "@/components/admin/ModelTypeahead";
 import type {
   DeviceCategory,
@@ -54,6 +56,7 @@ interface ServiceCallDeviceDetailsCardProps {
   onsiteAddress: string;
   onOnsiteAddressChange: (val: string) => void;
   quickTags: string[];
+  onOpenDispatchPrint?: () => void;
 }
 
 export default function ServiceCallDeviceDetailsCard({
@@ -93,6 +96,7 @@ export default function ServiceCallDeviceDetailsCard({
   onsiteAddress,
   onOnsiteAddressChange,
   quickTags,
+  onOpenDispatchPrint,
 }: ServiceCallDeviceDetailsCardProps) {
   return (
     <>
@@ -260,13 +264,28 @@ export default function ServiceCallDeviceDetailsCard({
       {/* Section 3: Company Service Center Parcel Dispatch */}
       {type === "company_service_center" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
-          <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
-              3
-            </span>
-            <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              Service Center & Courier Dispatch
-            </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
+                3
+              </span>
+              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Service Center & Courier Dispatch
+              </h2>
+            </div>
+            {onOpenDispatchPrint && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenDispatchPrint}
+                className="h-7 text-xs font-semibold rounded-lg gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer"
+                title="Print Dispatch Slip with Zorba & Service Center Addresses"
+              >
+                <Truck className="h-3.5 w-3.5" />
+                <span>Print Dispatch Slip</span>
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5">
