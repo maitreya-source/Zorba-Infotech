@@ -270,6 +270,38 @@ describe("Service Center Parcel Dispatch & Shipping Label Print Modal", () => {
     expect(screen.getByText(/NON-COMMERCIAL DISPATCH DECLARATION:/i)).toBeInTheDocument();
     expect(screen.getByText(/For ZORBA INFOTECH, NEEMUCH/i)).toBeInTheDocument();
   });
+
+  it("does not force 0731 STD code for service centers in other cities or states", () => {
+    const delhiCenter: ServiceCenter = {
+      ...mockServiceCenter,
+      id: "sc-delhi",
+      name: "Delhi Central RMA Hub",
+      phone: "011-23456789",
+      pocs: [],
+      addresses: [
+        {
+          id: "addr-delhi",
+          address: "Nehru Place, New Delhi",
+          city: "New Delhi",
+          state: "Delhi",
+          pincode: "110019",
+          isDefault: true,
+        },
+      ],
+    };
+
+    render(
+      <DispatchSlipPrintModal
+        serviceCall={mockServiceCall}
+        open={true}
+        onOpenChange={vi.fn()}
+        serviceCenter={delhiCenter}
+      />
+    );
+
+    expect(screen.queryByText(/0731-23456789/)).toBeNull();
+    expect(screen.getAllByText(/011-23456789/).length).toBeGreaterThan(0);
+  });
 });
 
 describe("formatPhoneForPrint utility", () => {

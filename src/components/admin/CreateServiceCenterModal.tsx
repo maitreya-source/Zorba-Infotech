@@ -311,7 +311,7 @@ export default function CreateServiceCenterModal({
             <div>
               <Label className="text-xs text-slate-600 dark:text-slate-400">Landline / Desk Phone</Label>
               <Input
-                placeholder="0731-4000000"
+                placeholder="e.g. 0731-4000000, 011-23456789"
                 value={generalPhone}
                 onChange={(e) => setGeneralPhone(e.target.value)}
                 className="mt-1 h-9 text-xs rounded-xl"

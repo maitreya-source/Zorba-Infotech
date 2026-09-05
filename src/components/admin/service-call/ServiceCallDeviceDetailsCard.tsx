@@ -12,6 +12,7 @@ import {
 import { Truck } from "lucide-react";
 import ModelTypeahead from "@/components/admin/ModelTypeahead";
 import type {
+  Product,
   DeviceCategory,
   ServiceCenter,
   Courier,
@@ -167,6 +168,20 @@ export default function ServiceCallDeviceDetailsCard({
               categoryName={deviceCategory}
               value={modelNumber}
               onChange={onModelNumberChange}
+              onSelectProduct={(prod) => {
+                const targetCat = prod.categoryId || (prod as any).category;
+                if (targetCat && categories?.length > 0) {
+                  const matched = categories.find(
+                    (c) =>
+                      c.id.toLowerCase() === targetCat.toLowerCase() ||
+                      c.name.toLowerCase() === targetCat.toLowerCase()
+                  );
+                  if (matched) {
+                    onDeviceCategoryChange(matched.name);
+                  }
+                }
+              }}
+              placeholder="Search 4000+ products by model no. (e.g. T480, DS-2CD...), name, brand..."
             />
           </div>
         </div>

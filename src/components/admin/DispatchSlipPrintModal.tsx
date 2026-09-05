@@ -101,9 +101,9 @@ function formatServiceCenterPhone(phone?: string | null): string {
   if (!raw) return "";
 
   const digits = raw.replace(/\D/g, "");
-  // Legacy case where two 7-digit landlines were prefixed with 91 (e.g. 9140662614066262)
+  // Legacy case where two 7-digit landlines were stored concatenated with 91 (e.g. 9140662614066262)
   if (digits.startsWith("91") && digits.length === 16) {
-    return `0731-${digits.slice(2, 9)}, 0731-${digits.slice(9)}`;
+    return `${digits.slice(2, 9)}, ${digits.slice(9)}`;
   }
   return formatPhoneForPrint(raw);
 }

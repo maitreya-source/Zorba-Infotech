@@ -129,17 +129,21 @@ export function formatPhoneForPrint(phone?: string | null): string {
 
   const digits = raw.replace(/\D/g, "");
 
-  // 10-digit mobile number
-  if (digits.length === 10) {
+  // 10-digit Indian mobile number (starts with 6, 7, 8, 9)
+  if (digits.length === 10 && /^[6-9]/.test(digits)) {
     return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
   }
-  // 11 digits starting with 0
-  if (digits.length === 11 && digits.startsWith("0")) {
+  // 11 digits starting with 0 followed by Indian mobile digit (6, 7, 8, 9)
+  // e.g. 09993599730 -> +91 99935 99730; but keep STD landlines with hyphen (e.g. 0731-4000000, 011-23456789)
+  if (digits.length === 11 && digits.startsWith("0") && /^[6-9]/.test(digits.slice(1))) {
+    if (raw.includes("-")) {
+      return raw;
+    }
     const ten = digits.slice(1);
     return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
   }
-  // 12 digits starting with 91
-  if (digits.length === 12 && digits.startsWith("91")) {
+  // 12 digits starting with 91 followed by Indian mobile digit (6, 7, 8, 9)
+  if (digits.length === 12 && digits.startsWith("91") && /^[6-9]/.test(digits.slice(2))) {
     const ten = digits.slice(2);
     return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
   }
