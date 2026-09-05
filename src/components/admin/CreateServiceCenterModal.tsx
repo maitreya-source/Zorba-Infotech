@@ -31,9 +31,9 @@ export default function CreateServiceCenterModal({
   const [generalPhone, setGeneralPhone] = useState("");
   const [email, setEmail] = useState("");
   
-  // Multiple Addresses
+  // Multiple Addresses with multi-line support (Line 1 mandatory, additional lines optional)
   const [addresses, setAddresses] = useState<ServiceCenterAddress[]>([
-    { id: `addr-1`, city: "Indore", address: "", isDefault: true },
+    { id: `addr-1`, city: "Indore", address: "", lines: ["", ""], isDefault: true },
   ]);
 
   // Multiple POCs
@@ -46,7 +46,7 @@ export default function CreateServiceCenterModal({
   const handleAddAddress = () => {
     setAddresses((prev) => [
       ...prev,
-      { id: `addr-${Date.now()}`, city: "", address: "", isDefault: false },
+      { id: `addr-${Date.now()}`, city: "", address: "", lines: ["", ""], isDefault: false },
     ]);
   };
 
@@ -54,10 +54,63 @@ export default function CreateServiceCenterModal({
     setAddresses((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleUpdateAddress = (idx: number, field: keyof ServiceCenterAddress, val: any) => {
+  const handleUpdateAddressCity = (idx: number, city: string) => {
     setAddresses((prev) => {
       const copy = [...prev];
-      copy[idx] = { ...copy[idx], [field]: val };
+      copy[idx] = { ...copy[idx], city };
+      return copy;
+    });
+  };
+
+  const handleUpdateAddressLine = (addrIdx: number, lineIdx: number, val: string) => {
+    setAddresses((prev) => {
+      const copy = [...prev];
+      const target = { ...copy[addrIdx] };
+      const currentLines = [...(target.lines || ["", ""])];
+
+      // If user pastes multi-line text into an input, split it across lines automatically
+      if (val.includes("\n")) {
+        const pasted = val.split("\n").map((l) => l.trim()).filter(Boolean);
+        if (pasted.length > 1) {
+          currentLines.splice(lineIdx, 1, ...pasted);
+          const clean = currentLines.filter((l, i) => i === 0 || l.trim().length > 0);
+          if (clean.length < 2) clean.push("");
+          target.lines = clean;
+          target.address = clean.filter(Boolean).join("\n");
+          copy[addrIdx] = target;
+          return copy;
+        }
+      }
+
+      currentLines[lineIdx] = val;
+      target.lines = currentLines;
+      target.address = currentLines.filter(Boolean).join("\n");
+      copy[addrIdx] = target;
+      return copy;
+    });
+  };
+
+  const handleAddAddressLine = (addrIdx: number) => {
+    setAddresses((prev) => {
+      const copy = [...prev];
+      const target = { ...copy[addrIdx] };
+      const currentLines = [...(target.lines || ["", ""])];
+      currentLines.push("");
+      target.lines = currentLines;
+      copy[addrIdx] = target;
+      return copy;
+    });
+  };
+
+  const handleRemoveAddressLine = (addrIdx: number, lineIdx: number) => {
+    setAddresses((prev) => {
+      const copy = [...prev];
+      const target = { ...copy[addrIdx] };
+      const currentLines = (target.lines || ["", ""]).filter((_, i) => i !== lineIdx);
+      if (currentLines.length === 0) currentLines.push("");
+      target.lines = currentLines;
+      target.address = currentLines.filter(Boolean).join("\n");
+      copy[addrIdx] = target;
       return copy;
     });
   };
@@ -88,13 +141,29 @@ export default function CreateServiceCenterModal({
       return;
     }
 
-    const cleanAddresses = addresses
-      .filter((a) => a.address.trim().length > 0)
-      .map((a) => ({
-        ...a,
+    // Validate that Address Line 1 is filled for every registered address
+    for (let i = 0; i < addresses.length; i++) {
+      const addr = addresses[i];
+      const line1 = addr.lines?.[0]?.trim() || addr.address?.trim() || "";
+      if (!line1) {
+        toast.error(`Address ${i + 1}: Address Line 1 is required`);
+        return;
+      }
+    }
+
+    const cleanAddresses: ServiceCenterAddress[] = addresses.map((a, idx) => {
+      const rawLines = a.lines && a.lines.length > 0 ? a.lines : [a.address || ""];
+      const validLines = rawLines
+        .map((l) => toTitleCase(l.trim()))
+        .filter(Boolean);
+      return {
+        id: a.id || `addr-${idx + 1}`,
         city: a.city?.trim() ? toTitleCase(a.city) : undefined,
-        address: toTitleCase(a.address),
-      }));
+        lines: validLines,
+        address: validLines.join("\n"),
+        isDefault: a.isDefault ?? idx === 0,
+      };
+    });
 
     if (cleanAddresses.length === 0) {
       toast.error("Please add at least one valid address");
@@ -130,7 +199,7 @@ export default function CreateServiceCenterModal({
       setWhatsappPhone("");
       setGeneralPhone("");
       setEmail("");
-      setAddresses([{ id: `addr-1`, city: "Indore", address: "", isDefault: true }]);
+      setAddresses([{ id: `addr-1`, city: "Indore", address: "", lines: ["", ""], isDefault: true }]);
       setPocs([{ id: `poc-1`, name: "", designation: "RMA Coordinator", phone: "", isWhatsApp: true }]);
     } catch (err: any) {
       console.error("Error creating service center:", err);
@@ -201,44 +270,151 @@ export default function CreateServiceCenterModal({
             </div>
           </div>
 
-          {/* Multiple Addresses */}
-          <div className="space-y-2 border-t pt-3">
+          {/* Multiple Addresses with Multi-line Option */}
+          <div className="space-y-3 border-t pt-3">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 text-[#2563EB]" /> Dispatch & Receiving Addresses
-              </Label>
-              <button
+              <div>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-[#2563EB]" /> Dispatch & Receiving Addresses
+                </Label>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Line 1 is mandatory. Additional address lines are optional.
+                </p>
+              </div>
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleAddAddress}
-                className="text-[11px] font-bold text-[#2563EB] hover:underline cursor-pointer"
+                className="h-7 px-2.5 text-[11px] font-bold text-[#2563EB] hover:text-blue-700 border-blue-200 dark:border-blue-900 cursor-pointer"
               >
-                Add Address
-              </button>
+                + Add Another Hub / City
+              </Button>
             </div>
 
             {addresses.map((addr, idx) => (
-              <div key={addr.id || idx} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                <Input
-                  placeholder="City (e.g. Indore / Delhi)"
-                  value={addr.city || ""}
-                  onChange={(e) => handleUpdateAddress(idx, "city", e.target.value)}
-                  className="w-28 h-8 text-xs rounded-lg"
-                />
-                <Input
-                  placeholder="Complete Address / Hub location..."
-                  value={addr.address}
-                  onChange={(e) => handleUpdateAddress(idx, "address", e.target.value)}
-                  className="flex-1 h-8 text-xs rounded-lg"
-                />
-                {addresses.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveAddress(idx)}
-                    className="text-slate-400 hover:text-red-500 p-1"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+              <div
+                key={addr.id || idx}
+                className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5"
+              >
+                {/* Header bar of Address card */}
+                <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800/80 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                      Location #{idx + 1}
+                    </span>
+                    {idx === 0 ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        Default Hub
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-[10.5px] font-semibold text-slate-500">City:</Label>
+                      <Input
+                        placeholder="e.g. Indore / Delhi"
+                        value={addr.city || ""}
+                        onChange={(e) => handleUpdateAddressCity(idx, e.target.value)}
+                        className="w-32 h-7 text-xs rounded-lg bg-white dark:bg-slate-950"
+                      />
+                    </div>
+                    {addresses.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAddress(idx)}
+                        className="text-slate-400 hover:text-red-500 p-1 transition-colors cursor-pointer"
+                        title="Delete this address"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Multi-line address fields */}
+                <div className="space-y-2">
+                  {/* Address Line 1 (Mandatory) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        Address Line 1 <span className="text-red-500 font-bold">*</span>
+                      </Label>
+                      <span className="text-[9.5px] text-slate-400">
+                        Building / Shop No. / Floor / Street (Required)
+                      </span>
+                    </div>
+                    <Input
+                      placeholder="e.g. Shop No. 5 & 6, Ground Floor, U-Shape Market"
+                      value={addr.lines?.[0] ?? ""}
+                      onChange={(e) => handleUpdateAddressLine(idx, 0, e.target.value)}
+                      required
+                      className="h-8 text-xs rounded-lg bg-white dark:bg-slate-950"
+                    />
+                  </div>
+
+                  {/* Address Line 2 (Optional) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                        Address Line 2 <span className="text-slate-400 font-normal">(Optional)</span>
+                      </Label>
+                      <span className="text-[9.5px] text-slate-400">
+                        Landmark / Road / Area / Sector
+                      </span>
+                    </div>
+                    <Input
+                      placeholder="e.g. Tagore Marg, Opp. Old Municipality"
+                      value={addr.lines?.[1] ?? ""}
+                      onChange={(e) => handleUpdateAddressLine(idx, 1, e.target.value)}
+                      className="h-8 text-xs rounded-lg bg-white dark:bg-slate-950"
+                    />
+                  </div>
+
+                  {/* Address Line 3+ (Additional Optional Lines) */}
+                  {(addr.lines || []).slice(2).map((extraLine, lineIdx) => {
+                    const actualLineIdx = lineIdx + 2;
+                    return (
+                      <div key={actualLineIdx} className="space-y-1">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <Label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Address Line {actualLineIdx + 1}{" "}
+                            <span className="text-slate-400 font-normal">(Optional)</span>
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            placeholder="e.g. Industrial Area / Pincode"
+                            value={extraLine}
+                            onChange={(e) =>
+                              handleUpdateAddressLine(idx, actualLineIdx, e.target.value)
+                            }
+                            className="flex-1 h-8 text-xs rounded-lg bg-white dark:bg-slate-950"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAddressLine(idx, actualLineIdx)}
+                            className="text-slate-400 hover:text-red-500 p-1 transition-colors cursor-pointer"
+                            title="Remove this line"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleAddAddressLine(idx)}
+                      className="text-[11px] font-semibold text-[#2563EB] hover:text-blue-700 inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      + Add Another Line
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

@@ -533,7 +533,7 @@ export default function DispatchSlipPrintModal({
                       DESTINATION SERVICE CENTER (DELIVER TO):
                     </span>
                     <p className="font-black text-sm text-black leading-tight">{destinationCenterName}</p>
-                    <p className="text-[11px] font-semibold text-black leading-relaxed mt-1">{destinationAddress}</p>
+                    <p className="text-[11px] font-semibold text-black leading-relaxed mt-1 whitespace-pre-line">{destinationAddress}</p>
                     {primaryPOC && (
                       <div className="text-[10px] text-black mt-2 pt-1 border-t border-black/30 font-bold space-y-0.5">
                         <p>POC: {primaryPOC.name}</p>

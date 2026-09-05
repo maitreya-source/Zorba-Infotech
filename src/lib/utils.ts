@@ -13,7 +13,14 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function toTitleCase(str?: string | null): string {
   if (!str) return "";
-  return String(str)
+  const s = String(str);
+  if (s.includes("\n")) {
+    return s
+      .split("\n")
+      .map((line) => toTitleCase(line))
+      .join("\n");
+  }
+  return s
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase()

@@ -375,7 +375,7 @@ export default function AdminServiceCenters() {
                                 >
                                   {toTitleCase(addr.city || "Hub")}
                                 </Badge>
-                                <span className="text-slate-600 dark:text-slate-300">
+                                <span className="text-slate-600 dark:text-slate-300 whitespace-pre-line">
                                   {toTitleCase(addr.address)}
                                 </span>
                               </div>
@@ -549,7 +549,7 @@ export default function AdminServiceCenters() {
                         >
                           {toTitleCase(addr.city || "Hub")}
                         </Badge>
-                        <span className="text-slate-600 dark:text-slate-400">
+                        <span className="text-slate-600 dark:text-slate-400 whitespace-pre-line">
                           {toTitleCase(addr.address)}
                         </span>
                       </div>

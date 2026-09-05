@@ -184,6 +184,7 @@ export interface TimelineEvent {
 export interface ServiceCenterAddress {
   id: string;
   address: string;
+  lines?: string[];
   city?: string;
   isDefault?: boolean;
 }
