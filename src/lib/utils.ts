@@ -366,3 +366,83 @@ export function sanitizeExternalUrl(url?: string | null): string | null {
   }
   return null;
 }
+
+/**
+ * Formats a multi-line address from lines, city, state, and pincode components.
+ */
+export function formatFullAddress(options: {
+  lines?: string[];
+  city?: string;
+  state?: string;
+  pincode?: string;
+  fallbackAddress?: string;
+}): string {
+  const cleanLines = (options.lines || [])
+    .map((l) => toTitleCase(l?.trim() || ""))
+    .filter(Boolean);
+
+  const city = options.city?.trim() ? toTitleCase(options.city.trim()) : "";
+  const state = options.state?.trim() ? toTitleCase(options.state.trim()) : "";
+  const pincode = options.pincode?.trim() || "";
+
+  // Build bottom line: e.g. "Indore, Madhya Pradesh - 452001"
+  let bottomLine = "";
+  if (city && state) {
+    bottomLine = `${city}, ${state}`;
+  } else if (city) {
+    bottomLine = city;
+  } else if (state) {
+    bottomLine = state;
+  }
+
+  if (pincode) {
+    bottomLine = bottomLine ? `${bottomLine} - ${pincode}` : pincode;
+  }
+
+  if (cleanLines.length > 0) {
+    const allLines = [...cleanLines];
+    if (bottomLine) {
+      const lastLine = allLines[allLines.length - 1].toLowerCase();
+      if (!lastLine.includes(bottomLine.toLowerCase())) {
+        allLines.push(bottomLine);
+      }
+    }
+    return allLines.join("\n");
+  }
+
+  if (bottomLine && !options.fallbackAddress) {
+    return bottomLine;
+  }
+
+  if (options.fallbackAddress) {
+    return splitSingleLineAddressToMultiLine(options.fallbackAddress);
+  }
+
+  return bottomLine || "";
+}
+
+/**
+ * Splits a single-line address with commas into readable multi-lines if it does not already have newlines.
+ */
+export function splitSingleLineAddressToMultiLine(raw?: string | null): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  if (trimmed.includes("\n")) return trimmed;
+
+  const segments = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+  if (segments.length <= 2) {
+    return trimmed;
+  }
+  if (segments.length === 3) {
+    return `${segments[0]}, ${segments[1]}\n${segments[2]}`;
+  }
+  if (segments.length === 4) {
+    return `${segments[0]}, ${segments[1]}\n${segments[2]}, ${segments[3]}`;
+  }
+  // 5 or more segments: break into 3 lines
+  const line1 = segments.slice(0, 2).join(", ");
+  const line2 = segments.slice(2, segments.length - 2).join(", ");
+  const line3 = segments.slice(segments.length - 2).join(", ");
+  return [line1, line2, line3].filter(Boolean).join("\n");
+}
+

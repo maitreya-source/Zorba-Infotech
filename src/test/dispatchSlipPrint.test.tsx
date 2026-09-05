@@ -14,8 +14,11 @@ describe("Service Center Parcel Dispatch & Shipping Label Print Modal", () => {
     addresses: [
       {
         id: "sc-addr-1",
-        address: "Shop 104, Silver Mall, RNT Marg, Indore, MP - 452001",
+        lines: ["Shop 104, Silver Mall", "RNT Marg"],
         city: "Indore",
+        state: "Madhya Pradesh",
+        pincode: "452001",
+        address: "Shop 104, Silver Mall\nRNT Marg\nIndore, Madhya Pradesh - 452001",
         isDefault: true,
       },
     ],
@@ -49,7 +52,7 @@ describe("Service Center Parcel Dispatch & Shipping Label Print Modal", () => {
     status: "sent_to_service_center",
     serviceCenterId: "sc-hp-indore",
     serviceCenterName: "HP Authorized Regional Service Center",
-    serviceCenterAddress: "Shop 104, Silver Mall, RNT Marg, Indore, MP - 452001",
+    serviceCenterAddress: "Shop 104, Silver Mall\nRNT Marg\nIndore, Madhya Pradesh - 452001",
     courierName: "Trackon Courier",
     rmaNumber: "TRK-99884210",
     courierCharges: 150,
@@ -87,12 +90,17 @@ describe("Service Center Parcel Dispatch & Shipping Label Print Modal", () => {
     expect(screen.getAllByText(/\+91 99935 99730/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/zorbainfotech@gmail\.com/i).length).toBeGreaterThan(0);
 
-    // 2. Verify Service Center Destination details
+    // 2. Verify Service Center Destination details as a multi-line entity
     const destCenters = screen.getAllByText("HP Authorized Regional Service Center");
     expect(destCenters.length).toBeGreaterThan(0);
 
-    const destAddrs = screen.getAllByText(/Shop 104, Silver Mall, RNT Marg, Indore, MP - 452001/i);
+    const destAddrs = screen.getAllByText(/Shop 104, Silver Mall/i);
     expect(destAddrs.length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Indore, Madhya Pradesh - 452001/i).length).toBeGreaterThan(0);
+
+    // Customer contact number must NOT be visible to the service center on print
+    expect(screen.queryByText(/9826011223/)).toBeNull();
+    expect(screen.queryByText(/\+91 98260 11223/i)).toBeNull();
 
     // Verify POC details and formatted phone (+91 XXXXX XXXXX)
     expect(screen.getAllByText(/Rajesh Verma/i).length).toBeGreaterThan(0);

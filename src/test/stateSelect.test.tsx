@@ -1,0 +1,49 @@
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import StateSelect from "@/components/admin/StateSelect";
+import { DEFAULT_INDIAN_STATE, searchIndianStates, INDIAN_STATES } from "@/lib/constants";
+
+describe("StateSelect Component & Indian States Dataset", () => {
+  it("defaults to Madhya Pradesh (MP)", () => {
+    expect(DEFAULT_INDIAN_STATE).toBe("Madhya Pradesh");
+    const mp = INDIAN_STATES.find((s) => s.code === "MP");
+    expect(mp).toBeDefined();
+    expect(mp?.name).toBe("Madhya Pradesh");
+  });
+
+  it("finds Madhya Pradesh when typing 'MP' or 'mp'", () => {
+    const results = searchIndianStates("mp");
+    expect(results[0].name).toBe("Madhya Pradesh");
+    expect(results[0].code).toBe("MP");
+  });
+
+  it("renders StateSelect with default value and allows typing to filter", () => {
+    const onChange = vi.fn();
+    render(<StateSelect value="Madhya Pradesh" onChange={onChange} />);
+
+    const input = screen.getByRole("textbox");
+    expect(input).toHaveValue("Madhya Pradesh");
+
+    // Open dropdown by focusing
+    fireEvent.focus(input);
+    expect(screen.getAllByText(/Madhya Pradesh/i).length).toBeGreaterThan(0);
+
+    // Type query "del"
+    fireEvent.change(input, { target: { value: "del" } });
+    expect(onChange).toHaveBeenCalledWith("del");
+  });
+
+  it("selects a state when clicked from dropdown", () => {
+    const onChange = vi.fn();
+    render(<StateSelect value="" onChange={onChange} />);
+
+    const toggleBtn = screen.getByTitle(/Toggle Indian states list/i);
+    fireEvent.click(toggleBtn);
+
+    // Click Gujarat (GJ)
+    const gujaratOption = screen.getByRole("button", { name: /Gujarat/i });
+    fireEvent.click(gujaratOption);
+
+    expect(onChange).toHaveBeenCalledWith("Gujarat");
+  });
+});

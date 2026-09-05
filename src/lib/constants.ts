@@ -567,3 +567,74 @@ export function searchBrandSuggestions(
   ].slice(0, limitCount);
 }
 
+// ─── Indian States & Union Territories ─────────────────────────────────────────
+
+export interface IndianState {
+  name: string;
+  code: string;
+}
+
+export const DEFAULT_INDIAN_STATE = "Madhya Pradesh";
+
+export const INDIAN_STATES: IndianState[] = [
+  // Default and prominent neighboring states first
+  { name: "Madhya Pradesh", code: "MP" },
+  { name: "Rajasthan", code: "RJ" },
+  { name: "Gujarat", code: "GJ" },
+  { name: "Maharashtra", code: "MH" },
+  { name: "Uttar Pradesh", code: "UP" },
+  { name: "Delhi", code: "DL" },
+  // All remaining states alphabetically
+  { name: "Andhra Pradesh", code: "AP" },
+  { name: "Arunachal Pradesh", code: "AR" },
+  { name: "Assam", code: "AS" },
+  { name: "Bihar", code: "BR" },
+  { name: "Chhattisgarh", code: "CG" },
+  { name: "Goa", code: "GA" },
+  { name: "Haryana", code: "HR" },
+  { name: "Himachal Pradesh", code: "HP" },
+  { name: "Jharkhand", code: "JH" },
+  { name: "Karnataka", code: "KA" },
+  { name: "Kerala", code: "KL" },
+  { name: "Manipur", code: "MN" },
+  { name: "Meghalaya", code: "ML" },
+  { name: "Mizoram", code: "MZ" },
+  { name: "Nagaland", code: "NL" },
+  { name: "Odisha", code: "OD" },
+  { name: "Punjab", code: "PB" },
+  { name: "Sikkim", code: "SK" },
+  { name: "Tamil Nadu", code: "TN" },
+  { name: "Telangana", code: "TS" },
+  { name: "Tripura", code: "TR" },
+  { name: "Uttarakhand", code: "UK" },
+  { name: "West Bengal", code: "WB" },
+  // Union Territories
+  { name: "Andaman and Nicobar Islands", code: "AN" },
+  { name: "Chandigarh", code: "CH" },
+  { name: "Dadra and Nagar Haveli and Daman and Diu", code: "DH" },
+  { name: "Jammu and Kashmir", code: "JK" },
+  { name: "Ladakh", code: "LA" },
+  { name: "Lakshadweep", code: "LD" },
+  { name: "Puducherry", code: "PY" },
+];
+
+export function searchIndianStates(query: string): IndianState[] {
+  if (!query || !query.trim()) return INDIAN_STATES;
+  const q = query.trim().toLowerCase();
+
+  // Exact code match first (e.g. "mp" -> Madhya Pradesh)
+  const exactCode = INDIAN_STATES.filter((s) => s.code.toLowerCase() === q);
+  const prefixName = INDIAN_STATES.filter(
+    (s) => s.name.toLowerCase().startsWith(q) && !exactCode.includes(s)
+  );
+  const containsName = INDIAN_STATES.filter(
+    (s) =>
+      s.name.toLowerCase().includes(q) &&
+      !exactCode.includes(s) &&
+      !prefixName.includes(s)
+  );
+
+  return [...exactCode, ...prefixName, ...containsName];
+}
+
+

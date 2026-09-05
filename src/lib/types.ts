@@ -186,6 +186,8 @@ export interface ServiceCenterAddress {
   address: string;
   lines?: string[];
   city?: string;
+  state?: string;
+  pincode?: string;
   isDefault?: boolean;
 }
 

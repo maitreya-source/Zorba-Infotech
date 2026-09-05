@@ -12,7 +12,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { createServiceCenter } from "@/lib/firestore";
-import { toTitleCase, formatIndianPhoneNumber } from "@/lib/utils";
+import { toTitleCase, formatIndianPhoneNumber, formatFullAddress } from "@/lib/utils";
+import { DEFAULT_INDIAN_STATE } from "@/lib/constants";
+import StateSelect from "./StateSelect";
 import type { ServiceCenter, ServiceCenterAddress, ServiceCenterPOC } from "@/lib/types";
 
 interface CreateServiceCenterModalProps {
@@ -33,7 +35,15 @@ export default function CreateServiceCenterModal({
   
   // Multiple Addresses with multi-line support (Line 1 mandatory, additional lines optional)
   const [addresses, setAddresses] = useState<ServiceCenterAddress[]>([
-    { id: `addr-1`, city: "Indore", address: "", lines: ["", ""], isDefault: true },
+    {
+      id: `addr-1`,
+      city: "Indore",
+      state: DEFAULT_INDIAN_STATE,
+      pincode: "",
+      address: "",
+      lines: ["", ""],
+      isDefault: true,
+    },
   ]);
 
   // Multiple POCs
@@ -46,7 +56,15 @@ export default function CreateServiceCenterModal({
   const handleAddAddress = () => {
     setAddresses((prev) => [
       ...prev,
-      { id: `addr-${Date.now()}`, city: "", address: "", lines: ["", ""], isDefault: false },
+      {
+        id: `addr-${Date.now()}`,
+        city: "",
+        state: DEFAULT_INDIAN_STATE,
+        pincode: "",
+        address: "",
+        lines: ["", ""],
+        isDefault: false,
+      },
     ]);
   };
 
@@ -58,6 +76,22 @@ export default function CreateServiceCenterModal({
     setAddresses((prev) => {
       const copy = [...prev];
       copy[idx] = { ...copy[idx], city };
+      return copy;
+    });
+  };
+
+  const handleUpdateAddressState = (idx: number, state: string) => {
+    setAddresses((prev) => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], state };
+      return copy;
+    });
+  };
+
+  const handleUpdateAddressPincode = (idx: number, pincode: string) => {
+    setAddresses((prev) => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], pincode };
       return copy;
     });
   };
@@ -76,7 +110,6 @@ export default function CreateServiceCenterModal({
           const clean = currentLines.filter((l, i) => i === 0 || l.trim().length > 0);
           if (clean.length < 2) clean.push("");
           target.lines = clean;
-          target.address = clean.filter(Boolean).join("\n");
           copy[addrIdx] = target;
           return copy;
         }
@@ -84,7 +117,6 @@ export default function CreateServiceCenterModal({
 
       currentLines[lineIdx] = val;
       target.lines = currentLines;
-      target.address = currentLines.filter(Boolean).join("\n");
       copy[addrIdx] = target;
       return copy;
     });
@@ -109,7 +141,6 @@ export default function CreateServiceCenterModal({
       const currentLines = (target.lines || ["", ""]).filter((_, i) => i !== lineIdx);
       if (currentLines.length === 0) currentLines.push("");
       target.lines = currentLines;
-      target.address = currentLines.filter(Boolean).join("\n");
       copy[addrIdx] = target;
       return copy;
     });
@@ -141,12 +172,16 @@ export default function CreateServiceCenterModal({
       return;
     }
 
-    // Validate that Address Line 1 is filled for every registered address
+    // Validate that Address Line 1 and City are filled for every registered address
     for (let i = 0; i < addresses.length; i++) {
       const addr = addresses[i];
       const line1 = addr.lines?.[0]?.trim() || addr.address?.trim() || "";
       if (!line1) {
-        toast.error(`Address ${i + 1}: Address Line 1 is required`);
+        toast.error(`Location #${i + 1}: Address Line 1 is required`);
+        return;
+      }
+      if (!addr.city?.trim()) {
+        toast.error(`Location #${i + 1}: City is required`);
         return;
       }
     }
@@ -156,11 +191,24 @@ export default function CreateServiceCenterModal({
       const validLines = rawLines
         .map((l) => toTitleCase(l.trim()))
         .filter(Boolean);
+      const cleanCity = a.city?.trim() ? toTitleCase(a.city.trim()) : undefined;
+      const cleanState = a.state?.trim() ? toTitleCase(a.state.trim()) : DEFAULT_INDIAN_STATE;
+      const cleanPin = a.pincode?.trim() || undefined;
+
+      const fullAddress = formatFullAddress({
+        lines: validLines,
+        city: cleanCity,
+        state: cleanState,
+        pincode: cleanPin,
+      });
+
       return {
         id: a.id || `addr-${idx + 1}`,
-        city: a.city?.trim() ? toTitleCase(a.city) : undefined,
+        city: cleanCity,
+        state: cleanState,
+        pincode: cleanPin,
         lines: validLines,
-        address: validLines.join("\n"),
+        address: fullAddress,
         isDefault: a.isDefault ?? idx === 0,
       };
     });
@@ -199,7 +247,17 @@ export default function CreateServiceCenterModal({
       setWhatsappPhone("");
       setGeneralPhone("");
       setEmail("");
-      setAddresses([{ id: `addr-1`, city: "Indore", address: "", lines: ["", ""], isDefault: true }]);
+      setAddresses([
+        {
+          id: `addr-1`,
+          city: "Indore",
+          state: DEFAULT_INDIAN_STATE,
+          pincode: "",
+          address: "",
+          lines: ["", ""],
+          isDefault: true,
+        },
+      ]);
       setPocs([{ id: `poc-1`, name: "", designation: "RMA Coordinator", phone: "", isWhatsApp: true }]);
     } catch (err: any) {
       console.error("Error creating service center:", err);
@@ -310,27 +368,16 @@ export default function CreateServiceCenterModal({
                     ) : null}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <Label className="text-[10.5px] font-semibold text-slate-500">City:</Label>
-                      <Input
-                        placeholder="e.g. Indore / Delhi"
-                        value={addr.city || ""}
-                        onChange={(e) => handleUpdateAddressCity(idx, e.target.value)}
-                        className="w-32 h-7 text-xs rounded-lg bg-white dark:bg-slate-950"
-                      />
-                    </div>
-                    {addresses.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAddress(idx)}
-                        className="text-slate-400 hover:text-red-500 p-1 transition-colors cursor-pointer"
-                        title="Delete this address"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
+                  {addresses.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAddress(idx)}
+                      className="text-slate-400 hover:text-red-500 p-1 transition-colors cursor-pointer"
+                      title="Delete this address"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Multi-line address fields */}
@@ -413,6 +460,53 @@ export default function CreateServiceCenterModal({
                     >
                       + Add Another Line
                     </button>
+                  </div>
+
+                  {/* Columns for City, State, and PIN Code */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                          City <span className="text-red-500 font-bold">*</span>
+                        </Label>
+                      </div>
+                      <Input
+                        placeholder="e.g. Indore"
+                        value={addr.city || ""}
+                        onChange={(e) => handleUpdateAddressCity(idx, e.target.value)}
+                        required
+                        className="h-8 text-xs rounded-lg bg-white dark:bg-slate-950 font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                          State <span className="text-red-500 font-bold">*</span>
+                        </Label>
+                      </div>
+                      <StateSelect
+                        value={addr.state || DEFAULT_INDIAN_STATE}
+                        onChange={(val) => handleUpdateAddressState(idx, val)}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                          PIN Code
+                        </Label>
+                      </div>
+                      <Input
+                        placeholder="e.g. 452001"
+                        maxLength={6}
+                        value={addr.pincode || ""}
+                        onChange={(e) =>
+                          handleUpdateAddressPincode(idx, e.target.value.replace(/\D/g, ""))
+                        }
+                        className="h-8 text-xs rounded-lg bg-white dark:bg-slate-950 font-mono"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

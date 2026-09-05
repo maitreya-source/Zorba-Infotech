@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { toTitleCase, formatModelNumber } from "@/lib/utils";
+import {
+  toTitleCase,
+  formatModelNumber,
+  formatFullAddress,
+  splitSingleLineAddressToMultiLine,
+} from "@/lib/utils";
 
 describe("toTitleCase", () => {
   it("converts all-lowercase text to Title Case", () => {
@@ -51,3 +56,31 @@ describe("formatModelNumber", () => {
     expect(formatModelNumber(undefined as any)).toBe("");
   });
 });
+
+describe("formatFullAddress and splitSingleLineAddressToMultiLine", () => {
+  it("formats structured lines, city, state, and pin into a multi-line address", () => {
+    const formatted = formatFullAddress({
+      lines: ["Shop 104, Silver Mall", "Tagore Marg"],
+      city: "Indore",
+      state: "Madhya Pradesh",
+      pincode: "452001",
+    });
+    expect(formatted).toBe(
+      "Shop 104, Silver Mall\nTagore Marg\nIndore, Madhya Pradesh - 452001"
+    );
+  });
+
+  it("splits a single-line comma-separated address into multi-line entity", () => {
+    const multi = splitSingleLineAddressToMultiLine(
+      "Shop 104, Silver Mall, RNT Marg, Indore, MP - 452001"
+    );
+    expect(multi.includes("\n")).toBe(true);
+    expect(multi).toBe("Shop 104, Silver Mall\nRNT Marg\nIndore, MP - 452001");
+  });
+
+  it("preserves already multi-line address", () => {
+    const input = "Line 1\nLine 2\nIndore, MP - 452001";
+    expect(splitSingleLineAddressToMultiLine(input)).toBe(input);
+  });
+});
+

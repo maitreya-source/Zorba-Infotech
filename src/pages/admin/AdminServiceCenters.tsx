@@ -133,6 +133,8 @@ export default function AdminServiceCenters() {
         sc.addresses?.some(
           (a) =>
             a.city?.toLowerCase().includes(q) ||
+            a.state?.toLowerCase().includes(q) ||
+            a.pincode?.includes(q) ||
             a.address?.toLowerCase().includes(q)
         ) ||
         sc.pocs?.some(

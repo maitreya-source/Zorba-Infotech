@@ -20,7 +20,7 @@ import {
 import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
 import type { ServiceCall, ServiceCenter } from "@/lib/types";
 import { getServiceCenters } from "@/lib/firestore";
-import { formatPhoneForPrint } from "@/lib/utils";
+import { formatPhoneForPrint, formatFullAddress } from "@/lib/utils";
 
 // Vector Code 39 Barcode SVG Component for crisp single-page A4 printing
 function BarcodeSvg({
@@ -177,19 +177,44 @@ export default function DispatchSlipPrintModal({
     }
   }, [open, serviceCall, passedServiceCenter, passedServiceCenters]);
 
+  // Selected Hub address
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+
+  useEffect(() => {
+    if (resolvedCenter?.addresses && resolvedCenter.addresses.length > 0) {
+      const matched = resolvedCenter.addresses.find(
+        (a) => a.address === serviceCall?.serviceCenterAddress
+      );
+      setSelectedAddressId(matched ? matched.id : resolvedCenter.addresses[0].id);
+    }
+  }, [resolvedCenter, serviceCall?.serviceCenterAddress]);
+
   if (!serviceCall) return null;
 
   const handlePrint = () => {
     window.print();
   };
 
+  // Active address object
+  const activeAddressObj =
+    resolvedCenter?.addresses?.find((a) => a.id === selectedAddressId) ||
+    resolvedCenter?.addresses?.[0];
+
   // Resolved Center details
   const destinationCenterName =
     serviceCall.serviceCenterName || resolvedCenter?.name || "Authorized Service Center";
-  const destinationAddress =
-    serviceCall.serviceCenterAddress ||
-    resolvedCenter?.addresses?.[0]?.address ||
-    "Authorized Service Center Address";
+  const destinationAddress = activeAddressObj
+    ? formatFullAddress({
+        lines: activeAddressObj.lines,
+        city: activeAddressObj.city,
+        state: activeAddressObj.state,
+        pincode: activeAddressObj.pincode,
+        fallbackAddress: activeAddressObj.address,
+      })
+    : formatFullAddress({
+        fallbackAddress:
+          serviceCall.serviceCenterAddress || "Authorized Service Center Address",
+      });
   const destinationPhone = resolvedCenter?.phone || resolvedCenter?.whatsappPhone || "";
   const destinationEmail = resolvedCenter?.email || "";
   const primaryPOC = resolvedCenter?.pocs?.[0];
@@ -432,6 +457,22 @@ export default function DispatchSlipPrintModal({
                   className="w-24 px-2 py-1 text-xs border rounded-md bg-white dark:bg-slate-950 font-medium"
                 />
               </div>
+              {resolvedCenter?.addresses && resolvedCenter.addresses.length > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <label className="text-slate-500 font-medium">Hub:</label>
+                  <select
+                    value={selectedAddressId}
+                    onChange={(e) => setSelectedAddressId(e.target.value)}
+                    className="px-2 py-1 text-xs border rounded-md bg-white dark:bg-slate-950 font-medium cursor-pointer"
+                  >
+                    {resolvedCenter.addresses.map((a, i) => (
+                      <option key={a.id || i} value={a.id}>
+                        {a.city ? `${a.city} Hub` : `Location #${i + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 
@@ -612,11 +653,6 @@ export default function DispatchSlipPrintModal({
                         <span className="font-bold text-black">Customer Reference:</span>{" "}
                         <span className="font-semibold">{serviceCall.customerName || "Customer"}</span>
                       </div>
-                      {serviceCall.customerPhone && (
-                        <div className="tabular-nums">
-                          <span className="font-bold text-black">Phone:</span> {formatPhoneForPrint(serviceCall.customerPhone)}
-                        </div>
-                      )}
                     </div>
                   )}
                   {(serviceCall.dateOfPurchase || serviceCall.billNumber) && (
