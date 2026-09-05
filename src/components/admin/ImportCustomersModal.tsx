@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { createCustomer } from "@/lib/firestore";
+import { batchCreateCustomers } from "@/lib/firestore";
 
 interface ImportCustomersModalProps {
   open: boolean;
@@ -117,33 +117,28 @@ export default function ImportCustomersModal({
     }
 
     setImporting(true);
-    let successCount = 0;
-    let duplicateCount = 0;
     try {
-      for (const item of validList) {
-        try {
-          await createCustomer({
-            name: item.name,
-            phone: item.phone,
-            email: item.email,
-            companyName: item.companyName,
-            address: item.address,
-          });
-          successCount++;
-          setImportedCount(successCount);
-        } catch (itemErr: any) {
-          if (itemErr?.message?.includes("already exists")) {
-            duplicateCount++;
-          } else {
-            console.warn("Error importing customer row:", itemErr);
-          }
+      const result = await batchCreateCustomers(
+        validList.map((c) => ({
+          name: c.name,
+          phone: c.phone,
+          email: c.email,
+          companyName: c.companyName,
+          address: c.address,
+        })),
+        (processed) => {
+          setImportedCount(processed);
         }
-      }
-      if (duplicateCount > 0) {
-        toast.success(`Imported ${successCount} contacts (${duplicateCount} existing duplicate phone numbers skipped).`);
+      );
+
+      if (result.duplicateCount > 0) {
+        toast.success(
+          `Batch import complete: ${result.importedCount} contacts added (${result.duplicateCount} duplicates skipped).`
+        );
       } else {
-        toast.success(`Successfully imported ${successCount} customer contacts!`);
+        toast.success(`Batch import complete: Successfully added ${result.importedCount} contacts!`);
       }
+
       if (onImportComplete) onImportComplete();
       onOpenChange(false);
       // Reset

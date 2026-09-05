@@ -27,12 +27,16 @@ import {
   Briefcase,
   Inbox,
   RefreshCw,
+  Search,
+  Keyboard,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { syncCustomerIndex, invalidateCustomersCache } from "@/lib/firestore";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import StaffProfileSelectorModal from "@/components/admin/StaffProfileSelectorModal";
+import GlobalAdminSearchModal from "@/components/admin/GlobalAdminSearchModal";
+import ShortcutsHelpModal from "@/components/admin/ShortcutsHelpModal";
 
 const navItems = [
   { label: "Service Calls", to: "/admin/service-calls", icon: Activity },
@@ -58,6 +62,42 @@ export default function AdminLayout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+
+  // Global hotkeys for Omnisearch (Ctrl+K or /) and Shortcuts (?)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable;
+
+      // Ctrl+K or Cmd+K
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowSearchModal((prev) => !prev);
+        return;
+      }
+      // Slash (/) when not in an input
+      if (e.key === "/" && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setShowSearchModal(true);
+        return;
+      }
+      // ? when not in an input
+      if (e.key === "?" && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setShowShortcutsModal(true);
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Real-time duty presence
   const { onlineStaff } = useStaffDutyPresence(activeProfile);
@@ -322,8 +362,36 @@ export default function AdminLayout() {
           {/* Center: Dynamic Center Area for Service Call Type Chips */}
           <div id="admin-header-center" className="flex items-center justify-center flex-1 min-w-0 overflow-x-auto no-scrollbar" />
 
-          {/* Right: Live Staff On Duty Board + Back Link */}
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          {/* Right: Search + Shortcuts + Live Staff On Duty Board + Back Link */}
+          <div className="flex items-center gap-2 md:gap-2.5 shrink-0">
+            {/* Global Omnisearch Trigger */}
+            <button
+              type="button"
+              onClick={() => setShowSearchModal(true)}
+              className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+              title="Search Tickets, Customers & Models (Ctrl+K)"
+            >
+              <Search className="h-3.5 w-3.5 text-slate-400" />
+              <span className="hidden md:inline">Search...</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-bold bg-slate-900/60 text-slate-400 rounded border border-slate-700/60">
+                Ctrl K
+              </kbd>
+            </button>
+
+            {/* Keyboard Shortcuts Trigger */}
+            <button
+              type="button"
+              onClick={() => setShowShortcutsModal(true)}
+              className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+              title="Keyboard Shortcuts (?)"
+            >
+              <Keyboard className="h-3.5 w-3.5 text-slate-400" />
+              <span className="hidden xl:inline">Shortcuts</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-bold bg-slate-900/60 text-slate-400 rounded border border-slate-700/60">
+                ?
+              </kbd>
+            </button>
+
             {/* Live Staff On Duty Pill */}
             <StaffOnDutyBoard onlineStaff={onlineStaff} />
 
@@ -359,8 +427,8 @@ export default function AdminLayout() {
         </main>
       </div>
 
-      {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-screen on Desktop) */}
-      <div id="admin-right-rail" className="h-screen shrink-0 empty:hidden print:hidden z-20 hidden xl:block" />
+      {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-screen on Desktop/Laptop >=1024px) */}
+      <div id="admin-right-rail" className="h-screen shrink-0 empty:hidden print:hidden z-20 hidden lg:block" />
 
       {/* Mandatory Staff Profile Selector Modal */}
       <StaffProfileSelectorModal
@@ -372,6 +440,18 @@ export default function AdminLayout() {
           setShowSelectorModal(next);
         }}
         canDismiss={Boolean(activeProfile)}
+      />
+
+      {/* Global Omnisearch Modal */}
+      <GlobalAdminSearchModal
+        open={showSearchModal}
+        onOpenChange={setShowSearchModal}
+      />
+
+      {/* Global Keyboard Shortcuts Help Modal */}
+      <ShortcutsHelpModal
+        open={showShortcutsModal}
+        onOpenChange={setShowShortcutsModal}
       />
     </div>
   );

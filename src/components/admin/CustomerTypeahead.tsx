@@ -13,6 +13,8 @@ interface CustomerTypeaheadProps {
   initialName?: string;
   value?: string;
   onChange?: (name: string) => void;
+  id?: string;
+  hasError?: boolean;
 }
 
 export default function CustomerTypeahead({
@@ -24,6 +26,8 @@ export default function CustomerTypeahead({
   initialName = "",
   value,
   onChange,
+  id = "cust-name-typeahead",
+  hasError = false,
 }: CustomerTypeaheadProps) {
   const [searchQuery, setSearchQuery] = useState(value ?? initialName ?? "");
   const [results, setResults] = useState<Customer[]>([]);
@@ -126,6 +130,7 @@ export default function CustomerTypeahead({
     <div ref={wrapperRef} className={`relative ${isOpen ? "z-[60]" : "z-10"} ${className}`}>
       <div className="relative">
         <Input
+          id={id}
           type="text"
           value={searchQuery}
           onChange={handleInputChange}
@@ -134,7 +139,11 @@ export default function CustomerTypeahead({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="h-9 text-xs rounded-xl bg-slate-50/70 dark:bg-slate-950 border-slate-200 dark:border-slate-800 pr-8 font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
+          className={`h-10 text-sm rounded-xl bg-slate-50/70 dark:bg-slate-950 pr-8 font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors ${
+            hasError
+              ? "border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30 text-rose-900 dark:text-rose-100"
+              : "border-slate-200 dark:border-slate-800"
+          }`}
         />
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {loading ? (

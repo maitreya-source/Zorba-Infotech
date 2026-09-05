@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { createCustomer } from "@/lib/firestore";
+import { batchCreateCustomers } from "@/lib/firestore";
 
 interface ParsedContact {
   name: string;
@@ -109,32 +109,26 @@ export default function AdminImportCustomers() {
     }
 
     setImporting(true);
-    let successCount = 0;
-    let duplicateCount = 0;
     try {
-      for (const item of validList) {
-        try {
-          await createCustomer({
-            name: item.name,
-            phone: item.phone,
-            email: item.email,
-            companyName: item.companyName,
-            address: item.address,
-          });
-          successCount++;
-          setImportedCount(successCount);
-        } catch (itemErr: any) {
-          if (itemErr?.message?.includes("already exists")) {
-            duplicateCount++;
-          } else {
-            console.warn("Error importing row:", itemErr);
-          }
+      const result = await batchCreateCustomers(
+        validList.map((item) => ({
+          name: item.name,
+          phone: item.phone,
+          email: item.email,
+          companyName: item.companyName,
+          address: item.address,
+        })),
+        (processed) => {
+          setImportedCount(processed);
         }
-      }
-      if (duplicateCount > 0) {
-        toast.success(`Imported ${successCount} contacts (${duplicateCount} existing duplicate phone numbers skipped).`);
+      );
+
+      if (result.duplicateCount > 0) {
+        toast.success(
+          `Batch import complete: ${result.importedCount} contacts added (${result.duplicateCount} duplicates skipped).`
+        );
       } else {
-        toast.success(`Successfully imported ${successCount} contacts into database!`);
+        toast.success(`Successfully imported ${result.importedCount} contacts into database!`);
       }
       navigate("/admin/customers");
     } catch (err: any) {

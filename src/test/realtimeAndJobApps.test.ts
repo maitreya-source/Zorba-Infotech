@@ -32,6 +32,8 @@ describe("Realtime Sync Bus & Inquiries Isolation", () => {
         message: "Need quote for 10 CCTV cameras",
         status: "pending",
         source: "contact_page",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       },
       {
         id: "inq-2",
@@ -40,6 +42,8 @@ describe("Realtime Sync Bus & Inquiries Isolation", () => {
         message: "[Job Application - Computer Hardware Technician]\nExperience: 2 Years",
         status: "pending",
         source: "careers_page",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       },
       {
         id: "inq-3",
@@ -48,6 +52,8 @@ describe("Realtime Sync Bus & Inquiries Isolation", () => {
         message: "Looking for gaming laptop prices",
         status: "completed",
         source: "website_modal",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       },
     ];
 

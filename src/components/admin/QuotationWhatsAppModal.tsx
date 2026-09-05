@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Send, Copy, Check } from "lucide-react";
+import { MessageSquare, Send, Copy, Check, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { Quotation } from "@/lib/types";
+import { sendWhatsAppMessage, formatPhoneForMetaApi } from "@/lib/whatsappApi";
 
 interface QuotationWhatsAppModalProps {
   open: boolean;
@@ -75,21 +76,38 @@ For any questions, feel free to contact us:
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSendWhatsApp = () => {
-    const cleanPhone = phone.replace(/[^0-9]/g, "");
-    if (!cleanPhone || cleanPhone.length < 10) {
+  const [sending, setSending] = useState(false);
+
+  const handleSendWhatsApp = async () => {
+    const cleanPhone = formatPhoneForMetaApi(phone);
+    if (!cleanPhone) {
       toast.error("Please enter a valid 10-digit mobile number");
       return;
     }
-    const formattedPhone = cleanPhone.startsWith("91") && cleanPhone.length === 12
-      ? cleanPhone
-      : `91${cleanPhone.slice(-10)}`;
+    if (!message.trim()) {
+      toast.error("Message preview cannot be empty");
+      return;
+    }
 
-    const encodedText = encodeURIComponent(message);
-    const waUrl = `https://wa.me/${formattedPhone}?text=${encodedText}`;
-    window.open(waUrl, "_blank");
-    toast.success("Opening WhatsApp chat with customer...");
-    onOpenChange(false);
+    setSending(true);
+    try {
+      const result = await sendWhatsAppMessage({
+        to: cleanPhone,
+        message: message.trim(),
+      });
+
+      if (result.success) {
+        toast.success("⚡ Quotation delivered successfully via WhatsApp API!");
+        onOpenChange(false);
+      } else {
+        toast.error(`WhatsApp API dispatch failed: ${result.error || "Delivery error"}`);
+      }
+    } catch (err: any) {
+      console.error("Quotation WhatsApp API dispatch error:", err);
+      toast.error(`WhatsApp API error: ${err.message || "Failed to dispatch"}`);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -100,7 +118,7 @@ For any questions, feel free to contact us:
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span>Send Quotation via WhatsApp</span>
+            <span>Send Quotation via WhatsApp API</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -154,10 +172,20 @@ For any questions, feel free to contact us:
             type="button"
             size="sm"
             onClick={handleSendWhatsApp}
+            disabled={sending}
             className="h-8 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 cursor-pointer shadow-xs"
           >
-            <Send className="h-3.5 w-3.5" />
-            <span>Open in WhatsApp</span>
+            {sending ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                <span>Sending via API...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-3.5 w-3.5" />
+                <span>Send via WhatsApp API</span>
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

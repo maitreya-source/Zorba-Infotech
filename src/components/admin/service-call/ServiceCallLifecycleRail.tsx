@@ -135,32 +135,32 @@ export default function ServiceCallLifecycleRail({
       index: 1,
       stage: "replacement_received_customer" as const,
       label: "Recv from Customer",
-      hotkey: "F5",
+      hotkey: "Alt+1",
     },
     {
       index: 2,
       stage: "replacement_sent_service_center" as const,
       label: "Sent to Service Center",
-      hotkey: "F6",
+      hotkey: "Alt+2",
     },
     {
       index: 3,
       stage: "replacement_received_service_center" as const,
       label: "Recv from Service Cent...",
-      hotkey: "F8",
+      hotkey: "Alt+3",
     },
     {
       index: 4,
       stage: "replacement_given_customer" as const,
       label: "Given to Customer",
-      hotkey: "F9",
+      hotkey: "Alt+4",
     },
   ];
 
   return (
     <>
-      {/* Mobile-Only (< xl) Ticket Operations & Actions Card */}
-      <div className="xl:hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-4">
+      {/* Tablet/Mobile-Only (< lg) Ticket Operations & Actions Card */}
+      <div className="lg:hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b pb-2.5">
           <div>
             <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Ticket Actions & Operations</h3>
@@ -414,8 +414,8 @@ export default function ServiceCallLifecycleRail({
         )}
       </div>
 
-      {/* Mobile Sticky Bottom Action Bar (< xl) */}
-      <div className="xl:hidden sticky bottom-0 z-30 -mx-2 sm:-mx-4 -mb-2 sm:-mb-4 p-3 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 shadow-lg backdrop-blur-md flex items-center justify-between gap-3">
+      {/* Mobile/Tablet Sticky Bottom Action Bar (< lg) */}
+      <div className="lg:hidden sticky bottom-0 z-30 -mx-2 sm:-mx-4 -mb-2 sm:-mb-4 p-3 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 shadow-lg backdrop-blur-md flex items-center justify-between gap-3">
         <div>
           <span className="text-[10px] text-slate-400 uppercase font-bold block">Grand Total</span>
           <span className="font-mono text-base font-extrabold text-slate-900 dark:text-white">

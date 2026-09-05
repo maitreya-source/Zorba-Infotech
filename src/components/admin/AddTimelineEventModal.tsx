@@ -51,28 +51,28 @@ const STAGE_OPTIONS: {
 }[] = [
   {
     stage: "replacement_received_customer",
-    title: "Received from Customer (F5)",
+    title: "Received from Customer (Alt+1)",
     defaultStatus: "received",
     icon: Inbox,
     iconColor: "text-blue-500",
   },
   {
     stage: "replacement_sent_service_center",
-    title: "Replacement Sent to Service Center (F6)",
+    title: "Replacement Sent to Service Center (Alt+2)",
     defaultStatus: "sent_to_service_center",
     icon: Truck,
     iconColor: "text-amber-500",
   },
   {
     stage: "replacement_received_service_center",
-    title: "Replacement Received from Service Center (F8)",
+    title: "Replacement Received from Service Center (Alt+3)",
     defaultStatus: "received",
     icon: Package,
     iconColor: "text-purple-500",
   },
   {
     stage: "replacement_given_customer",
-    title: "Replacement Product Given to Customer (F9)",
+    title: "Replacement Product Given to Customer (Alt+4)",
     defaultStatus: "delivered",
     icon: Send,
     iconColor: "text-emerald-500",

@@ -85,40 +85,32 @@ export function useTallyShortcuts(options: TallyShortcutOptions) {
         return;
       }
 
-      // F5 -> Replacement Sent to Service Center
-      if (e.key === "F5") {
-        if (opts.onF5) {
-          e.preventDefault();
-          opts.onF5();
-          return;
-        }
+      // Alt + 1 -> Stage 1: Received from Customer
+      if (e.altKey && (e.key === "1" || e.code === "Digit1")) {
+        e.preventDefault();
+        opts.onF5?.();
+        return;
       }
 
-      // F6 -> Replacement Received from Service Center
-      if (e.key === "F6") {
-        if (opts.onF6) {
-          e.preventDefault();
-          opts.onF6();
-          return;
-        }
+      // Alt + 2 -> Stage 2: Sent to Service Center
+      if (e.altKey && (e.key === "2" || e.code === "Digit2")) {
+        e.preventDefault();
+        opts.onF6?.();
+        return;
       }
 
-      // F8 -> Replacement Product Given to Customer
-      if (e.key === "F8") {
-        if (opts.onF8) {
-          e.preventDefault();
-          opts.onF8();
-          return;
-        }
+      // Alt + 3 -> Stage 3: Received from Service Center
+      if (e.altKey && (e.key === "3" || e.code === "Digit3")) {
+        e.preventDefault();
+        opts.onF8?.();
+        return;
       }
 
-      // F9 -> Replacement Product Received from Customer
-      if (e.key === "F9") {
-        if (opts.onF9) {
-          e.preventDefault();
-          opts.onF9();
-          return;
-        }
+      // Alt + 4 -> Stage 4: Delivered to Customer
+      if (e.altKey && (e.key === "4" || e.code === "Digit4")) {
+        e.preventDefault();
+        opts.onF9?.();
+        return;
       }
 
       // Alt + C -> Multi-purpose Create (Customer / Product / Category depending on focus)

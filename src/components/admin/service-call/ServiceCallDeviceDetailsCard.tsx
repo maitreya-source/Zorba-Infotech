@@ -58,6 +58,7 @@ interface ServiceCallDeviceDetailsCardProps {
   onOnsiteAddressChange: (val: string) => void;
   quickTags: string[];
   onOpenDispatchPrint?: () => void;
+  issueError?: string;
 }
 
 export default function ServiceCallDeviceDetailsCard({
@@ -98,16 +99,17 @@ export default function ServiceCallDeviceDetailsCard({
   onOnsiteAddressChange,
   quickTags,
   onOpenDispatchPrint,
+  issueError,
 }: ServiceCallDeviceDetailsCardProps) {
   return (
     <>
       {/* Section 2: Device & Warranty Details */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4">
         <div className="flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-xs">
             2
           </span>
-          <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+          <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
             Device & Issue Details
           </h2>
         </div>
@@ -245,17 +247,27 @@ export default function ServiceCallDeviceDetailsCard({
 
         {/* Issue / Service Task Description */}
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-            Issue / Service Task Description <span className="text-red-500 font-bold">*</span>
+          <Label htmlFor="issue-description-input" className="text-sm font-bold text-slate-800 dark:text-slate-200 block">
+            Issue / Service Task Description <span className="text-rose-600 font-bold">*</span>
           </Label>
           <Textarea
+            id="issue-description-input"
             placeholder="Describe symptoms, requested repair, or installation tasks..."
             value={issueDescription}
             onChange={(e) => onIssueDescriptionChange(e.target.value)}
             rows={2}
             required
-            className="text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
+            className={`text-sm rounded-xl bg-slate-50/60 dark:bg-slate-950 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors ${
+              issueError
+                ? "border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30 text-rose-900 dark:text-rose-100"
+                : "border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+            }`}
           />
+          {issueError && (
+            <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1">
+              ⚠️ {issueError}
+            </p>
+          )}
 
           {/* Quick Tags Suggestions */}
           <div className="flex items-center gap-1.5 overflow-x-auto py-1.5 no-scrollbar text-xs">

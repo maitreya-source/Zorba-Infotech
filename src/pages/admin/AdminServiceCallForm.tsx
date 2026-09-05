@@ -181,11 +181,18 @@ export default function AdminServiceCallForm() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeProfile, setShowSelectorModal } = useStaffProfile();
-  const isEditing = Boolean(id);
-  const { activeEditors } = useResourcePresence("service_call", id, activeProfile);
+  const [createdTicketId, setCreatedTicketId] = useState<string>("");
+  const effectiveId = id || createdTicketId;
+  const isEditing = Boolean(effectiveId);
+  const { activeEditors } = useResourcePresence("service_call", effectiveId, activeProfile);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const initialSnapshotRef = useRef<string>("");
   const [showEscQuitPrompt, setShowEscQuitPrompt] = useState(false);
+  const [invalidFields, setInvalidFields] = useState<{
+    customerName?: string;
+    customerPhone?: string;
+    issueDescription?: string;
+  }>({});
 
   // Form State
   const [ticketNo, setTicketNo] = useState<string>("");
@@ -590,6 +597,18 @@ export default function AdminServiceCallForm() {
     return currentSnapshot !== initialSnapshotRef.current;
   };
 
+  // Browser navigation and tab close protection
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [customerName, customerPhone, issueDescription, parts, serviceChargesInput, discountInput, saving]);
+
   // Handle Customer Selection from Typeahead
   const handleSelectCustomer = (cust: Customer) => {
     setSelectedCustomerId(cust.id);
@@ -794,19 +813,152 @@ export default function AdminServiceCallForm() {
   const subTotal = partsTotal + serviceChargesNum + (type === "company_service_center" ? courierChargesNum : 0);
   const grandTotal = Math.max(0, subTotal - discountNum);
 
-  // Submit Handler
+  const buildPayload = (cName: string, cPhone: string, issueDesc: string) => {
+    const effectiveStaffId = activeProfile?.id || "";
+    const effectiveStaffName = activeProfile ? toTitleCase(activeProfile.name) : "";
+
+    return {
+      type,
+      dateTime,
+      customerId: selectedCustomerId || `cust-${Date.now()}`,
+      customerName: toTitleCase(cName),
+      customerPhone: formatIndianPhoneNumber(cPhone),
+      customerEmail: (customerEmail || "").trim() || undefined,
+      customerAddress: (customerAddress || "").trim() || undefined,
+      deviceCategory,
+      modelNumber: (modelNumber || "").trim() || undefined,
+      serialNumber: (serialNumber || "").trim() || undefined,
+      quantity: Number(quantity) || 1,
+      issueDescription: issueDesc,
+      warrantyStatus,
+      status,
+
+      // Purchase details
+      dateOfPurchase: (dateOfPurchase || "").trim() || undefined,
+      billNumber: (billNumber || "").trim() || undefined,
+
+      // Backoffice handled staff (Auto-attributed to active desk profile)
+      handledByStaffId: effectiveStaffId,
+      handledByStaffName: effectiveStaffName,
+
+      // Service center
+      serviceCenterId: selectedServiceCenterId || undefined,
+      serviceCenterName: (serviceCenterName || "").trim() || undefined,
+      serviceCenterAddressId: selectedAddressId || undefined,
+      serviceCenterAddress: (serviceCenterAddress || "").trim() || undefined,
+      rmaNumber: (rmaNumber || "").trim() || undefined,
+      courierName: (courierName || "").trim() || undefined,
+      courierCharges: type === "company_service_center" ? courierChargesNum : undefined,
+
+      // Technician
+      technicianId: selectedTechnicianId || undefined,
+      technicianName: (technicianName || "").trim() || undefined,
+
+      // Onsite
+      onsiteAddress: type === "onsite_visit" ? (onsiteAddress || "").trim() : undefined,
+
+      parts: cleanParts,
+      partsTotal,
+      serviceCharges: serviceChargesNum,
+      discount: discountNum > 0 ? discountNum : undefined,
+      grandTotal,
+      internalComments: (internalComments || "").trim() || undefined,
+      notes: (internalComments || "").trim() || undefined,
+      timeline,
+
+      // Payment status
+      paymentStatus,
+      paymentMode: paymentStatus === "paid" || paymentStatus === "partial" ? paymentMode : undefined,
+      amountPaid: paymentStatus === "paid" || paymentStatus === "partial" ? (amountPaid || grandTotal) : 0,
+      paymentDate: paymentStatus === "paid" || paymentStatus === "partial" ? (paymentDate || dateTime) : undefined,
+      paymentNotes: (paymentNotes || "").trim() || undefined,
+    };
+  };
+
+  // Helper to ensure ticket is created/saved before opening Print or WhatsApp without booting user to list
+  const ensureSavedTicket = async (): Promise<ServiceCall | null> => {
+    const cName = (customerName || "").trim();
+    const cPhone = (customerPhone || "").trim();
+    const issueDesc = (issueDescription || "").trim();
+
+    const errors: { customerName?: string; customerPhone?: string; issueDescription?: string } = {};
+    if (!cName) errors.customerName = "Customer Name is required";
+    if (!cPhone) errors.customerPhone = "Customer Phone Number is required";
+    if (!issueDesc) errors.issueDescription = "Issue / Task Description is required";
+
+    if (Object.keys(errors).length > 0) {
+      setInvalidFields(errors);
+      const firstId = !cName || !cPhone ? "cust-name-typeahead" : "issue-description-input";
+      const el = document.getElementById(firstId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
+      toast.error("Please fill in required fields highlighted in red.");
+      return null;
+    }
+
+    if (!activeProfile) {
+      toast.error("Please select your staff profile with 5-digit PIN before proceeding.");
+      setShowSelectorModal(true);
+      return null;
+    }
+
+    // If already saved/editing, update ticket in background and return updated object
+    if (isEditing && effectiveId) {
+      const payload = buildPayload(cName, cPhone, issueDesc);
+      await updateServiceCall(effectiveId, payload).catch((err) => console.warn("Background update:", err));
+      return {
+        id: effectiveId,
+        ticketNo: ticketNo || "SC-ACTIVE",
+        ...payload,
+      } as ServiceCall;
+    }
+
+    // If new ticket, auto-save in background
+    setSaving(true);
+    try {
+      const payload = buildPayload(cName, cPhone, issueDesc);
+      const created = await createServiceCall(payload);
+      setCreatedTicketId(created.id);
+      setTicketNo(created.ticketNo);
+      setInvalidFields({});
+      toast.success(`Service Ticket auto-saved: ${created.ticketNo}`);
+
+      // Smoothly update URL to edit route without leaving the screen
+      window.history.replaceState(null, "", `/admin/service-calls/${created.id}/edit`);
+
+      return created;
+    } catch (err: any) {
+      console.error("Auto-save error:", err);
+      toast.error(err?.message || "Failed to auto-save ticket");
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Submit Handler (Standard Save Ticket Button - navigates to list)
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cName = (customerName || "").trim();
     const cPhone = (customerPhone || "").trim();
     const issueDesc = (issueDescription || "").trim();
 
-    if (!cName || !cPhone) {
-      toast.error("Please enter Customer Name and Phone Number");
-      return;
-    }
-    if (!issueDesc) {
-      toast.error("Please describe the Issue / Task");
+    const errors: { customerName?: string; customerPhone?: string; issueDescription?: string } = {};
+    if (!cName) errors.customerName = "Customer Name is required";
+    if (!cPhone) errors.customerPhone = "Customer Phone Number is required";
+    if (!issueDesc) errors.issueDescription = "Issue / Task Description is required";
+
+    if (Object.keys(errors).length > 0) {
+      setInvalidFields(errors);
+      const firstId = !cName || !cPhone ? "cust-name-typeahead" : "issue-description-input";
+      const el = document.getElementById(firstId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
+      toast.error("Please fill in required fields highlighted in red.");
       return;
     }
 
@@ -816,73 +968,16 @@ export default function AdminServiceCallForm() {
       return;
     }
 
-    const effectiveStaffId = activeProfile.id;
-    const effectiveStaffName = toTitleCase(activeProfile.name);
-
     setSaving(true);
     try {
-      const payload = {
-        type,
-        dateTime,
-        customerId: selectedCustomerId || `cust-${Date.now()}`,
-        customerName: toTitleCase(cName),
-        customerPhone: formatIndianPhoneNumber(cPhone),
-        customerEmail: (customerEmail || "").trim() || undefined,
-        customerAddress: (customerAddress || "").trim() || undefined,
-        deviceCategory,
-        modelNumber: (modelNumber || "").trim() || undefined,
-        serialNumber: (serialNumber || "").trim() || undefined,
-        quantity: Number(quantity) || 1,
-        issueDescription: issueDesc,
-        warrantyStatus,
-        status,
+      const payload = buildPayload(cName, cPhone, issueDesc);
 
-        // Purchase details
-        dateOfPurchase: (dateOfPurchase || "").trim() || undefined,
-        billNumber: (billNumber || "").trim() || undefined,
-
-        // Backoffice handled staff (Auto-attributed to active desk profile)
-        handledByStaffId: effectiveStaffId,
-        handledByStaffName: effectiveStaffName,
-
-        // Service center
-        serviceCenterId: selectedServiceCenterId || undefined,
-        serviceCenterName: (serviceCenterName || "").trim() || undefined,
-        serviceCenterAddressId: selectedAddressId || undefined,
-        serviceCenterAddress: (serviceCenterAddress || "").trim() || undefined,
-        rmaNumber: (rmaNumber || "").trim() || undefined,
-        courierName: (courierName || "").trim() || undefined,
-        courierCharges: type === "company_service_center" ? courierChargesNum : undefined,
-
-        // Technician
-        technicianId: selectedTechnicianId || undefined,
-        technicianName: (technicianName || "").trim() || undefined,
-
-        // Onsite
-        onsiteAddress: type === "onsite_visit" ? (onsiteAddress || "").trim() : undefined,
-
-        parts: cleanParts,
-        partsTotal,
-        serviceCharges: serviceChargesNum,
-        discount: discountNum > 0 ? discountNum : undefined,
-        grandTotal,
-        internalComments: (internalComments || "").trim() || undefined,
-        notes: (internalComments || "").trim() || undefined,
-        timeline,
-
-        // Payment status
-        paymentStatus,
-        paymentMode: paymentStatus === "paid" || paymentStatus === "partial" ? paymentMode : undefined,
-        amountPaid: paymentStatus === "paid" || paymentStatus === "partial" ? (amountPaid || grandTotal) : 0,
-        paymentDate: paymentStatus === "paid" || paymentStatus === "partial" ? (paymentDate || dateTime) : undefined,
-        paymentNotes: (paymentNotes || "").trim() || undefined,
-      };
-
-      if (isEditing && id) {
-        await updateServiceCall(id, payload);
+      if (isEditing && effectiveId) {
+        await updateServiceCall(effectiveId, payload);
         toast.success("Service Call ticket updated successfully!");
       } else {
         const created = await createServiceCall(payload);
+        setCreatedTicketId(created.id);
         setTicketNo(created.ticketNo);
         toast.success(`Service Call created: ${created.ticketNo}`);
       }
@@ -897,9 +992,9 @@ export default function AdminServiceCallForm() {
   };
 
   const handleDeleteTicket = async () => {
-    if (!id) return;
+    if (!effectiveId) return;
     try {
-      await deleteServiceCall(id);
+      await deleteServiceCall(effectiveId);
       toast.success("Ticket moved to Trash. It can be restored anytime.");
       navigate("/admin/service-calls");
     } catch (err: any) {
@@ -908,16 +1003,10 @@ export default function AdminServiceCallForm() {
     }
   };
 
-  // Print & WhatsApp Triggers (Guard against unsaved state)
-  const handleOpenPrintModal = () => {
-    if (!isEditing) {
-      if (!(customerName || "").trim() || !(customerPhone || "").trim() || !(issueDescription || "").trim()) {
-        toast.error("Please fill Customer Name, Phone, and Issue, and save the ticket before printing.");
-        return;
-      }
-      toast.info("Please save the ticket before printing.");
-      return;
-    }
+  // Print & WhatsApp Triggers (Auto-saves ticket without booting user to list)
+  const handleOpenPrintModal = async () => {
+    const saved = await ensureSavedTicket();
+    if (!saved) return;
     setShowPrintModal(true);
   };
 
@@ -929,33 +1018,28 @@ export default function AdminServiceCallForm() {
   };
 
   // WhatsApp Message Preview Triggers (Opens editable preview modal with pre-compiled text)
-  const handleOpenCustomerWhatsApp = () => {
-    if (!(customerPhone || "").trim() && !(customerName || "").trim()) {
-      toast.error("Customer information is missing");
-      return;
-    }
-    if (!isEditing) {
-      toast.info("Please save the ticket first before sending WhatsApp updates.");
-      return;
-    }
+  const handleOpenCustomerWhatsApp = async () => {
+    const saved = await ensureSavedTicket();
+    if (!saved) return;
+
     const compiled = generateWhatsAppMessage({
-      ticketNo: ticketNo || "New Ticket",
-      dateTime,
-      customerName: toTitleCase(customerName || "Customer"),
-      customerPhone: customerPhone || "",
-      deviceCategory,
-      modelNumber,
-      issueDescription,
-      status,
-      grandTotal,
+      ticketNo: saved.ticketNo || ticketNo || "New Ticket",
+      dateTime: saved.dateTime || dateTime,
+      customerName: toTitleCase(saved.customerName || customerName || "Customer"),
+      customerPhone: saved.customerPhone || customerPhone || "",
+      deviceCategory: saved.deviceCategory || deviceCategory,
+      modelNumber: saved.modelNumber || modelNumber,
+      issueDescription: saved.issueDescription || issueDescription,
+      status: saved.status || status,
+      grandTotal: saved.grandTotal || grandTotal,
     });
 
     setWhatsAppModal({
       open: true,
       title: "WhatsApp Update: Customer Confirmation",
-      recipientName: customerName ? toTitleCase(customerName) : "Customer",
+      recipientName: saved.customerName ? toTitleCase(saved.customerName) : "Customer",
       recipientRole: "Customer",
-      defaultPhone: customerPhone || "",
+      defaultPhone: saved.customerPhone || customerPhone || "",
       defaultMessage: compiled,
       targetModule: "service_calls",
       templateName: "11",
@@ -1248,8 +1332,18 @@ export default function AdminServiceCallForm() {
           customerPhone={customerPhone}
           customerEmail={customerEmail}
           customerAddress={customerAddress}
-          onCustomerNameChange={setCustomerName}
-          onSelectCustomer={handleSelectCustomer}
+          nameError={invalidFields.customerName}
+          phoneError={invalidFields.customerPhone}
+          onCustomerNameChange={(val) => {
+            setCustomerName(val);
+            if (invalidFields.customerName) {
+              setInvalidFields((prev) => ({ ...prev, customerName: undefined }));
+            }
+          }}
+          onSelectCustomer={(cust) => {
+            handleSelectCustomer(cust);
+            setInvalidFields((prev) => ({ ...prev, customerName: undefined, customerPhone: undefined }));
+          }}
           onOpenNewCustomerModal={() => setShowCustomerModal(true)}
           onOpenEditCustomerModal={() => setShowEditCustomerModal(true)}
         />
@@ -1273,7 +1367,13 @@ export default function AdminServiceCallForm() {
           billNumber={billNumber}
           onBillNumberChange={setBillNumber}
           issueDescription={issueDescription}
-          onIssueDescriptionChange={setIssueDescription}
+          issueError={invalidFields.issueDescription}
+          onIssueDescriptionChange={(val) => {
+            setIssueDescription(val);
+            if (invalidFields.issueDescription) {
+              setInvalidFields((prev) => ({ ...prev, issueDescription: undefined }));
+            }
+          }}
           type={type}
           serviceCenters={serviceCenters}
           selectedServiceCenterId={selectedServiceCenterId}

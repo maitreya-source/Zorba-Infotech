@@ -1024,48 +1024,63 @@ export async function deleteProductPhoto(productId: string): Promise<void> {
   }
 }
 
-// ─── Legacy Device Categories Forwarder ───────────────────────────────────────
+// ─── Dedicated Device Repair Hardware Categories (Decoupled from Sales Catalog) ──
+
+export const DEFAULT_DEVICE_REPAIR_CATEGORIES: string[] = [
+  "CCTV & Security",
+  "Laptop",
+  "Desktop & PC",
+  "Printer & Scanner",
+  "Motherboard & Chip-Level",
+  "UPS & Power Inverter",
+  "Monitor & Display",
+  "Networking & Wi-Fi",
+  "Server & Storage",
+  "Other Peripheral",
+];
 
 export async function getDeviceCategories(): Promise<DeviceCategory[]> {
   try {
-    const cats = await getCategories();
-    return cats.map((c) => ({
-      id: c.id,
-      name: c.name,
-      description: c.description || "",
-      createdAt: Date.now(),
-    }));
-  } catch {
-    return DEFAULT_CATEGORIES.map((c) => ({
-      id: c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      name: c.name,
-      description: c.description || "",
-      createdAt: Date.now(),
-    }));
+    const snap = await getDocs(collection(db, "device_categories"));
+    if (!snap.empty) {
+      return snap.docs.map((d) => ({
+        id: d.id,
+        name: d.data().name || d.id,
+        description: d.data().description || "",
+        createdAt: d.data().createdAt || Date.now(),
+      }));
+    }
+  } catch (err) {
+    console.warn("Could not read device_categories collection:", err);
   }
+
+  // Default repair categories fallback
+  return DEFAULT_DEVICE_REPAIR_CATEGORIES.map((catName) => ({
+    id: catName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    name: catName,
+    description: "Standard hardware repair category",
+    createdAt: Date.now(),
+  }));
 }
 
 export async function createDeviceCategory(
   name: string,
   description?: string
 ): Promise<DeviceCategory> {
-  await createCategory({
-    name,
-    description: description || "",
-    iconName: "Package",
-    color: "from-blue-500/10 to-blue-600/5",
-    order: 99,
-  });
-  return {
-    id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-    name,
+  const cleanName = toTitleCase(name.trim());
+  const docRef = doc(collection(db, "device_categories"));
+  const newCat: DeviceCategory = {
+    id: docRef.id,
+    name: cleanName,
     description: description || "",
     createdAt: Date.now(),
   };
+  await setDoc(docRef, cleanFirestoreData(newCat));
+  return newCat;
 }
 
 export async function deleteDeviceCategory(id: string): Promise<void> {
-  await deleteCategory(id);
+  await deleteDoc(doc(db, "device_categories", id));
 }
 
 // ─── Customers (Fast Slim Index & Non-Blocking Delta-Sync) ─────────────────────
@@ -1358,6 +1373,114 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
   return newCust;
 }
 
+export interface BatchImportCustomerResult {
+  importedCount: number;
+  duplicateCount: number;
+  errorsCount: number;
+}
+
+/**
+ * Fast chunked batch customer importer using writeBatch(db) in chunks of 100 docs.
+ * Prevents sequential network request freezes during large CSV imports.
+ */
+export async function batchCreateCustomers(
+  items: Omit<Customer, "id" | "createdAt">[],
+  onProgress?: (processed: number, total: number) => void
+): Promise<BatchImportCustomerResult> {
+  let importedCount = 0;
+  let duplicateCount = 0;
+  let errorsCount = 0;
+
+  // Sync slim index into memory first to do 0ms in-memory duplicate checks
+  await syncCustomerIndex();
+
+  const toInsert: Customer[] = [];
+  const seenPhonesInBatch = new Set<string>();
+
+  for (const item of items) {
+    const target10 = normalizePhone10(item.phone);
+    if (!target10 || target10.length < 10) {
+      errorsCount++;
+      continue;
+    }
+
+    if (seenPhonesInBatch.has(target10)) {
+      duplicateCount++;
+      continue;
+    }
+
+    const dup = _customerIndex.find((c) => normalizePhone10(c.phone) === target10);
+    if (dup) {
+      duplicateCount++;
+      continue;
+    }
+
+    seenPhonesInBatch.add(target10);
+
+    const docRef = doc(collection(db, "customers"));
+    const now = Date.now();
+    const newCust: Customer = {
+      id: docRef.id,
+      ...item,
+      name: toTitleCase(item.name),
+      phone: formatIndianPhoneNumber(item.phone),
+      additionalPhones: item.additionalPhones?.map(formatIndianPhoneNumber),
+      companyName: item.companyName ? toTitleCase(item.companyName) : undefined,
+      address: item.address ? toTitleCase(item.address) : undefined,
+      city: item.city ? toTitleCase(item.city) : undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+    toInsert.push(newCust);
+  }
+
+  // Commit in chunks of 100 documents
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+    const chunk = toInsert.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(db);
+
+    for (const cust of chunk) {
+      const docRef = doc(db, "customers", cust.id);
+      batch.set(docRef, cleanFirestoreData(cust));
+    }
+
+    await batch.commit();
+
+    // Update in-memory slim index
+    for (const cust of chunk) {
+      _customerIndex.unshift({
+        id: cust.id,
+        name: cust.name,
+        phone: cust.phone,
+        additionalPhones: cust.additionalPhones,
+        companyName: cust.companyName,
+        email: cust.email,
+        createdAt: cust.createdAt,
+        updatedAt: cust.updatedAt,
+      });
+    }
+
+    importedCount += chunk.length;
+    onProgress?.(importedCount, toInsert.length);
+  }
+
+  if (importedCount > 0) {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
+      } catch {}
+    }
+    publishSyncSignal("customers", { action: "create" });
+  }
+
+  return {
+    importedCount,
+    duplicateCount,
+    errorsCount,
+  };
+}
+
 export async function updateCustomer(id: string, data: Partial<Customer>): Promise<void> {
   if (data.phone) {
     const duplicate = await findCustomerByPhoneNumber(data.phone, id);
@@ -1595,50 +1718,14 @@ export async function deleteCustomer(id: string): Promise<void> {
 
 // ─── Service Centers ──────────────────────────────────────────────────────────
 
-const DEFAULT_SERVICE_CENTERS: Omit<ServiceCenter, "id" | "createdAt">[] = [
-  {
-    name: "HP Authorized Service Center",
-    phone: "+91 98210 11223",
-    email: "hp.service@hp.com",
-    addresses: [
-      { id: "addr-1", address: "Plot 45, Tech Zone, Sector 18, Gurugram", city: "Gurugram", isDefault: true },
-      { id: "addr-2", address: "Shop 12, Station Road, Indore", city: "Indore", isDefault: false },
-    ],
-    defaultAddressId: "addr-1",
-  },
-  {
-    name: "Dell Care Center",
-    phone: "+91 94220 55443",
-    email: "support@dellcare.in",
-    addresses: [
-      { id: "addr-3", address: "Suite 302, MG Road Commercial Hub, Pune", city: "Pune", isDefault: true },
-    ],
-    defaultAddressId: "addr-3",
-  },
-];
-
 export async function getServiceCenters(): Promise<ServiceCenter[]> {
   try {
     const snap = await fetchWithTimeout(getDocs(collection(db, "service_centers")));
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ServiceCenter);
-    if (items.length === 0) {
-      for (const sc of DEFAULT_SERVICE_CENTERS) {
-        await createServiceCenter(sc).catch(() => {});
-      }
-      const res = await getDocs(collection(db, "service_centers"));
-      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as ServiceCenter);
-      if (seeded.length > 0) return seeded;
-    } else {
-      return items;
-    }
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ServiceCenter);
   } catch (err: any) {
-    console.warn("getServiceCenters warning, using fallbacks:", err);
+    console.warn("getServiceCenters warning:", err);
+    return [];
   }
-  return DEFAULT_SERVICE_CENTERS.map((sc, i) => ({
-    id: `default-sc-${i}`,
-    ...sc,
-    createdAt: Date.now(),
-  }));
 }
 
 export async function createServiceCenter(
@@ -1667,37 +1754,14 @@ export async function deleteServiceCenter(id: string): Promise<void> {
 
 // ─── Couriers (Logistics Partners) ────────────────────────────────────────────
 
-const DEFAULT_COURIERS: Omit<Courier, "id" | "createdAt">[] = [
-  { name: "Trackon Courier", phone: "+91 98110 55667", contactPerson: "Ramesh Sharma", active: true },
-  { name: "Reliance Logistics", phone: "+91 98220 33445", contactPerson: "Suresh Gupta", active: true },
-  { name: "Blue Dart Express", phone: "+91 99330 11223", contactPerson: "Helpdesk", active: true },
-  { name: "DTDC Express", phone: "+91 98110 99887", contactPerson: "Frontdesk", active: true },
-  { name: "Speed Post (India Post)", phone: "+91 94110 77665", contactPerson: "Post Master", active: true },
-  { name: "Delhivery", phone: "+91 98770 44332", contactPerson: "Operations", active: true },
-];
-
 export async function getCouriers(): Promise<Courier[]> {
   try {
     const snap = await fetchWithTimeout(getDocs(collection(db, "couriers")));
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Courier);
-    if (items.length === 0) {
-      for (const c of DEFAULT_COURIERS) {
-        await createCourier(c).catch(() => {});
-      }
-      const res = await getDocs(collection(db, "couriers"));
-      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as Courier);
-      if (seeded.length > 0) return seeded;
-    } else {
-      return items;
-    }
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Courier);
   } catch (err: any) {
-    console.warn("getCouriers warning, using fallbacks:", err);
+    console.warn("getCouriers warning:", err);
+    return [];
   }
-  return DEFAULT_COURIERS.map((c, i) => ({
-    id: `courier-${i}`,
-    ...c,
-    createdAt: Date.now(),
-  }));
 }
 
 export async function createCourier(
@@ -1726,37 +1790,14 @@ export async function deleteCourier(id: string): Promise<void> {
 
 // ─── Team Members (Unified Personnel: Backoffice, Technician, Manager) ───────
 
-const DEFAULT_TEAM_MEMBERS: Omit<TeamMember, "id" | "createdAt">[] = [
-  { name: "Rajesh Sharma", role: "backoffice", phone: "+91 98230 11223", email: "rajesh@zorba.in", avatar: "penguin", active: true },
-  { name: "Sunita Verma", role: "backoffice", phone: "+91 98900 77889", email: "sunita@zorba.in", avatar: "watermelon", active: true },
-  { name: "Amit Patel", role: "manager", phone: "+91 94220 44556", email: "amit@zorba.in", avatar: "lion", active: true },
-  { name: "Manoj Kumar", role: "technician", phone: "+91 98230 55441", email: "manoj@zorba.in", specialization: "CCTV & Security", avatar: "fox", active: true },
-  { name: "Vikas Sharma", role: "technician", phone: "+91 94220 88776", email: "vikas@zorba.in", specialization: "Printers & Toners", avatar: "rocket", active: true },
-  { name: "Deepak Soni", role: "technician", phone: "+91 98900 33221", email: "deepak@zorba.in", specialization: "Laptops & Networking", avatar: "coffee", active: true },
-];
-
 export async function getTeamMembers(): Promise<TeamMember[]> {
   try {
     const snap = await fetchWithTimeout(getDocs(collection(db, "team_members")));
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TeamMember);
-    if (items.length === 0) {
-      for (const tm of DEFAULT_TEAM_MEMBERS) {
-        await createTeamMember(tm).catch(() => {});
-      }
-      const res = await getDocs(collection(db, "team_members"));
-      const seeded = res.docs.map((d) => ({ id: d.id, ...d.data() }) as TeamMember);
-      if (seeded.length > 0) return seeded;
-    } else {
-      return items;
-    }
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TeamMember);
   } catch (err: any) {
-    console.warn("getTeamMembers warning, using fallbacks:", err);
+    console.warn("getTeamMembers warning:", err);
+    return [];
   }
-  return DEFAULT_TEAM_MEMBERS.map((tm, i) => ({
-    id: `team-${i}`,
-    ...tm,
-    createdAt: Date.now(),
-  }));
 }
 
 export async function getTeamMember(id: string): Promise<TeamMember | null> {

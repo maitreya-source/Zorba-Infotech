@@ -14,7 +14,6 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -328,18 +327,6 @@ export default function WhatsAppPreviewModal({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleOpenInWhatsApp = () => {
-    const cleanPhone = formatPhoneForMetaApi(phoneNumber);
-    if (!cleanPhone) {
-      toast.error("Please enter a valid 10-digit mobile number");
-      return;
-    }
-    const encoded = encodeURIComponent(compiledMessage);
-    window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, "_blank");
-    toast.success("Opening WhatsApp chat with customer...");
-    onOpenChange(false);
-  };
-
   const handleSend = async () => {
     const cleanPhone = formatPhoneForMetaApi(phoneNumber);
     if (!cleanPhone) {
@@ -351,29 +338,8 @@ export default function WhatsAppPreviewModal({
       return;
     }
 
-    // CRITICAL: Meta Cloud API ONLY permits sending templates that are APPROVED by Meta.
-    // If an unapproved / draft template is selected, do NOT call Meta API (which causes Error 132001).
-    // Instead, route it seamlessly to WhatsApp Web/App with 1-click!
-    if (activeTemplate && activeTemplate.metaStatus !== "approved") {
-      toast.warning(
-        `"${activeTemplate.displayName || activeTemplate.name}" is an ERP template not approved in Meta WABA. Opening WhatsApp directly to send this message with full terms & details...`,
-        { duration: 5000 }
-      );
-      handleOpenInWhatsApp();
-      return;
-    }
-
-    if (!activeTemplate && selectedTemplateId === "freeform") {
-      toast.info(
-        "Meta API requires pre-approved templates outside 24h customer sessions. Opening WhatsApp directly to send freeform message...",
-        { duration: 4000 }
-      );
-      handleOpenInWhatsApp();
-      return;
-    }
-
     if (!isApiReady) {
-      toast.error("WhatsApp API token is pending in .env (VITE_META_WHATSAPP_TOKEN).");
+      toast.error("WhatsApp API configuration error: please verify API credentials in settings.");
       return;
     }
 
@@ -389,18 +355,25 @@ export default function WhatsAppPreviewModal({
       });
 
       if (result.success) {
-        toast.success("⚡ WhatsApp delivered successfully via Meta API!");
+        toast.success("⚡ WhatsApp delivered successfully via API!");
         onSent?.({ messageId: result.messageId });
         onOpenChange(false);
       } else {
-        toast.error(`Delivery failed: ${result.error || "Meta API Error"}`);
+        toast.error(`API delivery failed: ${result.error || "Meta WhatsApp API Error"}`);
       }
     } catch (err: any) {
-      console.error("Direct send failed:", err);
-      toast.error(`WhatsApp send error: ${err.message}`);
+      console.error("WhatsApp API direct send failed:", err);
+      toast.error(`WhatsApp API error: ${err.message || "Failed to deliver message"}`);
     } finally {
       setSending(false);
     }
+  };
+
+  const handleOpenInWhatsApp = () => {
+    const raw = (phoneNumber || "").replace(/\D/g, "");
+    const clean = raw.length === 10 ? `91${raw}` : raw;
+    const text = encodeURIComponent(compiledMessage);
+    window.open(`https://wa.me/${clean}?text=${text}`, "_blank");
   };
 
   return (
@@ -656,18 +629,6 @@ export default function WhatsAppPreviewModal({
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleOpenInWhatsApp}
-              className="text-xs rounded-xl h-8 cursor-pointer border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 shadow-2xs font-semibold gap-1.5"
-              title="Open directly in WhatsApp Web or Mobile App without Meta API"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span>Open in WhatsApp</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
               onClick={() => onOpenChange(false)}
               className="text-xs rounded-xl h-8 cursor-pointer border-slate-200 dark:border-slate-700 shadow-2xs"
             >
@@ -679,31 +640,18 @@ export default function WhatsAppPreviewModal({
               size="sm"
               onClick={handleSend}
               disabled={sending}
-              className={`text-xs font-bold rounded-xl text-white shadow-xs gap-1.5 cursor-pointer px-4 h-8 ${
-                activeTemplate && activeTemplate.metaStatus !== "approved"
-                  ? "bg-amber-600 hover:bg-amber-700"
-                  : "bg-emerald-600 hover:bg-emerald-700"
-              }`}
-              title={
-                activeTemplate && activeTemplate.metaStatus !== "approved"
-                  ? "ERP Template (Will open in WhatsApp)"
-                  : "Send via Meta Cloud API"
-              }
+              className="text-xs font-bold rounded-xl text-white shadow-xs gap-1.5 cursor-pointer px-4 h-8 bg-emerald-600 hover:bg-emerald-700"
+              title="Send via WhatsApp API"
             >
               {sending ? (
                 <>
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  <span>Sending...</span>
-                </>
-              ) : activeTemplate && activeTemplate.metaStatus !== "approved" ? (
-                <>
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span>Send (WhatsApp Web)</span>
+                  <span>Sending via API...</span>
                 </>
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" />
-                  <span>Send via API</span>
+                  <span>Send via WhatsApp API</span>
                 </>
               )}
             </Button>

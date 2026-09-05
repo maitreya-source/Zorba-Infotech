@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Truck,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import DispatchSlipPrintModal from "@/components/admin/DispatchSlipPrintModal";
+import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
 import ShortcutsHelpModal from "@/components/admin/ShortcutsHelpModal";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 
@@ -158,6 +160,7 @@ export default function AdminServiceCalls() {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [printCall, setPrintCall] = useState<ServiceCall | null>(null);
   const [dispatchPrintCall, setDispatchPrintCall] = useState<ServiceCall | null>(null);
+  const [whatsAppCall, setWhatsAppCall] = useState<ServiceCall | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -670,16 +673,16 @@ export default function AdminServiceCalls() {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider bg-slate-50/50 dark:bg-slate-800/20">
-                  {renderSortHeader("TICKET & DATE", "ticket", "pl-6 pr-4")}
-                  {renderSortHeader("CUSTOMER", "customer", "px-4")}
-                  {renderSortHeader("DEVICE & CATEGORY", "device", "px-4")}
-                  {renderSortHeader("STATUS", "status", "px-4")}
-                  {renderSortHeader("CHARGES", "charges", "px-4")}
-                  <th className="pl-4 pr-6 py-4 text-right text-slate-500 dark:text-slate-400">ACTIONS</th>
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-extrabold uppercase tracking-wider bg-slate-100/70 dark:bg-slate-800/40 text-slate-700 dark:text-slate-200">
+                  {renderSortHeader("TICKET & DATE", "ticket", "pl-6 pr-4 py-3.5")}
+                  {renderSortHeader("CUSTOMER", "customer", "px-4 py-3.5")}
+                  {renderSortHeader("DEVICE & CATEGORY", "device", "px-4 py-3.5")}
+                  {renderSortHeader("STATUS", "status", "px-4 py-3.5")}
+                  {renderSortHeader("CHARGES", "charges", "px-4 py-3.5")}
+                  <th className="pl-4 pr-6 py-3.5 text-right text-slate-700 dark:text-slate-300">ACTIONS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm">
                 {paginatedCalls.map((item) => {
                   const displayDate = item.dateTime
                     ? new Date(item.dateTime).toLocaleDateString("en-IN", {
@@ -707,14 +710,14 @@ export default function AdminServiceCalls() {
                         }
                         navigate(`/admin/service-calls/${item.id}/edit`);
                       }}
-                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
+                      className="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
                     >
                       {/* Ticket & Date */}
                       <td className="pl-6 pr-4 py-4 align-middle">
-                        <div className="font-bold text-[#2563EB] font-mono text-sm tracking-tight">
+                        <div className="font-bold text-[#2563EB] dark:text-blue-400 font-mono text-sm tracking-tight">
                           {item.ticketNo}
                         </div>
-                        <div className="text-xs text-slate-400 mt-0.5">{displayDate}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">{displayDate}</div>
                       </td>
 
                       {/* Customer */}
@@ -723,27 +726,27 @@ export default function AdminServiceCalls() {
                           <Link
                             to={`/admin/customers/${item.customerId}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="font-bold text-slate-900 dark:text-slate-100 text-xs hover:text-blue-600 dark:hover:text-blue-400 hover:underline inline-flex items-center gap-1"
+                            className="font-bold text-slate-900 dark:text-slate-100 text-sm hover:text-blue-600 dark:hover:text-blue-400 hover:underline inline-flex items-center gap-1"
                             title="View Customer Profile & Service History"
                           >
                             <span>{item.customerName}</span>
                           </Link>
                         ) : (
-                          <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                          <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                             {item.customerName}
                           </div>
                         )}
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                        <div className="text-xs text-slate-600 dark:text-slate-300 font-mono font-semibold mt-0.5">
                           📞 {item.customerPhone}
                         </div>
                       </td>
 
                       {/* Device & Category */}
                       <td className="px-4 py-4 align-middle max-w-xs">
-                        <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                        <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                           {item.deviceCategory}
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 truncate font-medium">
                           {item.modelNumber ? `Model: ${item.modelNumber}` : item.issueDescription}
                         </div>
                       </td>
@@ -778,12 +781,12 @@ export default function AdminServiceCalls() {
 
                       {/* Charges */}
                       <td className="px-4 py-4 align-middle">
-                        <div className="font-extrabold text-slate-900 dark:text-white text-sm font-display">
+                        <div className="font-extrabold text-slate-900 dark:text-white text-base font-display">
                           ₹{item.grandTotal.toLocaleString("en-IN")}
                         </div>
                       </td>
 
-                      {/* Actions (Pencil Edit & Horizontal Dots Dropdown / Restore in Trash) */}
+                      {/* Actions (Direct 1-Click Print, WhatsApp, Edit & Secondary Dropdown) */}
                       <td className="action-cell pl-4 pr-6 py-4 align-middle text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                           {activeTab === "trash" ? (
@@ -802,38 +805,57 @@ export default function AdminServiceCalls() {
                             </Button>
                           ) : (
                             <>
+                              {/* Direct 1-Click Print Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPrintCall(item);
+                                }}
+                                className="p-1.5 rounded-lg text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/60 transition-colors cursor-pointer border border-blue-200/80 dark:border-blue-800/60 shadow-2xs"
+                                title={`1-Click Print Job Card (${item.ticketNo})`}
+                              >
+                                <Printer className="h-4 w-4" />
+                              </button>
+
+                              {/* Direct 1-Click WhatsApp API Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setWhatsAppCall(item);
+                                }}
+                                className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/60 transition-colors cursor-pointer border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs"
+                                title={`1-Click WhatsApp API Update (${item.customerPhone})`}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </button>
+
+                              {/* Edit Service Call Button */}
                               <Link to={`/admin/service-calls/${item.id}/edit`} onClick={(e) => e.stopPropagation()}>
                                 <button
                                   type="button"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                  className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-700/80 shadow-2xs"
                                   title="Edit Service Call"
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </button>
                               </Link>
 
+                              {/* Secondary Actions Dropdown */}
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     type="button"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                    title="More Actions"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                    title="More Options"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-44 text-xs font-medium" onClick={(e) => e.stopPropagation()}>
-                                  <DropdownMenuItem
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      setPrintCall(item);
-                                    }}
-                                    className="gap-2 cursor-pointer"
-                                  >
-                                    <Printer className="h-3.5 w-3.5 text-slate-500" /> Print Job Card
-                                  </DropdownMenuItem>
+                                <DropdownMenuContent align="end" className="w-48 text-xs font-medium" onClick={(e) => e.stopPropagation()}>
                                   <DropdownMenuItem
                                     onSelect={(e) => {
                                       e.preventDefault();
@@ -842,15 +864,6 @@ export default function AdminServiceCalls() {
                                     className="gap-2 cursor-pointer text-blue-600 dark:text-blue-400 font-medium"
                                   >
                                     <Truck className="h-3.5 w-3.5 text-blue-500" /> Print Dispatch Slip
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      navigate(`/admin/service-calls/${item.id}/edit`);
-                                    }}
-                                    className="gap-2 cursor-pointer"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5 text-slate-500" /> Edit Details
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onSelect={(e) => {
@@ -909,6 +922,22 @@ export default function AdminServiceCalls() {
           setPrintCall(c);
         }}
       />
+
+      {/* 1-Click Table Row WhatsApp Modal (Strictly API Dispatched) */}
+      {whatsAppCall && (
+        <WhatsAppPreviewModal
+          open={Boolean(whatsAppCall)}
+          onOpenChange={(open) => {
+            if (!open) setWhatsAppCall(null);
+          }}
+          title={`WhatsApp Customer: ${whatsAppCall.ticketNo}`}
+          recipientName={whatsAppCall.customerName}
+          recipientRole="Customer"
+          defaultPhone={whatsAppCall.customerPhone}
+          ticketId={whatsAppCall.ticketNo}
+          serviceCall={whatsAppCall}
+        />
+      )}
 
       {/* Delete / Move to Trash Confirmation Dialog */}
       <ConfirmDeleteDialog

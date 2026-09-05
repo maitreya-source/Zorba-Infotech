@@ -72,8 +72,16 @@ export default function AdminQuotationForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { activeProfile } = useStaffProfile();
-  const isEditing = Boolean(id);
-  const { activeEditors } = useResourcePresence("quotation", id, activeProfile);
+  const [createdQuotationId, setCreatedQuotationId] = useState<string | null>(null);
+  const effectiveId = id || createdQuotationId;
+  const isEditing = Boolean(effectiveId);
+  const { activeEditors } = useResourcePresence("quotation", effectiveId, activeProfile);
+
+  const [invalidFields, setInvalidFields] = useState<{
+    customerName?: boolean;
+    customerPhone?: boolean;
+    items?: boolean;
+  }>({});
 
   // Core Form State
   const [quotationNo, setQuotationNo] = useState("");
@@ -221,6 +229,233 @@ export default function AdminQuotationForm() {
     return current !== initialSnapshotRef.current;
   };
 
+  // Browser reload / tab close dirty guard (Fix: Navigation Traps & Unsaved Data Destruction)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [customerName, customerPhone, items, discountInput, termsAndConditions, selectedCustomerId]);
+
+  const currentQuotationObject: Quotation = {
+    id: effectiveId || "NEW",
+    quotationNo: quotationNo || "QUOT-DRAFT",
+    date,
+    customerId: selectedCustomerId,
+    customerName,
+    customerPhone,
+    customerEmail,
+    customerAddress,
+    templateId,
+    templateName,
+    items,
+    subtotal,
+    discount: discountNum,
+    grandTotal,
+    termsAndConditions,
+    notes,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  const buildPayload = (cName: string, cPhone: string, cleanItems: QuotationItem[]) => ({
+    date,
+    customerId: selectedCustomerId || `cust-${Date.now()}`,
+    customerName: toTitleCase(cName),
+    customerPhone: cPhone,
+    customerEmail: (customerEmail || "").trim().toLowerCase() || undefined,
+    customerAddress: (customerAddress || "").trim() ? toTitleCase(customerAddress) : undefined,
+    templateId: templateId || undefined,
+    templateName: (templateName || "").trim() ? toTitleCase(templateName) : undefined,
+    items: cleanItems,
+    subtotal,
+    discount: discountNum > 0 ? discountNum : undefined,
+    grandTotal,
+    termsAndConditions: (termsAndConditions || "").trim() || DEFAULT_TERMS,
+    notes: (notes || "").trim() || undefined,
+    createdByStaffId: activeProfile?.id,
+    createdByStaffName: activeProfile?.name ? toTitleCase(activeProfile.name) : undefined,
+  });
+
+  const validateForm = () => {
+    const cName = (customerName || "").trim();
+    const cPhone = (customerPhone || "").trim();
+    const cleanItems = (items || [])
+      .filter((it) => (it?.productName || "").trim())
+      .map((it) => {
+        const q = Math.max(1, Number(it.quantity) || 1);
+        const p = Number(it.estimatedPrice) || 0;
+        return {
+          id: it.id || `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          productId: it.productId,
+          productName: toTitleCase(it.productName || ""),
+          category: it.category ? toTitleCase(it.category) : "General",
+          modelNumber: it.modelNumber ? formatModelNumber(it.modelNumber) : undefined,
+          description: typeof it.description === "string" && it.description.trim() ? it.description.trim() : undefined,
+          quantity: q,
+          estimatedPrice: p,
+          totalPrice: q * p,
+        };
+      });
+
+    const errors: { customerName?: boolean; customerPhone?: boolean; items?: boolean } = {};
+    if (!cName) errors.customerName = true;
+    if (!cPhone) errors.customerPhone = true;
+    if (cleanItems.length === 0) errors.items = true;
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      cName,
+      cPhone,
+      cleanItems,
+    };
+  };
+
+  // Auto-saves quotation when user clicks Print or WhatsApp without booting them off the screen
+  const ensureSavedQuotation = async (): Promise<Quotation | null> => {
+    const { isValid, errors, cName, cPhone, cleanItems } = validateForm();
+    if (!isValid) {
+      setInvalidFields(errors);
+      if (errors.customerName || errors.customerPhone) {
+        const el = document.getElementById("quot-cust-typeahead");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+        }
+      } else if (errors.items) {
+        const el = document.getElementById("quot-items-table");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+      toast.error("Please fill in customer details and at least one product row.");
+      return null;
+    }
+
+    setSaving(true);
+    try {
+      const payload = buildPayload(cName, cPhone, cleanItems);
+
+      if (effectiveId) {
+        if (hasUnsavedChanges()) {
+          await updateQuotation(effectiveId, payload);
+          initialSnapshotRef.current = JSON.stringify({
+            customerId: selectedCustomerId,
+            customerName: cName,
+            items: cleanItems,
+            discount: discountNum,
+            terms: termsAndConditions,
+          });
+        }
+        return {
+          ...currentQuotationObject,
+          id: effectiveId,
+          items: cleanItems,
+        };
+      }
+
+      const created = await createQuotation(payload);
+      setCreatedQuotationId(created.id);
+      setQuotationNo(created.quotationNo);
+
+      // Silently update URL so reload/bookmark keeps the created quotation
+      window.history.replaceState(null, "", `/admin/quotations/${created.id}/edit`);
+
+      initialSnapshotRef.current = JSON.stringify({
+        customerId: selectedCustomerId,
+        customerName: cName,
+        items: cleanItems,
+        discount: discountNum,
+        terms: termsAndConditions,
+      });
+
+      toast.success(`Quotation #${created.quotationNo} auto-saved!`);
+
+      return {
+        ...currentQuotationObject,
+        id: created.id,
+        quotationNo: created.quotationNo,
+        items: cleanItems,
+      };
+    } catch (err: any) {
+      console.error("Auto-save quotation error:", err);
+      toast.error(err?.message || "Failed to auto-save quotation");
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOpenPrintModal = async () => {
+    const saved = await ensureSavedQuotation();
+    if (!saved) return;
+    setShowPrintModal(true);
+  };
+
+  const handleOpenWhatsAppModal = async () => {
+    const saved = await ensureSavedQuotation();
+    if (!saved) return;
+    setShowWhatsAppModal(true);
+  };
+
+  // Standard Save Action (Primary button) - navigates to quotation list
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const { isValid, errors, cName, cPhone, cleanItems } = validateForm();
+    if (!isValid) {
+      setInvalidFields(errors);
+      if (errors.customerName || errors.customerPhone) {
+        const el = document.getElementById("quot-cust-typeahead");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+        }
+      } else if (errors.items) {
+        const el = document.getElementById("quot-items-table");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+      toast.error("Please fill in customer details and at least one product row.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = buildPayload(cName, cPhone, cleanItems);
+
+      if (effectiveId) {
+        await updateQuotation(effectiveId, payload);
+        toast.success("Quotation updated successfully!");
+      } else {
+        const created = await createQuotation(payload);
+        setCreatedQuotationId(created.id);
+        setQuotationNo(created.quotationNo);
+        toast.success(`Quotation #${created.quotationNo} created!`);
+      }
+
+      initialSnapshotRef.current = JSON.stringify({
+        customerId: selectedCustomerId,
+        customerName: cName,
+        items: cleanItems,
+        discount: discountNum,
+        terms: termsAndConditions,
+      });
+
+      navigate("/admin/quotations");
+    } catch (err: any) {
+      console.error("Save quotation error:", err);
+      toast.error(err?.message || "Failed to save quotation");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Keyboard Shortcuts Hook
   useTallyShortcuts({
     onCtrlA: () => handleSubmit(),
@@ -273,30 +508,6 @@ export default function AdminQuotationForm() {
       }
     },
   });
-
-  const handleOpenPrintModal = () => {
-    if (!isEditing) {
-      if (!(customerName || "").trim() || !(customerPhone || "").trim()) {
-        toast.error("Please select a customer and save the quotation before printing.");
-        return;
-      }
-      toast.info("Please save the quotation before printing.");
-      return;
-    }
-    setShowPrintModal(true);
-  };
-
-  const handleOpenWhatsAppModal = () => {
-    if (!(customerPhone || "").trim()) {
-      toast.error("Customer phone number is required to send quotation via WhatsApp.");
-      return;
-    }
-    if (!isEditing) {
-      toast.info("Please save the quotation first before sending via WhatsApp.");
-      return;
-    }
-    setShowWhatsAppModal(true);
-  };
 
   // Customer Select Handler
   const handleSelectCustomer = (cust: Customer) => {
@@ -454,112 +665,12 @@ export default function AdminQuotationForm() {
     }
   };
 
-  // Save / Submit Quotation
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const cName = (customerName || "").trim();
-    const cPhone = (customerPhone || "").trim();
-    if (!cName || !cPhone) {
-      toast.error("Please search and select a Customer with Name and Phone number");
-      return;
-    }
-
-    const cleanItems = (items || [])
-      .filter((it) => (it?.productName || "").trim())
-      .map((it) => {
-        const q = Math.max(1, Number(it.quantity) || 1);
-        const p = Number(it.estimatedPrice) || 0;
-        return {
-          id: it.id || `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-          productId: it.productId,
-          productName: toTitleCase(it.productName || ""),
-          category: it.category ? toTitleCase(it.category) : "General",
-          modelNumber: it.modelNumber ? formatModelNumber(it.modelNumber) : undefined,
-          description: typeof it.description === "string" && it.description.trim() ? it.description.trim() : undefined,
-          quantity: q,
-          estimatedPrice: p,
-          totalPrice: q * p,
-        };
-      });
-
-    if (cleanItems.length === 0) {
-      toast.error("Please add at least 1 product item from catalog");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const payload = {
-        date,
-        customerId: selectedCustomerId || `cust-${Date.now()}`,
-        customerName: toTitleCase(customerName || ""),
-        customerPhone: (customerPhone || "").trim(),
-        customerEmail: (customerEmail || "").trim().toLowerCase() || undefined,
-        customerAddress: (customerAddress || "").trim() ? toTitleCase(customerAddress) : undefined,
-        templateId: templateId || undefined,
-        templateName: (templateName || "").trim() ? toTitleCase(templateName) : undefined,
-        items: cleanItems,
-        subtotal,
-        discount: discountNum > 0 ? discountNum : undefined,
-        grandTotal,
-        termsAndConditions: (termsAndConditions || "").trim() || DEFAULT_TERMS,
-        notes: (notes || "").trim() || undefined,
-        createdByStaffId: activeProfile?.id,
-        createdByStaffName: activeProfile?.name ? toTitleCase(activeProfile.name) : undefined,
-      };
-
-      if (isEditing && id) {
-        await updateQuotation(id, payload);
-        toast.success("Quotation updated successfully!");
-      } else {
-        const created = await createQuotation(payload);
-        setQuotationNo(created.quotationNo);
-        toast.success(`Quotation #${created.quotationNo} created!`);
-        navigate(`/admin/quotations/${created.id}/edit`, { replace: true });
-      }
-
-      initialSnapshotRef.current = JSON.stringify({
-        customerId: selectedCustomerId,
-        customerName,
-        items: cleanItems,
-        discount: discountNum,
-        terms: termsAndConditions,
-      });
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to save quotation");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Preview Object for modals
-  const currentQuotationObject: Quotation = {
-    id: id || "NEW",
-    quotationNo: quotationNo || "QUOT-DRAFT",
-    date,
-    customerId: selectedCustomerId,
-    customerName,
-    customerPhone,
-    customerEmail,
-    customerAddress,
-    templateId,
-    templateName,
-    items,
-    subtotal,
-    discount: discountNum,
-    grandTotal,
-    termsAndConditions,
-    notes,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  };
-
   if (loading) {
     return <LoadingScreen fullScreen={false} title="Quotation Generator" subtitle="Loading customer & pricing configurations..." />;
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto text-slate-900 dark:text-slate-100 text-xs">
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto text-slate-900 dark:text-slate-100 text-sm">
       {/* Top Header & Breadcrumb */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
@@ -567,7 +678,7 @@ export default function AdminQuotationForm() {
             variant="ghost"
             size="icon"
             onClick={() => navigate("/admin/quotations")}
-            className="h-8 w-8 rounded-xl text-slate-500 hover:text-slate-900"
+            className="h-9 w-9 rounded-xl text-slate-500 hover:text-slate-900"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -575,10 +686,10 @@ export default function AdminQuotationForm() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="h-5 w-5 text-blue-600" />
-                <span>{isEditing ? `Edit Quotation #${quotationNo}` : "Create Price Estimate Quotation"}</span>
+                <span>{effectiveId ? `Edit Quotation #${quotationNo}` : "Create Price Estimate Quotation"}</span>
               </h1>
               {quotationNo && (
-                <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-mono font-bold border-blue-200">
+                <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-mono font-bold border-blue-200 text-xs">
                   #{quotationNo}
                 </Badge>
               )}
@@ -596,9 +707,9 @@ export default function AdminQuotationForm() {
             variant="outline"
             size="sm"
             onClick={() => setShowTemplateModal(true)}
-            className="h-8 text-xs font-bold rounded-xl border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 gap-1.5 cursor-pointer shadow-2xs"
+            className="h-9 text-xs font-bold rounded-xl border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 gap-1.5 cursor-pointer shadow-2xs"
           >
-            <LayoutTemplate className="h-3.5 w-3.5" />
+            <LayoutTemplate className="h-4 w-4" />
             <span>Templates Library</span>
           </Button>
 
@@ -607,9 +718,9 @@ export default function AdminQuotationForm() {
             variant="outline"
             size="sm"
             onClick={handleOpenPrintModal}
-            className="h-8 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 gap-1.5 cursor-pointer shadow-2xs"
+            className="h-9 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 gap-1.5 cursor-pointer shadow-2xs"
           >
-            <Printer className="h-3.5 w-3.5" />
+            <Printer className="h-4 w-4" />
             <span>Print (Alt+P)</span>
           </Button>
 
@@ -618,9 +729,9 @@ export default function AdminQuotationForm() {
             variant="outline"
             size="sm"
             onClick={handleOpenWhatsAppModal}
-            className="h-8 text-xs font-bold rounded-xl border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 gap-1.5 cursor-pointer shadow-2xs"
+            className="h-9 text-xs font-bold rounded-xl border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 gap-1.5 cursor-pointer shadow-2xs"
           >
-            <MessageSquare className="h-3.5 w-3.5" />
+            <MessageSquare className="h-4 w-4" />
             <span>WhatsApp (Alt+W)</span>
           </Button>
 
@@ -629,9 +740,9 @@ export default function AdminQuotationForm() {
             variant="outline"
             size="sm"
             onClick={() => setShowEmailModal(true)}
-            className="h-8 text-xs font-bold rounded-xl border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 gap-1.5 cursor-pointer shadow-2xs"
+            className="h-9 text-xs font-bold rounded-xl border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 gap-1.5 cursor-pointer shadow-2xs"
           >
-            <Mail className="h-3.5 w-3.5" />
+            <Mail className="h-4 w-4" />
             <span>Email</span>
           </Button>
 
@@ -640,10 +751,10 @@ export default function AdminQuotationForm() {
             size="sm"
             onClick={() => handleSubmit()}
             disabled={saving}
-            className="h-8 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1.5 cursor-pointer shadow-xs"
+            className="h-9 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1.5 cursor-pointer shadow-xs"
           >
-            <Save className="h-3.5 w-3.5" />
-            <span>{saving ? "Saving..." : isEditing ? "Update (Ctrl+A)" : "Save Quotation (Ctrl+A)"}</span>
+            <Save className="h-4 w-4" />
+            <span>{saving ? "Saving..." : effectiveId ? "Update (Ctrl+A)" : "Save Quotation (Ctrl+A)"}</span>
           </Button>
         </div>
       </div>
@@ -715,19 +826,34 @@ export default function AdminQuotationForm() {
                 Search Customer by Name, Mobile, or Company <span className="text-red-500 font-bold">*</span>
               </Label>
               <CustomerTypeahead
+                id="quot-cust-typeahead"
+                hasError={Boolean(invalidFields.customerName || invalidFields.customerPhone)}
                 selectedCustomerId={selectedCustomerId}
                 value={customerName}
-                onChange={setCustomerName}
-                onSelectCustomer={handleSelectCustomer}
+                onChange={(val) => {
+                  setCustomerName(val);
+                  if (invalidFields.customerName) {
+                    setInvalidFields((prev) => ({ ...prev, customerName: false }));
+                  }
+                }}
+                onSelectCustomer={(cust) => {
+                  handleSelectCustomer(cust);
+                  setInvalidFields((prev) => ({ ...prev, customerName: false, customerPhone: false }));
+                }}
                 onAddNewCustomer={() => setShowCustomerModal(true)}
                 placeholder="Type customer name, phone number, or company name..."
               />
+              {(invalidFields.customerName || invalidFields.customerPhone) && (
+                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1">
+                  <span>Customer Name and Phone Number are required.</span>
+                </p>
+              )}
             </div>
 
             {/* Non-Editable Populated Customer Card */}
             {(customerName || customerPhone || selectedCustomerId) && (
               <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 p-4 space-y-2.5 animate-in fade-in duration-150">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   {/* Customer Name */}
                   <div>
                     <span className="text-slate-400 font-semibold block text-[10px] uppercase">
@@ -743,8 +869,8 @@ export default function AdminQuotationForm() {
                     <span className="text-slate-400 font-semibold block text-[10px] uppercase">
                       Phone Number
                     </span>
-                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mt-0.5">
-                      <Phone className="h-3.5 w-3.5 text-blue-500" />
+                    <span className="font-mono font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+                      <Phone className="h-4 w-4 text-blue-500" />
                       {customerPhone ? formatIndianPhoneNumber(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
                     </span>
                   </div>
@@ -824,16 +950,23 @@ export default function AdminQuotationForm() {
             </div>
 
             {/* Line Items Table */}
-            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs">
-              <table className="w-full text-xs text-left border-collapse">
+            <div
+              id="quot-items-table"
+              className={`border rounded-2xl shadow-2xs transition-all ${
+                invalidFields.items
+                  ? "border-rose-400 dark:border-rose-700 ring-2 ring-rose-300 dark:ring-rose-950/60"
+                  : "border-slate-200 dark:border-slate-800"
+              }`}
+            >
+              <table className="w-full text-sm text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500">
-                    <th className="py-3 px-3 w-10 text-center">#</th>
-                    <th className="py-3 px-3">Product Name & Specifications</th>
-                    <th className="py-3 px-3 w-20 text-center">Qty</th>
-                    <th className="py-3 px-3 w-32 text-right">Est. Price (₹)</th>
-                    <th className="py-3 px-3 w-32 text-right">Total (₹)</th>
-                    <th className="py-3 px-2 w-10 text-center"></th>
+                  <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200">
+                    <th className="py-3.5 px-3 w-10 text-center">#</th>
+                    <th className="py-3.5 px-3">Product Name & Specifications</th>
+                    <th className="py-3.5 px-3 w-20 text-center">Qty</th>
+                    <th className="py-3.5 px-3 w-32 text-right">Est. Price (₹)</th>
+                    <th className="py-3.5 px-3 w-32 text-right">Total (₹)</th>
+                    <th className="py-3.5 px-2 w-10 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
@@ -882,8 +1015,8 @@ export default function AdminQuotationForm() {
                                   {it.category || "General"}
                                 </Badge>
                                 {it.modelNumber && (
-                                  <span className="font-mono text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1">
-                                    <Tag className="h-3 w-3 text-purple-500" />
+                                  <span className="font-mono text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                                    <Tag className="h-3.5 w-3.5 text-purple-500" />
                                     <span>Model: {it.modelNumber}</span>
                                   </span>
                                 )}
@@ -894,7 +1027,7 @@ export default function AdminQuotationForm() {
                                 placeholder="Additional notes, warranty, or config specs..."
                                 value={it.description || ""}
                                 onChange={(e) => handleUpdateItem(idx, "description", e.target.value)}
-                                className="h-7 text-[11px] rounded-lg mt-1 text-slate-600 dark:text-slate-400"
+                                className="h-8 text-xs rounded-lg mt-1 text-slate-600 dark:text-slate-400"
                               />
                             </div>
                           ) : (
@@ -920,7 +1053,7 @@ export default function AdminQuotationForm() {
                               const clean = raw === "" ? 1 : Math.max(1, Number(raw.replace(/^0+(?=\d)/, '')) || 1);
                               handleUpdateItem(idx, "quantity", clean);
                             }}
-                            className="h-8 text-xs font-mono font-bold text-center rounded-xl w-16 mx-auto"
+                            className="h-9 text-sm font-mono font-bold text-center rounded-xl w-16 mx-auto"
                           />
                         </td>
 
@@ -937,12 +1070,12 @@ export default function AdminQuotationForm() {
                               const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));
                               handleUpdateItem(idx, "estimatedPrice", clean);
                             }}
-                            className="h-8 text-xs font-mono text-right rounded-xl w-28 ml-auto font-bold"
+                            className="h-9 text-sm font-mono text-right rounded-xl w-28 ml-auto font-bold"
                           />
                         </td>
 
                         {/* Line Total */}
-                        <td className="py-3.5 px-3 text-right font-mono font-extrabold text-slate-900 dark:text-white align-top pt-5">
+                        <td className="py-3.5 px-3 text-right font-mono font-black text-sm text-slate-950 dark:text-white align-top pt-5">
                           ₹{((Number(it.quantity) || 1) * (Number(it.estimatedPrice) || 0)).toLocaleString("en-IN")}
                         </td>
 
@@ -963,6 +1096,12 @@ export default function AdminQuotationForm() {
                 </tbody>
               </table>
             </div>
+
+            {invalidFields.items && (
+              <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 px-4 py-2 bg-rose-50 dark:bg-rose-950/50 rounded-xl mt-2 flex items-center gap-1.5">
+                <span>At least one product item with a valid name, quantity, and price is required.</span>
+              </p>
+            )}
 
             {/* Quick Template Saving CTA */}
             <div className="flex items-center justify-between pt-2">
@@ -1108,7 +1247,7 @@ export default function AdminQuotationForm() {
             variant="outline"
             size="sm"
             onClick={() => navigate("/admin/quotations")}
-            className="h-8 text-xs rounded-xl bg-slate-800 border-slate-700 text-slate-300 hover:text-white"
+            className="h-9 text-xs rounded-xl bg-slate-800 border-slate-700 text-slate-300 hover:text-white"
           >
             Back (Esc)
           </Button>
@@ -1117,10 +1256,10 @@ export default function AdminQuotationForm() {
             size="sm"
             onClick={() => handleSubmit()}
             disabled={saving}
-            className="h-8 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-500 text-white gap-1.5 shadow-sm cursor-pointer"
+            className="h-9 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-500 text-white gap-1.5 shadow-sm cursor-pointer"
           >
-            <Save className="h-3.5 w-3.5" />
-            <span>{saving ? "Saving..." : "Save Quotation (Ctrl+A)"}</span>
+            <Save className="h-4 w-4" />
+            <span>{saving ? "Saving..." : effectiveId ? "Update Quotation (Ctrl+A)" : "Save Quotation (Ctrl+A)"}</span>
           </Button>
         </div>
       </div>

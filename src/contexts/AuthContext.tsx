@@ -34,6 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Development bypass for automated testing, screenshotting and local audits
+    if (import.meta.env.DEV && (localStorage.getItem("zorba_dev_auth") === "true" || window.location.search.includes("dev_auth=true"))) {
+      setUser({
+        email: "manishm9730@gmail.com",
+        displayName: "Manish Mulchandani",
+        uid: "dev-admin-1",
+      } as any);
+      setIsAdmin(true);
+      setLoading(false);
+      return;
+    }
+
     // Process redirect result if returning from Google auth redirect
     getRedirectResult(auth).catch((err) => {
       console.warn("getRedirectResult warning:", err);

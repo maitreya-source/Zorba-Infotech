@@ -13,6 +13,12 @@ interface ShortcutsHelpModalProps {
 
 const SHORTCUTS = [
   {
+    action: "Omnisearch (Tickets/Customers)",
+    win: "Ctrl + K / /",
+    mac: "⌘ Cmd + K / /",
+    desc: "Instant global search across phone numbers, tickets, and models",
+  },
+  {
     action: "Create New Ticket",
     win: "Alt + A",
     mac: "⌥ Option + A",
@@ -25,16 +31,22 @@ const SHORTCUTS = [
     desc: "Opens the fast customer creation popup",
   },
   {
+    action: "Save Ticket Form",
+    win: "Ctrl + A / Ctrl + S",
+    mac: "⌘ Cmd + A / ⌘ + S",
+    desc: "Submits and saves active form data",
+  },
+  {
+    action: "Milestone Milestones",
+    win: "Alt + 1 .. 4",
+    mac: "⌥ Option + 1 .. 4",
+    desc: "Jump directly to Received, Diagnosed, Repaired, or Delivered",
+  },
+  {
     action: "Delete Selected Ticket",
     win: "Alt + D",
     mac: "⌥ Option + D",
     desc: "Triggers deletion dialog for highlighted call",
-  },
-  {
-    action: "Save Ticket Form",
-    win: "Ctrl + A",
-    mac: "⌘ Cmd + A",
-    desc: "Submits and saves active form data",
   },
   {
     action: "Back / Cancel / Close",
@@ -43,10 +55,10 @@ const SHORTCUTS = [
     desc: "Closes modal dialog or navigates back",
   },
   {
-    action: "Focus Date Field",
-    win: "F2",
-    mac: "F2",
-    desc: "Quickly jumps cursor to the date picker",
+    action: "Keyboard Shortcuts Help",
+    win: "?",
+    mac: "?",
+    desc: "Displays this shortcuts cheat sheet",
   },
 ];
 

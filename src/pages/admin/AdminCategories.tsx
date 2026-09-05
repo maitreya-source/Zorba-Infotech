@@ -29,7 +29,6 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-  seedDefaultCategories,
 } from "@/lib/firestore";
 import { ICON_NAMES, COLOR_OPTIONS, getIcon } from "@/lib/icons";
 import type { Category } from "@/lib/types";
@@ -59,7 +58,6 @@ export default function AdminCategories() {
   const [form, setForm] = useState<CategoryForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [seeding, setSeeding] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -138,19 +136,6 @@ export default function AdminCategories() {
     }
   };
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    try {
-      await seedDefaultCategories(true);
-      toast.success("11 Master categories populated successfully");
-      load();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to populate categories");
-    } finally {
-      setSeeding(false);
-    }
-  };
-
   const filtered = categories.filter((c) => {
     const q = search.toLowerCase().trim();
     return (
@@ -206,12 +191,12 @@ export default function AdminCategories() {
           title="No Categories Found"
           description={
             categories.length === 0
-              ? "Click Seed Defaults to populate standard categories, or click Add Category."
+              ? "No categories created yet. Click Add Category to create your first category."
               : "Try adjusting your search query."
           }
-          actionLabel={categories.length === 0 ? "Seed Default Categories" : "Add Category"}
-          actionIcon={categories.length === 0 ? RefreshCw : Plus}
-          onAction={categories.length === 0 ? handleSeed : openAdd}
+          actionLabel="Add Category"
+          actionIcon={Plus}
+          onAction={openAdd}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">

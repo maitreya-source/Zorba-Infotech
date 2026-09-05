@@ -42,6 +42,7 @@ import {
   getQuotationTemplates,
 } from "@/lib/firestore";
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
+import { formatIndianPhoneNumber } from "@/lib/utils";
 import type { Quotation, QuotationTemplate } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
@@ -404,51 +405,53 @@ export default function AdminQuotations() {
       ) : (
         <div className="rounded-2xl border bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="border-b bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider text-[10px]">
+            <table className="w-full text-sm text-left border-collapse">
+              <thead className="border-b bg-slate-50 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 font-extrabold uppercase tracking-wider text-xs">
                 <tr>
-                  <th className="px-4 py-3">Quote #</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Estimated Items</th>
-                  <th className="px-4 py-3 text-right">Est. Grand Total</th>
-                  <th className="px-4 py-3 text-right">Actions & Share</th>
+                  <th className="px-4 py-3.5">Quote #</th>
+                  <th className="px-4 py-3.5">Date</th>
+                  <th className="px-4 py-3.5">Customer</th>
+                  <th className="px-4 py-3.5">Estimated Items</th>
+                  <th className="px-4 py-3.5 text-right">Est. Grand Total</th>
+                  <th className="px-4 py-3.5 text-right">Actions & Share</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {paginatedQuotations.map((q) => (
                   <tr key={q.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
                     {/* Quote No */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <Link
                         to={`/admin/quotations/${q.id}/edit`}
-                        className="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                        className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
                       >
                         <span>#{q.quotationNo}</span>
-                        <ExternalLink className="h-3 w-3 opacity-60" />
+                        <ExternalLink className="h-3.5 w-3.5 opacity-60" />
                       </Link>
                       {q.templateName && (
-                        <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-0.5">
+                        <div className="text-[11px] text-purple-700 dark:text-purple-300 font-bold mt-0.5">
                           {q.templateName}
                         </div>
                       )}
                     </td>
 
                     {/* Date */}
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                    <td className="px-4 py-3.5 text-slate-700 dark:text-slate-300 font-medium">
                       {q.date}
                     </td>
 
                     {/* Customer */}
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-slate-900 dark:text-white">{q.customerName}</div>
+                    <td className="px-4 py-3.5">
+                      <div className="font-bold text-sm text-slate-900 dark:text-white">{q.customerName}</div>
                       {q.customerPhone && (
-                        <div className="text-[11px] text-slate-500 font-mono">{q.customerPhone}</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400 font-mono font-bold mt-0.5">
+                          {formatIndianPhoneNumber(q.customerPhone)}
+                        </div>
                       )}
                     </td>
 
                     {/* Items Summary with clean model spacing */}
-                    <td className="px-4 py-3 max-w-[280px]">
+                    <td className="px-4 py-3.5 max-w-[280px]">
                       <div className="space-y-1">
                         {q.items?.slice(0, 2).map((it, idx) => (
                           <div key={idx} className="flex items-center gap-2 text-xs truncate">
@@ -456,17 +459,17 @@ export default function AdminQuotations() {
                               {it.productName}
                             </span>
                             {it.modelNumber && (
-                              <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1 rounded shrink-0">
+                              <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded shrink-0">
                                 {it.modelNumber}
                               </span>
                             )}
-                            <span className="text-[10px] text-slate-400 shrink-0">
+                            <span className="text-slate-500 shrink-0 font-semibold">
                               ×{it.quantity}
                             </span>
                           </div>
                         ))}
                         {(q.items?.length || 0) > 2 && (
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[11px] text-slate-500 font-medium">
                             +{(q.items?.length || 0) - 2} more item{q.items?.length === 3 ? "" : "s"}
                           </div>
                         )}
@@ -474,77 +477,77 @@ export default function AdminQuotations() {
                     </td>
 
                     {/* Est. Grand Total */}
-                    <td className="px-4 py-3 text-right">
-                      <span className="font-mono font-extrabold text-sm text-slate-950 dark:text-white">
+                    <td className="px-4 py-3.5 text-right">
+                      <span className="font-mono font-black text-sm text-slate-950 dark:text-white">
                         ₹{q.grandTotal.toLocaleString("en-IN")}
                       </span>
                     </td>
 
                     {/* Quick Dispatches & Actions */}
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
                         {/* Print */}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg"
+                          className="h-8 w-8 text-slate-700 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer"
                           title="Print Quotation"
                           onClick={() => {
                             setActiveQuoteForModal(q);
                             setShowPrintModal(true);
                           }}
                         >
-                          <Printer className="h-3.5 w-3.5" />
+                          <Printer className="h-4 w-4" />
                         </Button>
 
                         {/* WhatsApp */}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg"
+                          className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg cursor-pointer"
                           title="Send on WhatsApp"
                           onClick={() => {
                             setActiveQuoteForModal(q);
                             setShowWhatsAppModal(true);
                           }}
                         >
-                          <MessageSquare className="h-3.5 w-3.5" />
+                          <MessageSquare className="h-4 w-4" />
                         </Button>
 
                         {/* Email */}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg"
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer"
                           title="Send Email"
                           onClick={() => {
                             setActiveQuoteForModal(q);
                             setShowEmailModal(true);
                           }}
                         >
-                          <Mail className="h-3.5 w-3.5" />
+                          <Mail className="h-4 w-4" />
                         </Button>
 
                         {/* Edit */}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                          className="h-8 w-8 text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                           title="Edit Quotation"
                           onClick={() => navigate(`/admin/quotations/${q.id}/edit`)}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-4 w-4" />
                         </Button>
 
                         {/* Delete */}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg"
+                          className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg cursor-pointer"
                           title="Delete Quotation"
                           onClick={() => setDeleteQuoteId(q.id)}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>
