@@ -172,7 +172,7 @@ export default function SearchBar() {
           }}
           onKeyDown={handleKeyDown}
           placeholder="Search categories (Laptops, CCTV, Printers, RAM)..."
-          className="h-11 w-full rounded-xl border border-white/20 bg-white pl-11 pr-20 text-xs sm:text-sm text-slate-900 shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-500"
+          className="h-11 w-full rounded-xl border border-white/20 bg-white pl-11 pr-20 text-xs sm:text-sm text-slate-900 shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400/60 placeholder:font-normal"
         />
 
         {query ? (

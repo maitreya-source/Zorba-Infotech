@@ -117,7 +117,7 @@ export default function ServiceCallBillingPartsCard({
                   const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));
                   onUpdatePart(idx, "unitPrice", clean);
                 }}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white transition-colors"
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
               />
             </div>
             <div className="col-span-1 flex items-center justify-end gap-1.5">
@@ -165,7 +165,7 @@ export default function ServiceCallBillingPartsCard({
               const raw = e.target.value;
               onServiceChargesInputChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
             }}
-            className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white transition-colors"
+            className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
           />
         </div>
 
@@ -183,7 +183,7 @@ export default function ServiceCallBillingPartsCard({
               const raw = e.target.value;
               onDiscountInputChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
             }}
-            className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-rose-600 dark:text-rose-400 placeholder:text-slate-400 focus:bg-white transition-colors"
+            className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-44 font-mono font-medium text-rose-600 dark:text-rose-400 placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
           />
         </div>
       </div>

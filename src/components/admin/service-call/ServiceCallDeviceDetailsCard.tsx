@@ -196,7 +196,7 @@ export default function ServiceCallDeviceDetailsCard({
               placeholder="e.g. 15082026"
               value={serialNumber}
               onChange={(e) => onSerialNumberChange(e.target.value)}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
+              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
             />
           </div>
 
@@ -238,7 +238,7 @@ export default function ServiceCallDeviceDetailsCard({
               placeholder="e.g. INV-2024-9981"
               value={billNumber}
               onChange={(e) => onBillNumberChange(e.target.value)}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
+              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
             />
           </div>
         </div>
@@ -254,12 +254,12 @@ export default function ServiceCallDeviceDetailsCard({
             onChange={(e) => onIssueDescriptionChange(e.target.value)}
             rows={2}
             required
-            className="text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
+            className="text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
           />
 
           {/* Quick Tags Suggestions */}
           <div className="flex items-center gap-1.5 overflow-x-auto py-1.5 no-scrollbar text-xs">
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">Suggestions:</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium shrink-0">Suggestions:</span>
             {quickTags.map((tag) => (
               <button
                 key={tag}
@@ -399,7 +399,7 @@ export default function ServiceCallDeviceDetailsCard({
                 placeholder="e.g. TRK-9981 / AUG-2026"
                 value={rmaNumber}
                 onChange={(e) => onRmaNumberChange(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
               />
             </div>
 
@@ -418,7 +418,7 @@ export default function ServiceCallDeviceDetailsCard({
                   const raw = e.target.value;
                   onCourierChargesInputChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
                 }}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
+                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
               />
             </div>
           </div>
@@ -444,7 +444,7 @@ export default function ServiceCallDeviceDetailsCard({
               placeholder="Enter complete onsite location..."
               value={onsiteAddress}
               onChange={(e) => onOnsiteAddressChange(e.target.value)}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:bg-white transition-colors"
+              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
             />
           </div>
         </div>

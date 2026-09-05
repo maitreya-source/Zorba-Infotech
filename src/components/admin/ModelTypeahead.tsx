@@ -163,7 +163,7 @@ export default function ModelTypeahead({
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 placeholder:text-slate-400 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors pr-8 w-full"
+          className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors pr-8 w-full"
         />
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
           {loading ? (
