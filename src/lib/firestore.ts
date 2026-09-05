@@ -31,7 +31,6 @@ import type {
   Product,
   DeviceCategory,
   DeviceModel,
-  SparePartCatalogItem,
   StaffMember,
   TimelineEvent,
   Customer,
@@ -224,28 +223,6 @@ export async function deleteCategory(id: string): Promise<void> {
   await deleteDoc(doc(db, "categories", id));
 }
 
-export async function seedDefaultCategories(force: boolean = false): Promise<void> {
-  try {
-    const existing = await getDocs(collection(db, "categories"));
-    if (!force && !existing.empty && existing.size >= DEFAULT_CATEGORIES.length) return;
-
-    for (const cat of DEFAULT_CATEGORIES) {
-      const docId = cat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      const docRef = doc(db, "categories", docId);
-      await setDoc(
-        docRef,
-        {
-          id: docId,
-          ...cat,
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-  } catch (err) {
-    console.warn("Could not seed categories:", err);
-  }
-}
 
 // ─── Products (Slim In-Memory Index with Non-Blocking Delta-Sync) ──────────────
 
@@ -1891,38 +1868,6 @@ export async function getStaff(): Promise<StaffMember[]> {
 
 export const getStaffMembers = getStaff;
 
-export async function createStaff(data: Omit<StaffMember, "id" | "createdAt">): Promise<StaffMember> {
-  const tm = await createTeamMember({
-    name: data.name,
-    role: data.role?.toLowerCase().includes("manager") ? "manager" : "backoffice",
-    phone: data.phone || "",
-    active: data.active !== false,
-  });
-  return {
-    id: tm.id,
-    name: tm.name,
-    role: data.role,
-    phone: tm.phone,
-    active: tm.active,
-    createdAt: tm.createdAt,
-  };
-}
-
-export const createStaffMember = createStaff;
-
-export async function updateStaff(id: string, data: Partial<StaffMember>): Promise<void> {
-  await updateTeamMember(id, {
-    ...(data.name ? { name: data.name } : {}),
-    ...(data.phone ? { phone: data.phone } : {}),
-    ...(data.active !== undefined ? { active: data.active } : {}),
-    ...(data.role ? { role: data.role.toLowerCase().includes("manager") ? "manager" : "backoffice" } : {}),
-  });
-}
-
-export const updateStaffMember = updateStaff;
-export const deleteStaff = deleteTeamMember;
-export const deleteStaffMember = deleteTeamMember;
-
 export async function getTechnicians(): Promise<Technician[]> {
   const team = await getTeamMembers();
   return team
@@ -1938,35 +1883,6 @@ export async function getTechnicians(): Promise<Technician[]> {
     }));
 }
 
-export async function createTechnician(data: Omit<Technician, "id" | "createdAt">): Promise<Technician> {
-  const tm = await createTeamMember({
-    name: data.name,
-    role: "technician",
-    phone: data.phone,
-    email: data.email,
-    specialization: data.specialization,
-    active: data.active !== false,
-  });
-  return {
-    id: tm.id,
-    name: tm.name,
-    phone: tm.phone,
-    email: tm.email,
-    specialization: tm.specialization,
-    active: tm.active,
-    createdAt: tm.createdAt,
-  };
-}
-
-export async function updateTechnician(id: string, data: Partial<Technician>): Promise<void> {
-  const { createdAt: _ca, ...rest } = data;
-  await updateTeamMember(id, {
-    ...rest,
-    role: "technician",
-  });
-}
-
-export const deleteTechnician = deleteTeamMember;
 
 // ─── Financial Years & Months (Hierarchy) ────────────────────────────────────
 
@@ -2775,59 +2691,6 @@ export async function restoreServiceCall(id: string): Promise<void> {
   }
 }
 
-export async function hardDeleteServiceCall(id: string): Promise<void> {
-  try {
-    const existing = await getServiceCall(id);
-    const batch = writeBatch(db);
-    if (existing?.fyId && existing?.monthKey) {
-      const subDocRef = doc(db, "financial_years", existing.fyId, "months", existing.monthKey, "service_calls", id);
-      batch.delete(subDocRef);
-    }
-    batch.delete(doc(db, "service_calls", id));
-    await batch.commit();
-  } catch (err: any) {
-    console.error("hardDeleteServiceCall error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-/**
- * Permanently deletes soft-deleted trash items older than retentionDays (default: 90 days).
- * Prevents database clutter and minimizes long-term storage consumption.
- */
-export async function purgeExpiredTrash(retentionDays = 90): Promise<{ purgedCount: number }> {
-  try {
-    const cutoffTimestamp = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
-    
-    // Find expired trash in service calls
-    const trashQuery = query(
-      collectionGroup(db, "service_calls"),
-      where("isDeleted", "==", true),
-      where("deletedAt", "<=", cutoffTimestamp),
-      limit(100)
-    );
-
-    const snap = await fetchWithTimeout(getDocs(trashQuery));
-    if (snap.empty) {
-      return { purgedCount: 0 };
-    }
-
-    const batch = writeBatch(db);
-    let count = 0;
-
-    for (const d of snap.docs) {
-      batch.delete(d.ref);
-      count++;
-    }
-
-    await batch.commit();
-    return { purgedCount: count };
-  } catch (err: any) {
-    console.error("purgeExpiredTrash error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
 export async function addTimelineEvent(
   ticketNo: string,
   event: TimelineEvent
@@ -2877,46 +2740,6 @@ export async function saveDeviceModel(categoryName: string, modelName: string): 
   };
   await setDoc(docRef, cleanFirestoreData(newModel));
   return newModel;
-}
-
-// ─── Spare Parts Catalog ──────────────────────────────────────────────────────
-
-export async function getSparePartsCatalog(category?: string): Promise<SparePartCatalogItem[]> {
-  try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "spare_parts")));
-    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SparePartCatalogItem);
-    if (category) {
-      return all.filter((p) => p.category?.toLowerCase() === category.toLowerCase());
-    }
-    return all;
-  } catch (err: any) {
-    console.error("getSparePartsCatalog error:", err);
-    return [];
-  }
-}
-
-export async function saveSparePartToCatalog(
-  name: string,
-  unitPrice: number,
-  category?: string
-): Promise<SparePartCatalogItem> {
-  const cleanName = toTitleCase(name);
-  if (!cleanName) throw new Error("Part name required");
-
-  const existing = await getSparePartsCatalog();
-  const found = existing.find((p) => p.name.toLowerCase() === cleanName.toLowerCase());
-  if (found) return found;
-
-  const docRef = doc(collection(db, "spare_parts"));
-  const newPart: SparePartCatalogItem = {
-    id: docRef.id,
-    name: cleanName,
-    unitPrice,
-    category: category ? toTitleCase(category) : undefined,
-    createdAt: Date.now(),
-  };
-  await setDoc(docRef, cleanFirestoreData(newPart));
-  return newPart;
 }
 
 // ─── WhatsApp Message Templates ──────────────────────────────────────────────
@@ -3386,25 +3209,6 @@ export async function getMonthlyReportSummary(
   }
 
   return summaryData;
-}
-
-export async function updateMonthlyReportSummary(
-  monthKey: string,
-  data: Partial<MonthlyReportSummary>
-): Promise<void> {
-  try {
-    const docRef = doc(db, "reports_summary", monthKey);
-    await setDoc(
-      docRef,
-      cleanFirestoreData({
-        ...data,
-        updatedAt: Date.now(),
-      }),
-      { merge: true }
-    );
-  } catch (err) {
-    console.warn("updateMonthlyReportSummary error:", err);
-  }
 }
 
 export async function getQuotations(filters?: {

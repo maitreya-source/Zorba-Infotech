@@ -42,9 +42,6 @@ export function isDriveSyncAuthorized(email?: string | null): boolean {
   return DRIVE_SYNC_AUTHORIZED_EMAILS.includes(clean);
 }
 
-export function isDatabaseRestoreAuthorized(email?: string | null): boolean {
-  return isBackupDownloadAuthorized(email);
-}
 
 export interface BackupScopeOptions {
   fyId?: string; // e.g. "FY2627" or "all"

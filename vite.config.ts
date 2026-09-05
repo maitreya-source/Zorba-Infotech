@@ -31,7 +31,6 @@ export default defineConfig(({ mode }) => ({
             "@radix-ui/react-dialog",
             "@radix-ui/react-dropdown-menu",
             "@radix-ui/react-select",
-            "@radix-ui/react-toast",
             "@radix-ui/react-tooltip",
             "lucide-react",
           ],

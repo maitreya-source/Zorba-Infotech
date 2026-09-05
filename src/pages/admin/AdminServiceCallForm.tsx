@@ -597,6 +597,9 @@ export default function AdminServiceCallForm() {
     return currentSnapshot !== initialSnapshotRef.current;
   };
 
+  // Safe alias so both hasUnsavedChanges and isFormDirty are callable
+  const isFormDirty = hasUnsavedChanges;
+
   // Browser navigation and tab close protection
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {

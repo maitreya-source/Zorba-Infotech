@@ -290,48 +290,6 @@ export function normalizeBrand(rawBrand?: string, itemName?: string): string {
   return "General";
 }
 
-export function isNonProductLedger(name: string, rawCat?: string, rawGroup?: string): boolean {
-  const text = `${name || ""} ${rawCat || ""} ${rawGroup || ""}`.toLowerCase().trim();
-
-  // 1. Any Old / Second Hand / Scrap / Writeoff item
-  if (/\b(old\s*items?|second\s*hand|scrap|old\s*printer|old\s*ram|old\s*cabinet|old\s*ups|old\s*led|old\s*motherboard|old\s*power\s*supply|old\s*broadband|old\s*ont|old\s*adapter|old\s*battery|old\s*laminator|old\s*note\s*book|lcd\s*t\s*v\s*tuner\s*old)\b/i.test(text)) {
-    return true;
-  }
-
-  // 2. Service, Repair, Labour, Freight, Installation, Testing, Maintenance charges
-  if (/\b(service\s*repair|repair\s*charges?|installation\s*charges?|labour\s*charges?|courier\s*charges?|freight|maintenance\s*charge|service\s*charge|sms\s*pack|instalation\s*charges?|mantenence\s*charges?|networking\s*charges?)\b/i.test(text)) {
-    return true;
-  }
-
-  // 3. Demo / Samples / Dummy voucher items
-  if (/\b(demo\s*item|demo\b|sample\b|testing\b)/i.test(text) || (rawGroup || "").toLowerCase() === "demo") {
-    return true;
-  }
-
-  // 4. GST Sales / Purchase placeholder vouchers & Ledgers
-  if (/^(gst\s*(?:sales|purchase|sale)\b)/i.test((name || "").trim())) {
-    return true;
-  }
-
-  const exactJunk = new Set([
-    "gst purchase @ 18% item", "gst purchase @ 12 % item", "gst purchase @ 28 % item",
-    "gst purchase @ 5%", "gst sales @ 28 %", "gst sales @28% with quantity",
-    "gst sales & services @ 12%", "gst sales & services @ 18%", "gst sales peripherals- 84716060",
-    "gst sales patch cord cable", "gst sales 120 gm powder universal - 37079090",
-    "gst sales printer ink tank - 84433100", "gst sales lamination machine", "old items"
-  ]);
-  if (exactJunk.has((name || "").toLowerCase().trim())) {
-    return true;
-  }
-
-  // 5. Replacement voucher lines
-  if ((rawGroup || "").toLowerCase() === "replacement" || /\bfor\s*replacement\b/i.test(text)) {
-    return true;
-  }
-
-  return false;
-}
-
 export function inferCategoryId(name: string, rawCat?: string, rawGroup?: string): string {
   const text = `${name || ""} ${rawCat || ""} ${rawGroup || ""}`.toLowerCase();
 

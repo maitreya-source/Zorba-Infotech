@@ -22,7 +22,7 @@ import {
   createCategory,
 } from "@/lib/firestore";
 import { toTitleCase, formatModelNumber } from "@/lib/utils";
-import { PRODUCT_UOM_OPTIONS, DEFAULT_PRODUCT_UOM } from "@/lib/constants";
+import { PRODUCT_UOM_OPTIONS, DEFAULT_PRODUCT_UOM, DEFAULT_WARRANTY } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +46,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { Category, CustomField } from "@/lib/types";
-import { DEFAULT_WARRANTY } from "@/lib/constants";
 import WarrantySelector from "@/components/admin/WarrantySelector";
 import BrandTypeahead from "@/components/admin/BrandTypeahead";
 import LoadingScreen from "@/components/common/LoadingScreen";

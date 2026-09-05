@@ -38,7 +38,7 @@ import {
   getCategories,
   getCustomer,
 } from "@/lib/firestore";
-import { toTitleCase, formatModelNumber } from "@/lib/utils";
+import { toTitleCase, formatModelNumber, formatIndianPhoneNumber } from "@/lib/utils";
 import type {
   Quotation,
   QuotationItem,
@@ -62,7 +62,6 @@ import { useResourcePresence } from "@/lib/realtimeSync";
 import ResourceCollisionAlert from "@/components/admin/ResourceCollisionAlert";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
-import { formatIndianPhoneNumber } from "@/lib/utils";
 
 const DEFAULT_TERMS = `1. All prices mentioned above are estimated approximate prices based on current market rates and are subject to change at the time of actual purchase/order confirmation based on product availability.
 2. This is not an invoice. This is only a quotation and should not be treated as a tax invoice.

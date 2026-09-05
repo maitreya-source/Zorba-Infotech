@@ -22,7 +22,6 @@ import {
   FirebaseErrorState,
   SearchFilterBar,
   LoadingScreen,
-  WhatsAppChatButton,
 } from "@/components/common";
 import { getCouriers, deleteCourier } from "@/lib/firestore";
 import type { Courier } from "@/lib/types";

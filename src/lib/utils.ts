@@ -151,59 +151,6 @@ export function formatPhoneForPrint(phone?: string | null): string {
   return raw;
 }
 
-/**
- * Generates search tokens (n-grams/prefixes) for indexing Firestore customer records.
- * Supports efficient server-side searching for 5,000+ customers.
- */
-export function generateSearchTokens(fields: {
-  name?: string;
-  phone?: string;
-  companyName?: string;
-  email?: string;
-  id?: string;
-}): string[] {
-  const tokens = new Set<string>();
-
-  const processText = (text?: string) => {
-    if (!text) return;
-    const clean = text.toLowerCase().trim();
-    if (!clean) return;
-
-    // Word tokens
-    const words = clean.split(/[\s,.\-_/()]+/);
-    for (const word of words) {
-      if (word.length < 2) continue;
-      // Add prefixes from length 2 to 15
-      for (let i = 2; i <= Math.min(word.length, 15); i++) {
-        tokens.add(word.slice(0, i));
-      }
-    }
-  };
-
-  const processPhone = (phoneStr?: string) => {
-    if (!phoneStr) return;
-    const digits = phoneStr.replace(/\D/g, "");
-    if (digits.length >= 4) {
-      // Index last 10 digits prefixes and full digits prefixes
-      const last10 = digits.slice(-10);
-      for (let i = 3; i <= last10.length; i++) {
-        tokens.add(last10.slice(0, i));
-        tokens.add(last10.slice(-i));
-      }
-      for (let i = 4; i <= digits.length; i++) {
-        tokens.add(digits.slice(0, i));
-      }
-    }
-  };
-
-  processText(fields.name);
-  processText(fields.companyName);
-  processText(fields.email);
-  processPhone(fields.phone);
-  if (fields.id) tokens.add(fields.id.toLowerCase());
-
-  return Array.from(tokens);
-}
 
 /**
  * WhatsApp message generator with formatted status stages and terms & conditions.

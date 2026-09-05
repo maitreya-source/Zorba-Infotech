@@ -23,7 +23,6 @@ const PORT = 4321;
 // intentionally excluded — they aren't meant for organic indexing.
 const ROUTES = [
   "/",
-  "/products",
   "/catalog",
   "/dealers",
   "/contact",

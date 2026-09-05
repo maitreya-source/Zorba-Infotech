@@ -102,14 +102,6 @@ export interface FinancialYearDoc {
   isCurrent?: boolean;
 }
 
-export interface FYMonthDoc {
-  id: string; // e.g. "2025-08"
-  monthKey: string;
-  monthName: string; // e.g. "August 2025"
-  monthNumber: number; // 8
-  fyId: string; // "FY2526"
-}
-
 export interface DeviceCategory {
   id: string;
   name: string;
@@ -121,14 +113,6 @@ export interface DeviceModel {
   id: string;
   categoryName: string;
   modelName: string;
-  createdAt: number;
-}
-
-export interface SparePartCatalogItem {
-  id: string;
-  name: string;
-  unitPrice: number;
-  category?: string;
   createdAt: number;
 }
 
