@@ -62,6 +62,7 @@ interface ServiceCallLifecycleRailProps {
   onOpenCenterModal: () => void;
   onOpenCourierModal: () => void;
   onSave?: () => void;
+  onCancel?: () => void;
 }
 
 export default function ServiceCallLifecycleRail({
@@ -95,6 +96,7 @@ export default function ServiceCallLifecycleRail({
   onOpenCenterModal,
   onOpenCourierModal,
   onSave,
+  onCancel,
 }: ServiceCallLifecycleRailProps) {
   const handleMilestoneClick = (stage: TimelineStage) => {
     onTriggerTimelineModal(stage);
@@ -475,11 +477,23 @@ export default function ServiceCallLifecycleRail({
         </div>
 
         <div className="flex items-center gap-2">
-          <Link to="/admin/service-calls">
-            <Button type="button" variant="outline" size="sm" className="h-12 px-4 text-xs font-bold rounded-2xl cursor-pointer border-slate-300 dark:border-slate-700">
+          {onCancel ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+              className="h-12 px-4 text-xs font-bold rounded-2xl cursor-pointer border-slate-300 dark:border-slate-700"
+            >
               Cancel
             </Button>
-          </Link>
+          ) : (
+            <Link to="/admin/service-calls">
+              <Button type="button" variant="outline" size="sm" className="h-12 px-4 text-xs font-bold rounded-2xl cursor-pointer border-slate-300 dark:border-slate-700">
+                Cancel
+              </Button>
+            </Link>
+          )}
 
           <Button
             type={onSave ? "button" : "submit"}

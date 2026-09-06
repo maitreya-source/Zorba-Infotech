@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { UserPlus, Users, Trash2, Search, Phone, Mail, MapPin, Building, RefreshCw, FileSpreadsheet, Pencil, Activity, ChevronRight, ChevronLeft, ArrowUpDown, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,12 @@ export type CustomerSortOption = "name-asc" | "name-desc" | "company-asc" | "dat
 
 export default function AdminCustomers() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const statePage = (location.state as any)?.pageNumber;
+  const stateCustomerId = (location.state as any)?.selectedCustomerId;
+  const stateSelectedIndex = (location.state as any)?.selectedIndex;
+
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +50,10 @@ export default function AdminCustomers() {
   const [sortBy, setSortBy] = useState<CustomerSortOption>("name-asc");
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [pageSize, setPageSize] = useState<number>(25);
-  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pageNumber, setPageNumber] = useState<number>(() => {
+    if (typeof statePage === "number" && statePage > 0) return statePage;
+    return 1;
+  });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -236,11 +245,35 @@ export default function AdminCustomers() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [availableGroups]);
 
+  // Preserve highlighted customer when returning from customer detail view
+  const initialIndex = useMemo(() => {
+    if (stateCustomerId && paginatedCustomers.length > 0) {
+      const idx = paginatedCustomers.findIndex((c) => c.id === stateCustomerId);
+      if (idx !== -1) return idx;
+    }
+    if (typeof stateSelectedIndex === "number" && stateSelectedIndex >= 0 && stateSelectedIndex < paginatedCustomers.length) {
+      return stateSelectedIndex;
+    }
+    return 0;
+  }, [paginatedCustomers, stateCustomerId, stateSelectedIndex]);
+
+  const handleOpenCustomer = useCallback((cust: Customer, idx: number) => {
+    navigate(`/admin/customers/${cust.id}`, {
+      state: {
+        from: location.pathname + location.search,
+        pageNumber,
+        selectedIndex: idx,
+        selectedCustomerId: cust.id,
+      },
+    });
+  }, [navigate, location.pathname, location.search, pageNumber]);
+
   // Tally Keyboard Navigation for Customer Directory
   const { selectedIndex, getRowProps } = useTallyListNavigation({
     items: paginatedCustomers,
+    initialIndex,
     searchInputRef: customerSearchRef,
-    onOpenItem: (cust) => navigate(`/admin/customers/${cust.id}`),
+    onOpenItem: (cust, idx) => handleOpenCustomer(cust, idx),
     onNewItem: () => setShowCreateModal(true),
     onDeleteItem: (cust) => setDeleteId(cust.id),
     onPrevPage: () => handlePageChange(pageNumber - 1),
@@ -441,7 +474,7 @@ export default function AdminCustomers() {
                         ) {
                           return;
                         }
-                        navigate(`/admin/customers/${cust.id}`);
+                        handleOpenCustomer(cust, idx);
                       }}
                       className={cn(
                         "hover:bg-blue-50/40 dark:hover:bg-slate-900/50 transition-colors group cursor-pointer",
@@ -511,7 +544,15 @@ export default function AdminCustomers() {
                     {/* Actions */}
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
-                        <Link to={`/admin/customers/${cust.id}`}>
+                        <Link
+                          to={`/admin/customers/${cust.id}`}
+                          state={{
+                            from: location.pathname + location.search,
+                            pageNumber,
+                            selectedIndex: idx,
+                            selectedCustomerId: cust.id,
+                          }}
+                        >
                           <Button
                             variant="outline"
                             size="sm"

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
   FileText,
@@ -73,6 +73,8 @@ const DEFAULT_TERMS = `1. All prices mentioned above are estimated approximate p
 export default function AdminQuotationForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const exitTarget = (location.state as any)?.from || "/admin/quotations";
   const { activeProfile } = useStaffProfile();
   const [createdQuotationId, setCreatedQuotationId] = useState<string | null>(null);
   const effectiveId = id || createdQuotationId;
@@ -382,8 +384,8 @@ export default function AdminQuotationForm() {
       setCreatedQuotationId(created.id);
       setQuotationNo(created.quotationNo);
 
-      // Silently update URL so reload/bookmark keeps the created quotation
-      window.history.replaceState(null, "", `/admin/quotations/${created.id}/edit`);
+      // Silently update URL so reload/bookmark keeps the created quotation, preserving from state
+      window.history.replaceState({ ...window.history.state, usr: location.state }, "", `/admin/quotations/${created.id}/edit`);
 
       initialSnapshotRef.current = JSON.stringify({
         customerId: selectedCustomerId,
@@ -459,7 +461,7 @@ export default function AdminQuotationForm() {
         terms: termsAndConditions,
       });
 
-      navigate("/admin/quotations");
+      navigate(exitTarget);
     } catch (err: any) {
       console.error("Save quotation error:", err);
       toast.error(err?.message || "Failed to save quotation");
@@ -497,7 +499,7 @@ export default function AdminQuotationForm() {
 
       if (showEscPrompt) {
         setShowEscPrompt(false);
-        navigate("/admin/quotations");
+        navigate(exitTarget);
         return;
       }
 
@@ -506,7 +508,7 @@ export default function AdminQuotationForm() {
         return;
       }
 
-      navigate("/admin/quotations");
+      navigate(exitTarget);
     },
     onC: showEscPrompt ? () => setShowEscPrompt(false) : undefined,
     onAltA: () => handleAddItemRow(),
@@ -536,9 +538,9 @@ export default function AdminQuotationForm() {
         setShowEscPrompt(true);
         return;
       }
-      navigate("/admin/quotations");
+      navigate(exitTarget);
     },
-    onConfirmExit: () => navigate("/admin/quotations"),
+    onConfirmExit: () => navigate(exitTarget),
     onAddRow: () => handleAddItemRow(),
   });
 
@@ -738,7 +740,7 @@ export default function AdminQuotationForm() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/admin/quotations")}
+            onClick={() => navigate(exitTarget)}
             className="h-9 w-9 rounded-xl text-slate-500 hover:text-slate-900 cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -1341,7 +1343,7 @@ export default function AdminQuotationForm() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate("/admin/quotations")}
+                onClick={() => navigate(exitTarget)}
                 className="h-10 px-4 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer w-full sm:w-auto"
               >
                 <ArrowLeft className="h-4 w-4 mr-1.5" />
@@ -1500,7 +1502,7 @@ export default function AdminQuotationForm() {
                 type="button"
                 onClick={() => {
                   setShowEscPrompt(false);
-                  navigate("/admin/quotations");
+                  navigate(exitTarget);
                 }}
                 className="px-3 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer"
               >

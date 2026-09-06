@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import {
   ArrowLeft,
@@ -93,6 +93,22 @@ const STATUS_BADGES: Record<
 export default function AdminCustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const originFrom = (location.state as any)?.from;
+  const originPageNumber = (location.state as any)?.pageNumber;
+  const originSelectedIndex = (location.state as any)?.selectedIndex;
+
+  const handleBack = useCallback(() => {
+    const target = originFrom || "/admin/customers";
+    navigate(target, {
+      state: {
+        selectedCustomerId: id,
+        pageNumber: originPageNumber,
+        selectedIndex: originSelectedIndex,
+      },
+    });
+  }, [navigate, originFrom, originPageNumber, originSelectedIndex, id]);
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [calls, setCalls] = useState<ServiceCall[]>([]);
@@ -308,9 +324,13 @@ export default function AdminCustomerDetail() {
     items: activeList,
     onOpenItem: (item: any) => {
       if (activeTab === "quotations") {
-        navigate(`/admin/quotations/${item.id}/edit`);
+        navigate(`/admin/quotations/${item.id}/edit`, {
+          state: { from: location.pathname + location.search },
+        });
       } else {
-        navigate(`/admin/service-calls/${item.id}/edit`);
+        navigate(`/admin/service-calls/${item.id}/edit`, {
+          state: { from: location.pathname + location.search },
+        });
       }
     },
     onWhatsAppItem: (item: any) => {
@@ -332,15 +352,57 @@ export default function AdminCustomerDetail() {
     onNewItem: () => {
       if (!customer?.id) return;
       if (activeTab === "quotations") {
-        navigate(`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`);
+        navigate(`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`, {
+          state: { from: location.pathname + location.search },
+        });
       } else {
-        navigate(`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`);
+        navigate(`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`, {
+          state: { from: location.pathname + location.search },
+        });
       }
     },
   });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape key -> Return to customer directory or dismiss modals
+      if (e.key === "Escape") {
+        const hasDialog = Boolean(document.querySelector('[role="dialog"], [role="alertdialog"]'));
+        if (
+          editCustomerOpen ||
+          printCall ||
+          dispatchPrintCall ||
+          selectedQuoteForModal ||
+          showQuotePrint ||
+          showQuoteWhatsApp ||
+          showQuoteEmail ||
+          whatsAppModal.open ||
+          emailModal.open ||
+          hasDialog
+        ) {
+          if (editCustomerOpen) setEditCustomerOpen(false);
+          if (printCall) setPrintCall(null);
+          if (dispatchPrintCall) setDispatchPrintCall(null);
+          if (selectedQuoteForModal) setSelectedQuoteForModal(null);
+          if (showQuotePrint) setShowQuotePrint(false);
+          if (showQuoteWhatsApp) setShowQuoteWhatsApp(false);
+          if (showQuoteEmail) setShowQuoteEmail(false);
+          if (whatsAppModal.open) setWhatsAppModal((prev) => ({ ...prev, open: false }));
+          if (emailModal.open) setEmailModal((prev) => ({ ...prev, open: false }));
+          return;
+        }
+
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+          target.blur();
+          return;
+        }
+
+        e.preventDefault();
+        handleBack();
+        return;
+      }
+
       const target = e.target as HTMLElement | null;
       const isInput =
         target &&
@@ -380,7 +442,18 @@ export default function AdminCustomerDetail() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [
+    handleBack,
+    editCustomerOpen,
+    printCall,
+    dispatchPrintCall,
+    selectedQuoteForModal,
+    showQuotePrint,
+    showQuoteWhatsApp,
+    showQuoteEmail,
+    whatsAppModal.open,
+    emailModal.open,
+  ]);
 
   if (loading) {
     return <LoadingScreen fullScreen={false} title="Customer Profile" subtitle="Loading customer account & service history..." />;
@@ -394,11 +467,9 @@ export default function AdminCustomerDetail() {
         </div>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Customer Record Not Found</h2>
         <p className="text-xs text-slate-500 max-w-sm mx-auto">{error || "Unable to locate this customer."}</p>
-        <Link to="/admin/customers">
-          <Button variant="outline" size="sm" className="gap-2 rounded-xl text-xs">
-            <ArrowLeft className="h-4 w-4" /> Return to Customer Directory
-          </Button>
-        </Link>
+        <Button variant="outline" size="sm" onClick={handleBack} className="gap-2 rounded-xl text-xs cursor-pointer">
+          <ArrowLeft className="h-4 w-4" /> Return to Customer Directory
+        </Button>
       </div>
     );
   }
@@ -411,13 +482,15 @@ export default function AdminCustomerDetail() {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link
-              to="/admin/customers"
+            <button
+              type="button"
+              onClick={handleBack}
               className="p-2 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 text-white transition-colors cursor-pointer shrink-0"
-              title="Back to Customer Directory"
+              title="Back to Customer Directory (Esc)"
+              aria-label="Back to Customer Directory"
             >
               <ArrowLeft className="h-4 w-4" />
-            </Link>
+            </button>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
@@ -483,6 +556,7 @@ export default function AdminCustomerDetail() {
 
             <Link
               to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}
+              state={{ from: location.pathname + location.search }}
             >
               <Button
                 size="sm"
@@ -625,6 +699,7 @@ export default function AdminCustomerDetail() {
           <div className="pt-2 border-t flex flex-col sm:flex-row gap-2">
             <Link
               to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}
+              state={{ from: location.pathname + location.search }}
               className="flex-1 block"
             >
               <Button className="w-full h-10 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 cursor-pointer shadow-xs gap-1.5">
@@ -633,6 +708,7 @@ export default function AdminCustomerDetail() {
             </Link>
             <Link
               to={`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`}
+              state={{ from: location.pathname + location.search }}
               className="flex-1 block"
             >
               <Button variant="outline" className="w-full h-10 text-xs font-bold rounded-xl border-purple-200 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 cursor-pointer shadow-xs gap-1.5">
@@ -751,7 +827,11 @@ export default function AdminCustomerDetail() {
               }
               actionLabel="Create Quotation"
               actionIcon={Plus}
-              onAction={() => navigate(`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`)}
+              onAction={() =>
+                navigate(`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`, {
+                  state: { from: location.pathname + location.search },
+                })
+              }
             />
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
@@ -772,7 +852,11 @@ export default function AdminCustomerDetail() {
                         <tr
                           key={q.id}
                           {...rowProps}
-                          onClick={() => navigate(`/admin/quotations/${q.id}/edit`)}
+                          onClick={() =>
+                            navigate(`/admin/quotations/${q.id}/edit`, {
+                              state: { from: location.pathname + location.search },
+                            })
+                          }
                           className={`transition-colors cursor-pointer group ${
                             rowProps.className || "hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
                           }`}
@@ -851,6 +935,7 @@ export default function AdminCustomerDetail() {
 
                               <Link
                                 to={`/admin/quotations/${q.id}/edit`}
+                                state={{ from: location.pathname + location.search }}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <Button
@@ -889,7 +974,11 @@ export default function AdminCustomerDetail() {
               }
               actionLabel="Create New Service Call"
               actionIcon={Plus}
-              onAction={() => navigate(`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`)}
+              onAction={() =>
+                navigate(`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`, {
+                  state: { from: location.pathname + location.search },
+                })
+              }
             />
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
@@ -912,7 +1001,11 @@ export default function AdminCustomerDetail() {
                         <tr
                           key={item.id}
                           {...rowProps}
-                          onClick={() => navigate(`/admin/service-calls/${item.id}/edit`)}
+                          onClick={() =>
+                            navigate(`/admin/service-calls/${item.id}/edit`, {
+                              state: { from: location.pathname + location.search },
+                            })
+                          }
                           className={`transition-colors group cursor-pointer ${
                             rowProps.className || "hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
                           }`}
@@ -1030,7 +1123,10 @@ export default function AdminCustomerDetail() {
                               </Button>
                             )}
 
-                            <Link to={`/admin/service-calls/${item.id}/edit`}>
+                            <Link
+                              to={`/admin/service-calls/${item.id}/edit`}
+                              state={{ from: location.pathname + location.search }}
+                            >
                               <Button
                                 variant="outline"
                                 size="sm"

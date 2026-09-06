@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import {
   Building2,
   Wrench,
@@ -196,6 +196,8 @@ export default function AdminServiceCallForm() {
   const [searchParams] = useSearchParams();
   const customerIdParam = searchParams.get("customerId");
   const navigate = useNavigate();
+  const location = useLocation();
+  const exitTarget = (location.state as any)?.from || "/admin/service-calls";
   const { user } = useAuth();
   const { activeProfile, setShowSelectorModal } = useStaffProfile();
   const [createdTicketId, setCreatedTicketId] = useState<string>("");
@@ -415,7 +417,7 @@ export default function AdminServiceCallForm() {
         .then((sc) => {
           if (!sc) {
             toast.error("Service Call not found");
-            navigate("/admin/service-calls");
+            navigate(exitTarget);
             return;
           }
           setTicketNo(sc.ticketNo || sc.id || id || "");
@@ -703,7 +705,7 @@ export default function AdminServiceCallForm() {
     // 2. If unsaved prompt is already active, second Esc confirms exit
     if (showEscQuitPrompt) {
       setShowEscQuitPrompt(false);
-      navigate("/admin/service-calls");
+      navigate(exitTarget);
       return;
     }
 
@@ -714,7 +716,7 @@ export default function AdminServiceCallForm() {
     }
 
     // 4. No unsaved changes -> exit cleanly
-    navigate("/admin/service-calls");
+    navigate(exitTarget);
   };
 
   const triggerTimelineModal = (stage: TimelineEvent["stage"]) => {
@@ -979,8 +981,8 @@ export default function AdminServiceCallForm() {
       setInvalidFields({});
       toast.success(`Service Ticket auto-saved: ${created.ticketNo}`);
 
-      // Smoothly update URL to edit route without leaving the screen
-      window.history.replaceState(null, "", `/admin/service-calls/${created.id}/edit`);
+      // Smoothly update URL to edit route without leaving the screen, preserving from location
+      window.history.replaceState({ ...window.history.state, usr: location.state }, "", `/admin/service-calls/${created.id}/edit`);
 
       return created;
     } catch (err: any) {
@@ -1025,7 +1027,7 @@ export default function AdminServiceCallForm() {
       if (isEditing && effectiveId) {
         await updateServiceCall(effectiveId, payload);
         toast.success("Service Call ticket updated successfully!");
-        navigate("/admin/service-calls");
+        navigate(exitTarget);
       } else {
         const created = await createServiceCall(payload);
         setCreatedTicketId(created.id);
@@ -1052,7 +1054,7 @@ export default function AdminServiceCallForm() {
     try {
       await deleteServiceCall(effectiveId);
       toast.success("Ticket moved to Trash. It can be restored anytime.");
-      navigate("/admin/service-calls");
+      navigate(exitTarget);
     } catch (err: any) {
       console.error("Error deleting ticket:", err);
       toast.error(err?.message || "Failed to delete ticket");
@@ -1232,7 +1234,7 @@ export default function AdminServiceCallForm() {
     isDirty: hasUnsavedChanges(),
     onSave: () => handleSubmit(),
     onEsc: handleEsc,
-    onConfirmExit: () => navigate("/admin/service-calls"),
+    onConfirmExit: () => navigate(exitTarget),
     onAddRow: () => handleAddPartRow(),
     onWorkflowModeChange: (dir) => {
       const modes: ServiceCallType[] = ["company_service_center", "in_house_repair", "onsite_visit"];
@@ -1594,6 +1596,7 @@ export default function AdminServiceCallForm() {
         onOpenCenterModal={() => setShowCenterModal(true)}
         onOpenCourierModal={() => setShowCourierModal(true)}
         onSave={() => handleSubmit()}
+        onCancel={handleEsc}
       />
 
       {/* WhatsApp Message Preview & Dispatch Modal */}
@@ -1994,7 +1997,7 @@ export default function AdminServiceCallForm() {
                 variant="ghost"
                 onClick={() => {
                   setSaveSuccessInfo(null);
-                  navigate("/admin/service-calls");
+                  navigate(exitTarget);
                 }}
                 className="h-11 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer"
               >
@@ -2067,7 +2070,7 @@ export default function AdminServiceCallForm() {
                 type="button"
                 onClick={() => {
                   setShowEscQuitPrompt(false);
-                  navigate("/admin/service-calls");
+                  navigate(exitTarget);
                 }}
                 className="px-3 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer"
               >

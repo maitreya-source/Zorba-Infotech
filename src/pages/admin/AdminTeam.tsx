@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import { cn } from "@/lib/utils";
 import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle, Crown, Code, ChevronRight, Lock, KeyRound } from "lucide-react";
@@ -39,6 +39,9 @@ import { useStaffDutyPresence, subscribeSyncSignal } from "@/lib/realtimeSync";
 
 export default function AdminTeam() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const stateSelectedMemberId = (location.state as any)?.selectedMemberId;
+  const stateSelectedIndex = (location.state as any)?.selectedIndex;
   const { activeProfile } = useStaffProfile();
   const { isStaffOnline, onlineCount } = useStaffDutyPresence(activeProfile);
   const isOwner = activeProfile?.role === "proprietor";
@@ -324,11 +327,34 @@ export default function AdminTeam() {
 
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Preserve highlighted member when returning from detail view
+  const initialIndex = useMemo(() => {
+    if (stateSelectedMemberId && filtered.length > 0) {
+      const idx = filtered.findIndex((m) => m.id === stateSelectedMemberId);
+      if (idx !== -1) return idx;
+    }
+    if (typeof stateSelectedIndex === "number" && stateSelectedIndex >= 0 && stateSelectedIndex < filtered.length) {
+      return stateSelectedIndex;
+    }
+    return 0;
+  }, [filtered, stateSelectedMemberId, stateSelectedIndex]);
+
+  const handleOpenMember = useCallback((member: TeamMember, idx: number) => {
+    navigate(`/admin/team/${member.id}`, {
+      state: {
+        from: location.pathname + location.search,
+        selectedMemberId: member.id,
+        selectedIndex: idx,
+      },
+    });
+  }, [navigate, location.pathname, location.search]);
+
   // Tally Keyboard Navigation for Team & Personnel Directory (ArrowUp/Down, Enter to open, / for search, Alt+A for new)
   const { selectedIndex, getRowProps } = useTallyListNavigation({
     items: filtered,
+    initialIndex,
     searchInputRef: searchRef,
-    onOpenItem: (member) => navigate(`/admin/team/${member.id}`),
+    onOpenItem: (member, idx) => handleOpenMember(member, idx),
     onNewItem: () => openCreateModal(),
     onDeleteItem: (member) => setDeleteId(member.id),
   });
@@ -442,7 +468,7 @@ export default function AdminTeam() {
                     <tr
                       key={member.id}
                       {...rowProps}
-                      onClick={() => navigate(`/admin/team/${member.id}`)}
+                      onClick={() => handleOpenMember(member, idx)}
                       className={cn(
                         "hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer group",
                         selectedIndex === idx && "bg-blue-500/10 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40"

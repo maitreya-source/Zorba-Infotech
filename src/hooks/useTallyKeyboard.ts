@@ -192,6 +192,7 @@ export interface UseTallyListOptions<T> {
   columns?: number;
   containerRef?: RefObject<HTMLElement | null>;
   enabled?: boolean;
+  initialIndex?: number;
 }
 
 export function useTallyListNavigation<T>({
@@ -209,9 +210,17 @@ export function useTallyListNavigation<T>({
   columns,
   containerRef,
   enabled = true,
+  initialIndex = 0,
 }: UseTallyListOptions<T>) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(initialIndex);
   const effectiveSearchRef = searchInputRef || searchRef;
+
+  // Sync initialIndex if updated by parent (e.g. stateful return to directory)
+  useEffect(() => {
+    if (initialIndex !== undefined && initialIndex >= 0) {
+      setSelectedIndex(initialIndex);
+    }
+  }, [initialIndex]);
 
   // Keep index clamped when items change
   useEffect(() => {

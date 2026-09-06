@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import {
@@ -77,7 +77,21 @@ import { formatIndianPhoneNumber } from "@/lib/utils";
 export default function AdminTeamMemberDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeProfile } = useStaffProfile();
+
+  const originFrom = (location.state as any)?.from;
+  const originSelectedIndex = (location.state as any)?.selectedIndex;
+
+  const handleBack = useCallback(() => {
+    const target = originFrom || "/admin/team";
+    navigate(target, {
+      state: {
+        selectedMemberId: id,
+        selectedIndex: originSelectedIndex,
+      },
+    });
+  }, [navigate, originFrom, originSelectedIndex, id]);
 
   const [member, setMember] = useState<TeamMember | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,7 +133,7 @@ export default function AdminTeamMemberDetail() {
       const tm = await getTeamMember(id);
       if (!tm) {
         toast.error("Team member not found");
-        navigate("/admin/team");
+        handleBack();
         return;
       }
       setMember(tm);
@@ -245,8 +259,38 @@ export default function AdminTeamMemberDetail() {
   const { selectedIndex, getRowProps } = useTallyListNavigation({
     items: displayCalls,
     enabled: tab !== "payouts",
-    onOpenItem: (call) => navigate(`/admin/service-calls/${call.id}/edit`),
+    onOpenItem: (call) =>
+      navigate(`/admin/service-calls/${call.id}/edit`, {
+        state: { from: location.pathname + location.search },
+      }),
   });
+
+  // Escape key navigation: dismiss modals or exit to Team directory
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        const hasDialog = Boolean(document.querySelector('[role="dialog"], [role="alertdialog"]'));
+        if (showEditModal || showRecordPayoutModal || hasDialog) {
+          if (showEditModal) setShowEditModal(false);
+          if (showRecordPayoutModal) setShowRecordPayoutModal(false);
+          return;
+        }
+
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+          target.blur();
+          return;
+        }
+
+        e.preventDefault();
+        handleBack();
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleBack, showEditModal, showRecordPayoutModal]);
 
   // Open Edit Modal
   const handleOpenEditModal = () => {
@@ -432,8 +476,10 @@ export default function AdminTeamMemberDetail() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/admin/team")}
-            className="h-8 w-8 rounded-xl text-slate-500 hover:text-slate-900"
+            onClick={handleBack}
+            className="h-8 w-8 rounded-xl text-slate-500 hover:text-slate-900 cursor-pointer"
+            title="Back to Team Directory (Esc)"
+            aria-label="Back to Team Directory"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -721,7 +767,11 @@ export default function AdminTeamMemberDetail() {
                       <tr
                         key={c.id}
                         {...rowProps}
-                        onClick={() => navigate(`/admin/service-calls/${c.id}/edit`)}
+                        onClick={() =>
+                          navigate(`/admin/service-calls/${c.id}/edit`, {
+                            state: { from: location.pathname + location.search },
+                          })
+                        }
                         className={`transition-colors cursor-pointer group ${
                           rowProps.className || "hover:bg-slate-50/60 dark:hover:bg-slate-900/40"
                         }`}
@@ -804,6 +854,7 @@ export default function AdminTeamMemberDetail() {
                           >
                             <Link
                               to={`/admin/service-calls/${c.id}/edit`}
+                              state={{ from: location.pathname + location.search }}
                               className="text-blue-600 hover:text-blue-800 p-1 inline-flex items-center gap-1 font-semibold"
                             >
                               <span>Open</span>
