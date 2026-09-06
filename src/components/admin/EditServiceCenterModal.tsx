@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Building2, Trash2, MapPin, User, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { updateServiceCenter } from "@/lib/firestore";
 import { toTitleCase, formatIndianPhoneNumber, formatFullAddress } from "@/lib/utils";
 import { DEFAULT_INDIAN_STATE } from "@/lib/constants";
 import StateSelect from "./StateSelect";
+import { useTallyFormNavigation } from "@/hooks/useTallyKeyboard";
 import type { ServiceCenter, ServiceCenterAddress, ServiceCenterPOC } from "@/lib/types";
 
 interface EditServiceCenterModalProps {
@@ -39,6 +40,7 @@ export default function EditServiceCenterModal({
   const [addresses, setAddresses] = useState<ServiceCenterAddress[]>([]);
   const [pocs, setPocs] = useState<ServiceCenterPOC[]>([]);
   const [saving, setSaving] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (center) {
@@ -181,8 +183,8 @@ export default function EditServiceCenterModal({
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!center) return;
     if (!name.trim()) {
       toast.error("Service Center name is required");
@@ -269,6 +271,13 @@ export default function EditServiceCenterModal({
     }
   };
 
+  useTallyFormNavigation({
+    formRef,
+    onSave: () => handleSubmit(),
+    onEsc: () => onOpenChange(false),
+    enabled: open,
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto p-6">
@@ -279,7 +288,7 @@ export default function EditServiceCenterModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2 text-xs">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 pt-2 text-xs">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -590,7 +599,7 @@ export default function EditServiceCenterModal({
               disabled={saving}
               className="h-9 text-xs rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold"
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? "Saving..." : "Save Changes (Alt+A / Enter)"}
             </Button>
           </DialogFooter>
         </form>

@@ -55,6 +55,12 @@ vi.mock("@/lib/firestore", async () => {
     getDeviceModels: vi.fn(async () => [
       { id: "dm-1", categoryName: "CCTV Cameras", modelName: "DS-2CD2043G2-I" },
     ]),
+    saveDeviceModel: vi.fn(async (categoryName: string, modelName: string) => ({
+      id: "dm-new",
+      categoryName,
+      modelName,
+      createdAt: Date.now(),
+    })),
   };
 });
 
@@ -164,6 +170,21 @@ describe("ModelTypeahead Catalog Integration (Quotation-Style)", () => {
     fireEvent.change(input, { target: { value: "ThinkPad T480s Gen 2" } });
 
     expect(onChange).toHaveBeenCalledWith("ThinkPad T480s Gen 2");
+  });
+
+  it("pressing Enter on a custom model closes dropdown and saves to firestore", async () => {
+    const onChange = vi.fn();
+    const { saveDeviceModel } = await import("@/lib/firestore");
+    render(<ModelTypeahead categoryName="Laptops" value="" onChange={onChange} />);
+
+    const input = screen.getByPlaceholderText(/Search 4000\+ catalog products/i);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Custom-Laptop-999" } });
+
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onChange).toHaveBeenCalledWith("Custom-Laptop-999");
+    expect(saveDeviceModel).toHaveBeenCalledWith("Laptops", "Custom-Laptop-999");
   });
 });
 

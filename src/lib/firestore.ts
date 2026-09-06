@@ -18,6 +18,7 @@ import {
   runTransaction,
   writeBatch,
   deleteField,
+  getCountFromServer,
   type QueryDocumentSnapshot,
   type DocumentSnapshot,
 } from "firebase/firestore";
@@ -1524,9 +1525,19 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
   publishSyncSignal("customers", { action: "update", resourceId: id });
 }
 
+export async function getCustomersTotalCount(): Promise<number> {
+  try {
+    const snap = await fetchWithTimeout(getCountFromServer(collection(db, "customers")));
+    return snap.data().count;
+  } catch (err) {
+    console.warn("getCustomersTotalCount warning:", err);
+    return _customerIndex.length || 0;
+  }
+}
+
 export async function getCustomersPaginated(options?: {
   pageSize?: number;
-  lastDoc?: DocumentSnapshot | QueryDocumentSnapshot;
+  lastDoc?: DocumentSnapshot | QueryDocumentSnapshot | any;
   search?: string;
 }): Promise<PaginatedResult<Customer>> {
   const pageSize = options?.pageSize || 25;
@@ -1539,7 +1550,19 @@ export async function getCustomersPaginated(options?: {
     ];
 
     if (options?.lastDoc) {
-      constraints.push(startAfter(options.lastDoc));
+      if (typeof options.lastDoc.data === "function") {
+        constraints.push(startAfter(options.lastDoc));
+      } else if (typeof options.lastDoc === "string") {
+        const docSnap = await fetchWithTimeout(getDoc(doc(db, "customers", options.lastDoc)));
+        if (docSnap.exists()) {
+          constraints.push(startAfter(docSnap));
+        }
+      } else if (options.lastDoc.id) {
+        const docSnap = await fetchWithTimeout(getDoc(doc(db, "customers", options.lastDoc.id)));
+        if (docSnap.exists()) {
+          constraints.push(startAfter(docSnap));
+        }
+      }
     }
 
     const q = query(collection(db, "customers"), ...constraints);
@@ -1558,7 +1581,8 @@ export async function getCustomersPaginated(options?: {
         const nameMatch = c.name && c.name.toLowerCase().includes(search);
         const phoneMatch = (c.phone && c.phone.includes(search)) || (qDigits && (c.phone || "").replace(/\D/g, "").includes(qDigits));
         const companyMatch = c.companyName && c.companyName.toLowerCase().includes(search);
-        return nameMatch || phoneMatch || companyMatch;
+        const groupMatch = c.group && c.group.toLowerCase().includes(search);
+        return nameMatch || phoneMatch || companyMatch || groupMatch;
       });
     }
 
@@ -1573,7 +1597,7 @@ export async function getCustomersPaginated(options?: {
       const all = await getCustomers();
       const clean = search;
       const filtered = clean
-        ? all.filter((c) => (c.name || "").toLowerCase().includes(clean) || (c.phone || "").includes(clean))
+        ? all.filter((c) => (c.name || "").toLowerCase().includes(clean) || (c.phone || "").includes(clean) || (c.group || "").toLowerCase().includes(clean))
         : all;
       return {
         items: filtered.slice(0, pageSize),

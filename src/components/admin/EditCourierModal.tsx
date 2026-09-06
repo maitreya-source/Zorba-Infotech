@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { updateCourier } from "@/lib/firestore";
 import { toTitleCase, formatIndianPhoneNumber } from "@/lib/utils";
+import { useTallyFormNavigation } from "@/hooks/useTallyKeyboard";
 import type { Courier } from "@/lib/types";
 
 interface EditCourierModalProps {
@@ -35,6 +36,7 @@ export default function EditCourierModal({
   const [trackingUrlTemplate, setTrackingUrlTemplate] = useState("");
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (courier) {
@@ -46,8 +48,8 @@ export default function EditCourierModal({
     }
   }, [courier]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!courier) return;
     if (!name.trim()) {
       toast.error("Courier name is required");
@@ -75,6 +77,13 @@ export default function EditCourierModal({
     }
   };
 
+  useTallyFormNavigation({
+    formRef,
+    onSave: () => handleSubmit(),
+    onEsc: () => onOpenChange(false),
+    enabled: open,
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-6">
@@ -85,7 +94,7 @@ export default function EditCourierModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div>
             <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
               Courier Partner Name <span className="text-red-500">*</span>
@@ -162,7 +171,7 @@ export default function EditCourierModal({
               disabled={saving}
               className="h-9 text-xs rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold"
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? "Saving..." : "Save Changes (Alt+A / Enter)"}
             </Button>
           </DialogFooter>
         </form>

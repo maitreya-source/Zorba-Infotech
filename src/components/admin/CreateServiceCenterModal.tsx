@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { Building2, Trash2, MapPin, User, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { createServiceCenter } from "@/lib/firestore";
 import { toTitleCase, formatIndianPhoneNumber, formatFullAddress } from "@/lib/utils";
 import { DEFAULT_INDIAN_STATE } from "@/lib/constants";
 import StateSelect from "./StateSelect";
+import { useTallyFormNavigation } from "@/hooks/useTallyKeyboard";
 import type { ServiceCenter, ServiceCenterAddress, ServiceCenterPOC } from "@/lib/types";
 
 interface CreateServiceCenterModalProps {
@@ -52,6 +53,7 @@ export default function CreateServiceCenterModal({
   ]);
 
   const [saving, setSaving] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleAddAddress = () => {
     setAddresses((prev) => [
@@ -165,8 +167,8 @@ export default function CreateServiceCenterModal({
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!name.trim()) {
       toast.error("Service Center name is required");
       return;
@@ -267,6 +269,13 @@ export default function CreateServiceCenterModal({
     }
   };
 
+  useTallyFormNavigation({
+    formRef,
+    onSave: () => handleSubmit(),
+    onEsc: () => onOpenChange(false),
+    enabled: open,
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto p-6">
@@ -277,7 +286,7 @@ export default function CreateServiceCenterModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2 text-xs">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 pt-2 text-xs">
           {/* Name & WhatsApp Follow-up */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
@@ -585,7 +594,7 @@ export default function CreateServiceCenterModal({
               disabled={saving}
               className="h-9 text-xs rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold"
             >
-              {saving ? "Saving..." : "Add Service Center"}
+              {saving ? "Saving..." : "Add Service Center (Alt+A / Enter)"}
             </Button>
           </DialogFooter>
         </form>

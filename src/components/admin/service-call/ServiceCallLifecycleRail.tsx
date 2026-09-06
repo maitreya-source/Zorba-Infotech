@@ -212,7 +212,7 @@ export default function ServiceCallLifecycleRail({
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Print & Challan
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className={type === "company_service_center" && onOpenDispatchPrintModal ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2"}>
             <Button
               type="button"
               onClick={onOpenPrintModal}
@@ -223,7 +223,7 @@ export default function ServiceCallLifecycleRail({
               <span>Print Job Card</span>
             </Button>
 
-            {onOpenDispatchPrintModal && (
+            {type === "company_service_center" && onOpenDispatchPrintModal && (
               <Button
                 type="button"
                 onClick={onOpenDispatchPrintModal}
@@ -511,7 +511,7 @@ export default function ServiceCallLifecycleRail({
                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   PRINT & CHALLAN
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className={type === "company_service_center" && onOpenDispatchPrintModal ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2"}>
                   <button
                     type="button"
                     onClick={onOpenPrintModal}
@@ -522,7 +522,7 @@ export default function ServiceCallLifecycleRail({
                     <span>Job Card</span>
                   </button>
 
-                  {onOpenDispatchPrintModal && (
+                  {type === "company_service_center" && onOpenDispatchPrintModal && (
                     <button
                       type="button"
                       onClick={onOpenDispatchPrintModal}

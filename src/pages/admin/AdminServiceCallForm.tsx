@@ -1544,7 +1544,7 @@ export default function AdminServiceCallForm() {
           onsiteAddress={onsiteAddress}
           onOnsiteAddressChange={setOnsiteAddress}
           quickTags={QUICK_TAGS}
-          onOpenDispatchPrint={handleOpenDispatchPrintModal}
+          onOpenDispatchPrint={type === "company_service_center" ? handleOpenDispatchPrintModal : undefined}
         />
 
         {/* Section 4: Spare Parts & Service Charges */}
@@ -1588,7 +1588,7 @@ export default function AdminServiceCallForm() {
         onOpenCourierPickupWhatsApp={handleOpenCourierPickupWhatsApp}
         onOpenCourierDeliveryWhatsApp={handleOpenCourierDeliveryWhatsApp}
         onOpenPrintModal={handleOpenPrintModal}
-        onOpenDispatchPrintModal={handleOpenDispatchPrintModal}
+        onOpenDispatchPrintModal={type === "company_service_center" ? handleOpenDispatchPrintModal : undefined}
         onOpenDeleteModal={() => setShowDeleteModal(true)}
         onOpenCustomerModal={() => setShowCustomerModal(true)}
         onOpenCenterModal={() => setShowCenterModal(true)}
@@ -1827,10 +1827,10 @@ export default function AdminServiceCallForm() {
         }}
         open={showPrintModal}
         onOpenChange={setShowPrintModal}
-        onOpenDispatchSlip={() => {
+        onOpenDispatchSlip={type === "company_service_center" ? () => {
           setShowPrintModal(false);
           setShowDispatchPrintModal(true);
-        }}
+        } : undefined}
       />
       <DispatchSlipPrintModal
         serviceCall={{

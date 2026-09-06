@@ -1023,15 +1023,17 @@ export default function AdminServiceCalls() {
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 text-xs font-medium" onClick={(e) => e.stopPropagation()}>
-                                  <DropdownMenuItem
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      setDispatchPrintCall(item);
-                                    }}
-                                    className="gap-2 cursor-pointer text-blue-600 dark:text-blue-400 font-medium"
-                                  >
-                                    <Truck className="h-3.5 w-3.5 text-blue-500" /> Print Dispatch Slip
-                                  </DropdownMenuItem>
+                                  {item.type === "company_service_center" && (
+                                    <DropdownMenuItem
+                                      onSelect={(e) => {
+                                        e.preventDefault();
+                                        setDispatchPrintCall(item);
+                                      }}
+                                      className="gap-2 cursor-pointer text-blue-600 dark:text-blue-400 font-medium"
+                                    >
+                                      <Truck className="h-3.5 w-3.5 text-blue-500" /> Print Dispatch Slip
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem
                                     onSelect={(e) => {
                                       e.preventDefault();
@@ -1074,11 +1076,11 @@ export default function AdminServiceCalls() {
         serviceCall={printCall}
         open={!!printCall}
         onOpenChange={(open) => !open && setPrintCall(null)}
-        onOpenDispatchSlip={() => {
+        onOpenDispatchSlip={printCall?.type === "company_service_center" ? () => {
           const c = printCall;
           setPrintCall(null);
           setDispatchPrintCall(c);
-        }}
+        } : undefined}
       />
       <DispatchSlipPrintModal
         serviceCall={dispatchPrintCall}

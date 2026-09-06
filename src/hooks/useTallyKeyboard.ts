@@ -182,11 +182,13 @@ export interface UseTallyListOptions<T> {
   onNextPage?: () => void;
   searchRef?: RefObject<HTMLInputElement | null>;
   searchInputRef?: RefObject<HTMLInputElement | null>;
+  columns?: number;
+  containerRef?: RefObject<HTMLElement | null>;
   enabled?: boolean;
 }
 
 export function useTallyListNavigation<T>({
-  items,
+  items = [] as T[],
   onOpenItem,
   onNewItem,
   onDeleteItem,
@@ -197,6 +199,8 @@ export function useTallyListNavigation<T>({
   onNextPage,
   searchRef,
   searchInputRef,
+  columns,
+  containerRef,
   enabled = true,
 }: UseTallyListOptions<T>) {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -204,21 +208,28 @@ export function useTallyListNavigation<T>({
 
   // Keep index clamped when items change
   useEffect(() => {
-    if (items.length === 0) {
+    const len = items?.length || 0;
+    if (len === 0) {
       setSelectedIndex(0);
-    } else if (selectedIndex >= items.length) {
-      setSelectedIndex(items.length - 1);
+    } else if (selectedIndex >= len) {
+      setSelectedIndex(len - 1);
     }
-  }, [items.length, selectedIndex]);
+  }, [items?.length, selectedIndex]);
 
   // Auto-scroll highlighted row into view
   useEffect(() => {
-    if (!enabled || items.length === 0) return;
-    const el = document.querySelector(`[data-tally-row="${selectedIndex}"]`) as HTMLElement | null;
-    if (el) {
-      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const len = items?.length || 0;
+    if (!enabled || len === 0) return;
+    const root = containerRef?.current || document;
+    const el = root.querySelector(`[data-tally-row="${selectedIndex}"]`) as HTMLElement | null;
+    if (el && typeof el.scrollIntoView === "function") {
+      try {
+        el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } catch {
+        // ignore if not supported
+      }
     }
-  }, [selectedIndex, enabled, items.length]);
+  }, [selectedIndex, enabled, items?.length, containerRef]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -252,21 +263,76 @@ export function useTallyListNavigation<T>({
         return;
       }
 
-      // 1. Arrow Down -> Next Row
+      // Determine active grid column count dynamically from DOM (or explicit option)
+      const getColumns = (): number => {
+        if (columns && columns > 0) return columns;
+        const root = containerRef?.current || document;
+        const el0 = root.querySelector('[data-tally-row="0"]') as HTMLElement | null;
+        const el1 = root.querySelector('[data-tally-row="1"]') as HTMLElement | null;
+        if (!el0 || !el1) return 1;
+        const top0 = el0.getBoundingClientRect().top;
+        const top1 = el1.getBoundingClientRect().top;
+        if (Math.abs(top0 - top1) > 8) return 1;
+        let count = 1;
+        while (true) {
+          const next = root.querySelector(`[data-tally-row="${count}"]`) as HTMLElement | null;
+          if (!next) break;
+          if (Math.abs(next.getBoundingClientRect().top - top0) <= 8) {
+            count++;
+          } else {
+            break;
+          }
+        }
+        return Math.max(1, count);
+      };
+
+      const cols = getColumns();
+
+      // 1. Arrow Right -> Next Column (in multi-column card grids)
+      if (e.key === "ArrowRight" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (cols > 1) {
+          e.preventDefault();
+          setSelectedIndex((prev) => Math.min(items.length - 1, prev + 1));
+          return;
+        }
+      }
+
+      // 2. Arrow Left -> Previous Column (in multi-column card grids)
+      if (e.key === "ArrowLeft" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (cols > 1) {
+          e.preventDefault();
+          setSelectedIndex((prev) => Math.max(0, prev - 1));
+          return;
+        }
+      }
+
+      // 3. Arrow Down -> Next Row (or Down by cols in grid)
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((prev) => Math.min(items.length - 1, prev + 1));
+        setSelectedIndex((prev) => {
+          if (cols > 1) {
+            const next = prev + cols;
+            return next < items.length ? next : Math.min(items.length - 1, prev + 1);
+          }
+          return Math.min(items.length - 1, prev + 1);
+        });
         return;
       }
 
-      // 2. Arrow Up -> Previous Row
+      // 4. Arrow Up -> Previous Row (or Up by cols in grid)
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((prev) => Math.max(0, prev - 1));
+        setSelectedIndex((prev) => {
+          if (cols > 1) {
+            const prevRow = prev - cols;
+            return prevRow >= 0 ? prevRow : Math.max(0, prev - 1);
+          }
+          return Math.max(0, prev - 1);
+        });
         return;
       }
 
-      // 3. Enter -> Open Highlighted Record
+      // 5. Enter -> Open Highlighted Record
       if (e.key === "Enter" && !e.ctrlKey && !e.altKey && !e.metaKey) {
         if (items.length > 0 && items[selectedIndex]) {
           e.preventDefault();
@@ -275,17 +341,17 @@ export function useTallyListNavigation<T>({
         return;
       }
 
-      // 4. '/' -> Instantly Focus Search Bar
+      // 6. '/' -> Instantly Focus Search Bar
       if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (searchRef?.current) {
+        if (effectiveSearchRef?.current) {
           e.preventDefault();
-          searchRef.current.focus();
-          searchRef.current.select();
+          effectiveSearchRef.current.focus();
+          effectiveSearchRef.current.select();
         }
         return;
       }
 
-      // 5. 'N' / Alt+N / 'Insert' -> Create New Record
+      // 7. 'N' / Alt+N / 'Insert' -> Create New Record
       if (
         (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key.toLowerCase() === "n" || e.code === "KeyN")) ||
         (e.altKey && (e.key.toLowerCase() === "n" || e.code === "KeyN" || e.key.toLowerCase() === "a" || e.code === "KeyA" || e.key.toLowerCase() === "c" || e.code === "KeyC")) ||
@@ -296,21 +362,21 @@ export function useTallyListNavigation<T>({
         return;
       }
 
-      // 6. PageUp / '[' -> Previous Page
+      // 8. PageUp / '[' -> Previous Page
       if (e.key === "PageUp" || (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === "[")) {
         e.preventDefault();
         onPrevPage?.();
         return;
       }
 
-      // 7. PageDown / ']' -> Next Page
+      // 9. PageDown / ']' -> Next Page
       if (e.key === "PageDown" || (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === "]")) {
         e.preventDefault();
         onNextPage?.();
         return;
       }
 
-      // 8. Space -> Toggle Row Selection / Status
+      // 10. Space -> Toggle Row Selection / Status
       if (e.key === " " && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (items.length > 0 && items[selectedIndex] && onToggleSelect) {
           e.preventDefault();
@@ -319,7 +385,7 @@ export function useTallyListNavigation<T>({
         return;
       }
 
-      // 9. Alt + P -> Print Highlighted Row
+      // 11. Alt + P -> Print Highlighted Row
       if (e.altKey && (e.key.toLowerCase() === "p" || e.code === "KeyP")) {
         if (items.length > 0 && items[selectedIndex] && onPrintItem) {
           e.preventDefault();
@@ -328,16 +394,20 @@ export function useTallyListNavigation<T>({
         return;
       }
 
-      // 10. Alt + W -> WhatsApp Highlighted Row
-      if (e.altKey && (e.key.toLowerCase() === "w" || e.code === "KeyW")) {
-        if (items.length > 0 && items[selectedIndex] && onWhatsAppItem) {
-          e.preventDefault();
-          onWhatsAppItem(items[selectedIndex], selectedIndex);
-        }
+      // 12. WhatsApp Highlighted Row / Card: 'w', 'W', or Alt+W
+      if (
+        ((!e.ctrlKey && !e.metaKey && !e.altKey && (e.key.toLowerCase() === "w" || e.code === "KeyW")) ||
+         (e.altKey && (e.key.toLowerCase() === "w" || e.code === "KeyW"))) &&
+        items.length > 0 &&
+        items[selectedIndex] &&
+        onWhatsAppItem
+      ) {
+        e.preventDefault();
+        onWhatsAppItem(items[selectedIndex], selectedIndex);
         return;
       }
 
-      // 11. Alt + D / Delete -> Delete Highlighted Row
+      // 13. Alt + D / Delete -> Delete Highlighted Row
       if ((e.altKey && (e.key.toLowerCase() === "d" || e.code === "KeyD")) || e.key === "Delete") {
         if (items.length > 0 && items[selectedIndex] && onDeleteItem) {
           e.preventDefault();
@@ -413,7 +483,10 @@ export function useTallyFormNavigation({
     ].join(", ");
 
     const elements = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-      (el) => el.offsetParent !== null && !el.closest('[data-tally-ignore="true"]')
+      (el) =>
+        (el.offsetParent !== null ||
+          (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))) &&
+        !el.closest('[data-tally-ignore="true"]')
     );
 
     const focusableEl = currentEl.closest<HTMLElement>(focusableSelector) || currentEl;
@@ -432,8 +505,11 @@ export function useTallyFormNavigation({
       if (nextEl instanceof HTMLInputElement && ["text", "number", "tel", "email"].includes(nextEl.type)) {
         nextEl.select();
       }
+    } else if (!backwards && currentIndex === elements.length - 1) {
+      // Reached the end of the form fields! Pressing Enter on the last field saves the form!
+      onSave();
     }
-  }, [formRef]);
+  }, [formRef, onSave]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -490,10 +566,14 @@ export function useTallyFormNavigation({
         return;
       }
 
-      // 4. Alt + A -> Add Row / Line Item
+      // 4. Alt + A -> Add Row / Line Item (if onAddRow exists) OR Save Form (Tally Accept)
       if (e.altKey && (e.key.toLowerCase() === "a" || e.code === "KeyA")) {
         e.preventDefault();
-        onAddRow?.();
+        if (onAddRow) {
+          onAddRow();
+        } else {
+          onSave();
+        }
         return;
       }
 

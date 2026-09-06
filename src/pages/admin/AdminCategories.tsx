@@ -33,7 +33,7 @@ import {
 import { ICON_NAMES, COLOR_OPTIONS, getIcon } from "@/lib/icons";
 import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
+import { useTallyListNavigation, useTallyFormNavigation } from "@/hooks/useTallyKeyboard";
 
 interface CategoryForm {
   name: string;
@@ -148,6 +148,7 @@ export default function AdminCategories() {
   });
 
   const categorySearchRef = useRef<HTMLInputElement>(null);
+  const categoryFormRef = useRef<HTMLFormElement>(null);
 
   // Tally Keyboard Navigation for Categories Directory (ArrowUp/Down, Enter to edit, / to search, Alt+A / Alt+C to add, Delete to delete)
   const { selectedIndex, getRowProps } = useTallyListNavigation({
@@ -156,6 +157,14 @@ export default function AdminCategories() {
     onOpenItem: (cat) => openEdit(cat),
     onNewItem: () => openAdd(),
     onDeleteItem: (cat) => setDeleteId(cat.id),
+  });
+
+  // Tally Form Navigation for Category Dialog (Enter-to-advance, Alt+A to save)
+  useTallyFormNavigation({
+    formRef: categoryFormRef,
+    onSave: () => handleSave(),
+    onEsc: () => setDialogOpen(false),
+    enabled: dialogOpen,
   });
 
   return (
@@ -289,7 +298,7 @@ export default function AdminCategories() {
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSave} className="space-y-4 pt-2 text-xs">
+          <form ref={categoryFormRef} onSubmit={handleSave} className="space-y-4 pt-2 text-xs">
             <div>
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Category Name <span className="text-red-500">*</span>
@@ -390,7 +399,7 @@ export default function AdminCategories() {
                 disabled={saving}
                 className="h-9 text-xs rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold"
               >
-                {saving ? "Saving…" : editing ? "Save Changes" : "Add Category"}
+                {saving ? "Saving…" : editing ? "Save Changes (Alt+A / Enter)" : "Add Category (Alt+A / Enter)"}
               </Button>
             </DialogFooter>
           </form>

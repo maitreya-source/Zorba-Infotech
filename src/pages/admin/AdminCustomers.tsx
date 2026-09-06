@@ -12,7 +12,12 @@ import {
   SearchFilterBar,
   LoadingScreen,
 } from "@/components/common";
-import { getCustomers, deleteCustomer } from "@/lib/firestore";
+import {
+  getCustomersPaginated,
+  getCustomersTotalCount,
+  searchCustomers,
+  deleteCustomer,
+} from "@/lib/firestore";
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Customer } from "@/lib/types";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
@@ -23,23 +28,42 @@ import ImportCustomersModal from "@/components/admin/ImportCustomersModal";
 
 export default function AdminCustomers() {
   const navigate = useNavigate();
-  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState<number>(25);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState<number>(7000);
+  const [docSnapshots, setDocSnapshots] = useState<Record<number, any>>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
 
-  const loadData = async (forceRefresh = false) => {
+  const searchTimerRef = useRef<any>(null);
+
+  const loadData = async (targetPage = 1, currentSnapshots = docSnapshots) => {
     setLoading(true);
     setError(null);
     try {
-      const list = await getCustomers(forceRefresh);
-      setAllCustomers(list);
+      if (search.trim()) {
+        const results = await searchCustomers(search.trim(), 100);
+        setCustomers(results);
+        setHasMore(false);
+      } else {
+        const cursor = targetPage > 1 ? currentSnapshots[targetPage - 1] : undefined;
+        const res = await getCustomersPaginated({
+          pageSize,
+          lastDoc: cursor,
+        });
+        setCustomers(res.items);
+        setHasMore(res.hasMore);
+        if (res.lastDoc) {
+          setDocSnapshots((prev) => ({ ...prev, [targetPage]: res.lastDoc }));
+        }
+      }
     } catch (err: any) {
       console.error("Firebase error in AdminCustomers:", err);
       setError(err?.message || "Unable to connect to Firebase to load customer directory.");
@@ -49,55 +73,70 @@ export default function AdminCustomers() {
   };
 
   useEffect(() => {
-    loadData(false);
+    getCustomersTotalCount().then((cnt) => {
+      if (cnt > 0) setTotalCount(cnt);
+    });
+    setPageNumber(1);
+    setDocSnapshots({});
+    loadData(1, {});
 
     // Real-time zero-cost customer table refresh
     const unsub = subscribeSyncSignal("customers", () => {
-      loadData(true);
+      loadData(pageNumber);
     });
     return () => unsub();
-  }, []);
+  }, [pageSize]);
 
-  // Filtered by search query across name, phone, company, email, address
-  const filteredCustomers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return allCustomers;
-    const qDigits = q.replace(/\D/g, "");
-    return allCustomers.filter((c) => {
-      const nameMatch = c.name?.toLowerCase().includes(q);
-      const phoneMatch = c.phone?.toLowerCase().includes(q) || (qDigits && (c.phone || "").replace(/\D/g, "").includes(qDigits));
-      const altPhoneMatch = c.additionalPhones?.some((p) => p.includes(q) || (qDigits && p.replace(/\D/g, "").includes(qDigits)));
-      const companyMatch = c.companyName?.toLowerCase().includes(q);
-      const emailMatch = c.email?.toLowerCase().includes(q);
-      const addressMatch = c.address?.toLowerCase().includes(q);
-      return Boolean(nameMatch || phoneMatch || altPhoneMatch || companyMatch || emailMatch || addressMatch);
-    });
-  }, [allCustomers, search]);
-
-  // Reset page to 1 when search changes
-  useEffect(() => {
+  // Debounced search handling
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
     setPageNumber(1);
-  }, [search, pageSize]);
+    setDocSnapshots({});
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        if (!val.trim()) {
+          const res = await getCustomersPaginated({ pageSize });
+          setCustomers(res.items);
+          setHasMore(res.hasMore);
+          if (res.lastDoc) {
+            setDocSnapshots({ 1: res.lastDoc });
+          }
+        } else {
+          const results = await searchCustomers(val.trim(), 100);
+          setCustomers(results);
+          setHasMore(false);
+        }
+      } catch (err: any) {
+        setError(err?.message || "Search error");
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
-  const safePageNumber = Math.min(pageNumber, totalPages);
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || loading) return;
+    setPageNumber(newPage);
+    loadData(newPage);
+  };
 
-  const paginatedCustomers = useMemo(() => {
-    const start = (safePageNumber - 1) * pageSize;
-    return filteredCustomers.slice(start, start + pageSize);
-  }, [filteredCustomers, safePageNumber, pageSize]);
+  const totalPages = search.trim()
+    ? Math.max(1, Math.ceil(customers.length / pageSize))
+    : Math.max(1, Math.ceil(totalCount / pageSize));
 
   const customerSearchRef = useRef<HTMLInputElement>(null);
 
   // Tally Keyboard Navigation for Customer Directory (ArrowUp/Down, Enter to open, / to search, Alt+A / Alt+C for new, Delete, [ / ] for paging)
   const { selectedIndex, getRowProps } = useTallyListNavigation({
-    items: paginatedCustomers,
+    items: customers,
     searchInputRef: customerSearchRef,
     onOpenItem: (cust) => navigate(`/admin/customers/${cust.id}`),
     onNewItem: () => setShowCreateModal(true),
     onDeleteItem: (cust) => setDeleteId(cust.id),
-    onPrevPage: () => setPageNumber((p) => Math.max(1, p - 1)),
-    onNextPage: () => setPageNumber((p) => Math.min(totalPages, p + 1)),
+    onPrevPage: () => handlePageChange(pageNumber - 1),
+    onNextPage: () => handlePageChange(pageNumber + 1),
   });
 
   const handleDelete = async () => {
@@ -106,8 +145,8 @@ export default function AdminCustomers() {
       await deleteCustomer(deleteId);
       toast.success("Customer profile deleted");
       setDeleteId(null);
-      setAllCustomers((prev) => prev.filter((c) => c.id !== deleteId));
-      loadData(true);
+      setDocSnapshots({});
+      loadData(pageNumber);
     } catch {
       toast.error("Failed to delete customer");
     }
@@ -154,10 +193,10 @@ export default function AdminCustomers() {
       <SearchFilterBar
         inputRef={customerSearchRef}
         value={search}
-        onChange={(val) => setSearch(val)}
-        placeholder="Search by customer name, phone, company, email… (Press / to search)"
-        count={filteredCustomers.length}
-        countLabel="Total Customers"
+        onChange={handleSearchChange}
+        placeholder="Search by customer name, phone, company, email, group… (Press / to search)"
+        count={search.trim() ? customers.length : totalCount}
+        countLabel={search.trim() ? "Search Matches" : "Total Customers"}
       />
 
       {/* Main Directory Table */}
@@ -168,10 +207,10 @@ export default function AdminCustomers() {
       ) : error ? (
         <FirebaseErrorState
           error={error}
-          onRetry={() => loadData(true)}
+          onRetry={() => loadData(pageNumber)}
           title="Customer Sync Error"
         />
-      ) : filteredCustomers.length === 0 ? (
+      ) : customers.length === 0 ? (
         <EmptyState
           icon={Users}
           title="No Customers Found"
@@ -198,7 +237,7 @@ export default function AdminCustomers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {paginatedCustomers.map((cust, idx) => {
+                {customers.map((cust, idx) => {
                   const rowProps = getRowProps(idx);
                   return (
                     <tr
@@ -325,17 +364,16 @@ export default function AdminCustomers() {
       )}
 
       {/* Pagination Footer */}
-      {!loading && !error && filteredCustomers.length > 0 && (
+      {!loading && !error && customers.length > 0 && (
         <TablePagination
-          pageNumber={safePageNumber}
+          pageNumber={pageNumber}
           totalPages={totalPages}
-          currentItemsCount={paginatedCustomers.length}
+          currentItemsCount={customers.length}
           pageSize={pageSize}
+          hasMore={hasMore}
           isLoading={loading}
           label="customers"
-          onPageChange={(newPage) => {
-            setPageNumber(Math.max(1, Math.min(totalPages, newPage)));
-          }}
+          onPageChange={handlePageChange}
         />
       )}
 
@@ -343,18 +381,26 @@ export default function AdminCustomers() {
       <CreateCustomerModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
-        onCreated={() => loadData(true)}
+        onCreated={() => {
+          setDocSnapshots({});
+          setPageNumber(1);
+          loadData(1, {});
+        }}
       />
       <EditCustomerModal
         customer={editCustomer}
         open={!!editCustomer}
         onOpenChange={(open) => !open && setEditCustomer(null)}
-        onUpdated={() => loadData(true)}
+        onUpdated={() => loadData(pageNumber)}
       />
       <ImportCustomersModal
         open={showImportModal}
         onOpenChange={setShowImportModal}
-        onImportComplete={() => loadData(true)}
+        onImportComplete={() => {
+          setDocSnapshots({});
+          setPageNumber(1);
+          loadData(1, {});
+        }}
       />
 
       {/* Delete Confirmation Dialog */}

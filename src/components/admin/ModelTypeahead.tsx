@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Search, Tag, Check, Loader2, Package, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { searchProducts, getDeviceModels } from "@/lib/firestore";
+import { searchProducts, getDeviceModels, saveDeviceModel } from "@/lib/firestore";
 import type { Product, DeviceModel } from "@/lib/types";
 
 export interface ModelTypeaheadProps {
@@ -105,6 +105,32 @@ export default function ModelTypeahead({
     setIsOpen(true);
   };
 
+  const advanceToNextInput = (currentEl: HTMLElement) => {
+    const root = currentEl.closest("form") || document.body;
+    const focusableSelector = [
+      'input:not([type="hidden"]):not([disabled]):not([readonly]):not([data-tally-skip])',
+      'select:not([disabled]):not([data-tally-skip])',
+      'textarea:not([disabled]):not([readonly]):not([data-tally-skip])',
+      '[role="combobox"]:not([disabled]):not([data-tally-skip])',
+      'button[role="combobox"]:not([disabled])',
+      '[data-tally-field]:not([disabled])',
+      'button[data-tally-field]:not([disabled])',
+    ].join(", ");
+
+    const elements = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+      (el) => el.offsetParent !== null && !el.closest('[data-tally-ignore="true"]')
+    );
+
+    const currentIndex = elements.indexOf(currentEl);
+    if (currentIndex !== -1 && currentIndex + 1 < elements.length) {
+      const nextEl = elements[currentIndex + 1];
+      nextEl.focus();
+      if (nextEl instanceof HTMLInputElement && ["text", "number", "tel", "email"].includes(nextEl.type)) {
+        nextEl.select();
+      }
+    }
+  };
+
   const handleSelectValue = (chosenText: string, prod?: Product) => {
     const clean = chosenText.trim();
     setSearchQuery(clean);
@@ -113,6 +139,16 @@ export default function ModelTypeahead({
       onSelectProduct(prod);
     }
     setIsOpen(false);
+    if (clean) {
+      saveDeviceModel(categoryName || "General", clean)
+        .then((m) => {
+          setLegacyModels((prev) => {
+            if (prev.some((x) => x.modelName.toLowerCase() === m.modelName.toLowerCase())) return prev;
+            return [m, ...prev];
+          });
+        })
+        .catch(() => {});
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -129,11 +165,28 @@ export default function ModelTypeahead({
       e.preventDefault();
       setActiveIndex((prev) => (prev > 0 ? prev - 1 : totalCount - 1));
     } else if (e.key === "Enter") {
+      e.preventDefault();
+      const currentInput = e.currentTarget;
       if (isOpen && activeIndex >= 0 && activeIndex < results.length) {
-        e.preventDefault();
         const p = results[activeIndex];
-        handleSelectValue(p.model?.trim() || p.name?.trim() || "", p);
+        const chosen = p.model?.trim() || p.name?.trim() || "";
+        handleSelectValue(chosen, p);
+      } else {
+        const clean = searchQuery.trim();
+        setIsOpen(false);
+        if (clean) {
+          onChange(clean);
+          saveDeviceModel(categoryName || "General", clean)
+            .then((m) => {
+              setLegacyModels((prev) => {
+                if (prev.some((x) => x.modelName.toLowerCase() === m.modelName.toLowerCase())) return prev;
+                return [m, ...prev];
+              });
+            })
+            .catch(() => {});
+        }
       }
+      setTimeout(() => advanceToNextInput(currentInput), 30);
     } else if (e.key === "Escape") {
       setIsOpen(false);
     }

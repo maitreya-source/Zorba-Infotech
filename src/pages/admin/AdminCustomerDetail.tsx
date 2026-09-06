@@ -908,15 +908,17 @@ export default function AdminCustomerDetail() {
                               <Printer className="h-4 w-4" />
                             </Button>
 
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setDispatchPrintCall(item)}
-                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer"
-                              title="Print Dispatch Slip / Shipping Label"
-                            >
-                              <Truck className="h-4 w-4" />
-                            </Button>
+                            {item.type === "company_service_center" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDispatchPrintCall(item)}
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer"
+                                title="Print Dispatch Slip / Shipping Label"
+                              >
+                                <Truck className="h-4 w-4" />
+                              </Button>
+                            )}
 
                             <Link to={`/admin/service-calls/${item.id}/edit`}>
                               <Button
@@ -958,11 +960,11 @@ export default function AdminCustomerDetail() {
           onOpenChange={(open) => {
             if (!open) setPrintCall(null);
           }}
-          onOpenDispatchSlip={() => {
+          onOpenDispatchSlip={printCall.type === "company_service_center" ? () => {
             const c = printCall;
             setPrintCall(null);
             setDispatchPrintCall(c);
-          }}
+          } : undefined}
         />
       )}
 
