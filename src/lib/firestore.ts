@@ -1070,16 +1070,117 @@ export interface CustomerIndexItem {
   additionalPhones?: string[];
   companyName?: string;
   email?: string;
+  address?: string;
+  city?: string;
+  group?: string;
   createdAt?: string | number;
   updatedAt?: number;
 }
 
-const STORAGE_KEY_CUSTOMER_INDEX = "zorba_cust_index_v4";
-const STORAGE_KEY_CUSTOMER_SYNC = "zorba_cust_sync_v4";
+const STORAGE_KEY_CUSTOMER_INDEX = "zorba_cust_index_v5";
+const STORAGE_KEY_CUSTOMER_SYNC = "zorba_cust_sync_v5";
 
 let _customerIndex: CustomerIndexItem[] = [];
 let _isCustomerIndexInitialized = false;
 let _isSyncingIndex = false;
+
+type CustomerSubscriber = (customers: Customer[]) => void;
+const _customerSubscribers = new Set<CustomerSubscriber>();
+
+export function subscribeCustomers(callback: CustomerSubscriber): () => void {
+  _customerSubscribers.add(callback);
+  if (_customerIndex.length > 0) {
+    try {
+      callback(_customerIndex as Customer[]);
+    } catch {}
+  }
+  return () => {
+    _customerSubscribers.delete(callback);
+  };
+}
+
+export function notifyCustomerSubscribers(): void {
+  const current = (_customerIndex.length > 0 ? _customerIndex : []) as Customer[];
+  _customerSubscribers.forEach((cb) => {
+    try {
+      cb(current);
+    } catch (e) {
+      console.warn("Error in customer subscriber:", e);
+    }
+  });
+}
+
+let _customerSnapshotUnsub: (() => void) | null = null;
+
+export function initCustomerRealtimeSync(): () => void {
+  if (typeof window === "undefined") return () => {};
+  if (_customerSnapshotUnsub) return _customerSnapshotUnsub;
+
+  try {
+    const recentQ = query(
+      collection(db, "customers"),
+      orderBy("updatedAt", "desc"),
+      limit(25)
+    );
+    _customerSnapshotUnsub = onSnapshot(recentQ, (snap) => {
+      let changed = false;
+      snap.docChanges().forEach((change) => {
+        const data = change.doc.data();
+        const item: CustomerIndexItem = {
+          id: change.doc.id,
+          name: data.name || "",
+          phone: data.phone || "",
+          additionalPhones: data.additionalPhones || [],
+          companyName: data.companyName,
+          email: data.email,
+          address: data.address,
+          city: data.city,
+          group: data.group,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
+        };
+        const idx = _customerIndex.findIndex((c) => c.id === item.id);
+        if (change.type === "added") {
+          if (idx === -1) {
+            _customerIndex.unshift(item);
+            changed = true;
+          }
+        } else if (change.type === "modified") {
+          if (idx !== -1) {
+            _customerIndex[idx] = { ..._customerIndex[idx], ...item };
+            changed = true;
+          } else {
+            _customerIndex.unshift(item);
+            changed = true;
+          }
+        } else if (change.type === "removed") {
+          if (idx !== -1) {
+            _customerIndex.splice(idx, 1);
+            changed = true;
+          }
+        }
+      });
+
+      if (changed) {
+        try {
+          localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
+        } catch {}
+        notifyCustomerSubscribers();
+      }
+    }, (err) => {
+      console.debug("Customer realtime listener standby:", err.message);
+    });
+  } catch (e) {
+    console.debug("initCustomerRealtimeSync error:", e);
+  }
+
+  return () => {
+    if (_customerSnapshotUnsub) {
+      _customerSnapshotUnsub();
+      _customerSnapshotUnsub = null;
+    }
+  };
+}
 
 // Load local cache synchronously on startup (< 1ms)
 function loadLocalCustomerIndex(): void {
@@ -1097,8 +1198,7 @@ loadLocalCustomerIndex();
 
 /**
  * Non-blocking background delta-sync.
- * Downloads only modified customer records since lastSync without blocking UI.
- * Payload is ultra-slim (~50 bytes/record, ~250 KB for 5,000 customers).
+ * Downloads all or modified customer records since lastSync.
  */
 export async function syncCustomerIndex(forceFull = false): Promise<void> {
   if (_isSyncingIndex) return;
@@ -1111,8 +1211,8 @@ export async function syncCustomerIndex(forceFull = false): Promise<void> {
       if (syncStr) lastSync = parseInt(syncStr, 10) || 0;
     }
 
-    if (forceFull || _customerIndex.length === 0 || lastSync === 0) {
-      // Full sync: fetch all customer docs (slim projection)
+    if (forceFull || _customerIndex.length < 500 || lastSync === 0) {
+      // Full sync: fetch all customer docs (slim projection with all search fields)
       const snap = await fetchWithTimeout(getDocs(collection(db, "customers")));
       const items: CustomerIndexItem[] = snap.docs.map((d) => {
         const data = d.data();
@@ -1123,6 +1223,9 @@ export async function syncCustomerIndex(forceFull = false): Promise<void> {
           additionalPhones: data.additionalPhones || [],
           companyName: data.companyName,
           email: data.email,
+          address: data.address,
+          city: data.city,
+          group: data.group,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
         };
@@ -1147,6 +1250,9 @@ export async function syncCustomerIndex(forceFull = false): Promise<void> {
             additionalPhones: data.additionalPhones || [],
             companyName: data.companyName,
             email: data.email,
+            address: data.address,
+            city: data.city,
+            group: data.group,
             createdAt: data.createdAt,
             updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
           });
@@ -1163,6 +1269,7 @@ export async function syncCustomerIndex(forceFull = false): Promise<void> {
         console.warn("Could not save customer index to localStorage:", storageErr);
       }
     }
+    notifyCustomerSubscribers();
   } catch (err) {
     console.warn("Background customer sync error:", err);
   } finally {
@@ -1177,27 +1284,40 @@ export function invalidateCustomersCache() {
     localStorage.removeItem(STORAGE_KEY_CUSTOMER_INDEX);
     localStorage.removeItem(STORAGE_KEY_CUSTOMER_SYNC);
   }
+  notifyCustomerSubscribers();
 }
 
 export async function getCustomers(forceRefresh = false): Promise<Customer[]> {
-  if (!forceRefresh && _customerIndex.length > 0) {
+  initCustomerRealtimeSync();
+  if (!forceRefresh && _customerIndex.length >= 500) {
     return _customerIndex as Customer[];
   }
   try {
     const snap = await fetchWithTimeout(getDocs(collection(db, "customers")));
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Customer);
-    _customerIndex = list.map((c) => ({
-      id: c.id,
-      name: c.name || "",
-      phone: c.phone || "",
-      additionalPhones: c.additionalPhones || [],
-      companyName: c.companyName,
-      email: c.email,
-      address: c.address,
-      city: c.city,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-    }));
+    const list = snap.docs.map((d) => {
+      const c = d.data();
+      return {
+        id: d.id,
+        name: c.name || "",
+        phone: c.phone || "",
+        additionalPhones: c.additionalPhones || [],
+        companyName: c.companyName,
+        email: c.email,
+        address: c.address,
+        city: c.city,
+        group: c.group,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt || (typeof c.createdAt === "number" ? c.createdAt : 0),
+      } as Customer;
+    });
+    _customerIndex = list;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
+        localStorage.setItem(STORAGE_KEY_CUSTOMER_SYNC, String(Date.now()));
+      } catch {}
+    }
+    notifyCustomerSubscribers();
     return list;
   } catch (err: any) {
     if (_customerIndex.length > 0) return _customerIndex as Customer[];
@@ -1336,6 +1456,9 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
     additionalPhones: newCust.additionalPhones,
     companyName: newCust.companyName,
     email: newCust.email,
+    address: newCust.address,
+    city: newCust.city,
+    group: newCust.group,
     createdAt: now,
     updatedAt: now,
   };
@@ -1346,6 +1469,7 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
     } catch {}
   }
 
+  notifyCustomerSubscribers();
   publishSyncSignal("customers", { action: "create", resourceId: newCust.id });
 
   return newCust;
@@ -1520,6 +1644,7 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
         localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
       } catch {}
     }
+    notifyCustomerSubscribers();
   }
 
   publishSyncSignal("customers", { action: "update", resourceId: id });
@@ -1613,12 +1738,12 @@ export async function getCustomersPaginated(options?: {
  * Instant in-memory search for 5,000+ customers (< 1ms).
  * Searches across name, phone, alternate numbers, company, and email with zero network delay.
  */
-export async function searchCustomers(queryText: string, limitCount = 30): Promise<Customer[]> {
+export async function searchCustomers(queryText: string, limitCount = 50): Promise<Customer[]> {
   const clean = (queryText || "").trim().toLowerCase();
 
-  // Trigger background delta sync non-blockingly if not initialized
-  if (!_isCustomerIndexInitialized && !_isSyncingIndex) {
-    syncCustomerIndex();
+  // Ensure customer index is populated with full catalog
+  if (_customerIndex.length < 500) {
+    await getCustomers().catch(() => {});
   }
 
   // Instant in-memory search if index is available
@@ -1632,21 +1757,44 @@ export async function searchCustomers(queryText: string, limitCount = 30): Promi
 
     const matches = _customerIndex.filter((c) => {
       const name = (c.name || "").toLowerCase();
-      const phoneDigits = (c.phone || "").replace(/\D/g, "");
+      const phone = (c.phone || "").toLowerCase();
+      const phoneDigits = phone.replace(/\D/g, "");
       const company = (c.companyName || "").toLowerCase();
       const email = (c.email || "").toLowerCase();
+      const group = (c.group || "").toLowerCase();
+      const address = (c.address || "").toLowerCase();
+      const city = (c.city || "").toLowerCase();
 
       // Direct phone match
-      if (qDigits && (phoneDigits.includes(qDigits) || (c.phone && c.phone.includes(clean)))) {
-        return true;
+      if (qDigits && qDigits.length >= 3) {
+        if (phoneDigits.includes(qDigits) || phone.includes(clean)) {
+          return true;
+        }
+        if (c.additionalPhones && c.additionalPhones.some((p) => (p || "").replace(/\D/g, "").includes(qDigits))) {
+          return true;
+        }
       }
-      if (qDigits && c.additionalPhones && c.additionalPhones.some((p) => (p || "").replace(/\D/g, "").includes(qDigits))) {
+
+      // Exact substring match in primary fields (e.g. "Jain", "Ultratech")
+      if (
+        name.includes(clean) ||
+        company.includes(clean) ||
+        group.includes(clean) ||
+        city.includes(clean) ||
+        email.includes(clean) ||
+        address.includes(clean)
+      ) {
         return true;
       }
 
-      // Check all query words match name, company, or email
+      // Check all query words match across name, company, group, address, or email
       return tokens.every((tok) =>
-        name.includes(tok) || company.includes(tok) || email.includes(tok)
+        name.includes(tok) ||
+        company.includes(tok) ||
+        group.includes(tok) ||
+        city.includes(tok) ||
+        address.includes(tok) ||
+        email.includes(tok)
       );
     });
 
@@ -1713,7 +1861,16 @@ export async function getCustomer(id: string): Promise<Customer | null> {
 
 export async function deleteCustomer(id: string): Promise<void> {
   await deleteDoc(doc(db, "customers", id));
-  invalidateCustomersCache();
+  const idx = _customerIndex.findIndex((c) => c.id === id);
+  if (idx !== -1) {
+    _customerIndex.splice(idx, 1);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
+      } catch {}
+    }
+    notifyCustomerSubscribers();
+  }
   publishSyncSignal("customers", { action: "delete", resourceId: id });
 }
 

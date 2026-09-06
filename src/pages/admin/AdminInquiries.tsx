@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import {
   MessageSquare,
   Search,
@@ -101,6 +102,23 @@ export default function AdminInquiries() {
     const start = (currentPage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: paginatedInquiries,
+    searchRef: searchInputRef,
+    onOpenItem: (inq) => setSelectedInquiry(inq),
+    onWhatsAppItem: (inq) => {
+      const cleanPhone = inq.phone.replace(/\D/g, "");
+      const waUrl = `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(
+        `Hi ${inq.name}, thank you for contacting Zorba Infotech regarding "${inq.subject || "your inquiry"}". How can we assist you?`
+      )}`;
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    },
+    onPrevPage: () => setCurrentPage((p) => Math.max(1, p - 1)),
+    onNextPage: () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
+  });
 
   const counts = useMemo(() => {
     return {
@@ -244,7 +262,8 @@ export default function AdminInquiries() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
-              placeholder="Search by name, phone, requirement..."
+              ref={searchInputRef}
+              placeholder="Search by name, phone, requirement... (/ to focus)"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -295,7 +314,8 @@ export default function AdminInquiries() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {paginatedInquiries.map((inq) => {
+                {paginatedInquiries.map((inq, idx) => {
+                  const rowProps = getRowProps(idx);
                   const cleanPhone = inq.phone.replace(/\D/g, "");
                   const waUrl = `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(
                     `Hi ${inq.name}, thank you for contacting Zorba Infotech regarding "${inq.subject || "your inquiry"}". How can we assist you?`
@@ -304,8 +324,11 @@ export default function AdminInquiries() {
                   return (
                     <tr
                       key={inq.id}
+                      {...rowProps}
                       onClick={() => setSelectedInquiry(inq)}
-                      className="hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer group"
+                      className={`transition-colors cursor-pointer group ${
+                        rowProps.className || "hover:bg-blue-50/50 dark:hover:bg-blue-950/40"
+                      }`}
                     >
                       <td className="px-4 py-3">
                         <div className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">

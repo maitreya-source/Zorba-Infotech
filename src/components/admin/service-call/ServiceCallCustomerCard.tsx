@@ -58,6 +58,8 @@ export default function ServiceCallCustomerCard({
           {selectedCustomerId && (
             <Button
               type="button"
+              tabIndex={-1}
+              data-tally-skip="true"
               size="sm"
               variant="ghost"
               onClick={onOpenEditCustomerModal}

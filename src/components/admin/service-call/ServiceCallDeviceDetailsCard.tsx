@@ -132,6 +132,8 @@ export default function ServiceCallDeviceDetailsCard({
               </Label>
               <button
                 type="button"
+                tabIndex={-1}
+                data-tally-skip="true"
                 onClick={onOpenAddCategoryModal}
                 className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
               >
@@ -292,6 +294,8 @@ export default function ServiceCallDeviceDetailsCard({
                 <button
                   key={acc.label}
                   type="button"
+                  tabIndex={-1}
+                  data-tally-skip="true"
                   onClick={() => {
                     onIssueDescriptionChange((prev) => (prev ? `${prev}, [${acc.val}]` : `[${acc.val}]`));
                   }}
@@ -311,6 +315,8 @@ export default function ServiceCallDeviceDetailsCard({
                 <button
                   key={tag}
                   type="button"
+                  tabIndex={-1}
+                  data-tally-skip="true"
                   onClick={() => {
                     onIssueDescriptionChange((prev) => (prev ? `${prev}, ${tag}` : tag));
                   }}
@@ -339,6 +345,8 @@ export default function ServiceCallDeviceDetailsCard({
             {onOpenDispatchPrint && (
               <Button
                 type="button"
+                tabIndex={-1}
+                data-tally-skip="true"
                 variant="outline"
                 size="sm"
                 onClick={onOpenDispatchPrint}
@@ -362,6 +370,8 @@ export default function ServiceCallDeviceDetailsCard({
                   {selectedServiceCenterId && onOpenEditCenterModal && (
                     <button
                       type="button"
+                      tabIndex={-1}
+                      data-tally-skip="true"
                       onClick={onOpenEditCenterModal}
                       className="text-[10px] font-semibold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 cursor-pointer"
                       title="Edit Service Center details & locations"
@@ -371,6 +381,8 @@ export default function ServiceCallDeviceDetailsCard({
                   )}
                   <button
                     type="button"
+                    tabIndex={-1}
+                    data-tally-skip="true"
                     onClick={onOpenAddCenterModal}
                     className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
                   >
@@ -404,6 +416,8 @@ export default function ServiceCallDeviceDetailsCard({
                 {onOpenAddAddressModal && (
                   <button
                     type="button"
+                    tabIndex={-1}
+                    data-tally-skip="true"
                     onClick={onOpenAddAddressModal}
                     className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
                   >
@@ -438,6 +452,8 @@ export default function ServiceCallDeviceDetailsCard({
                 </Label>
                 <button
                   type="button"
+                  tabIndex={-1}
+                  data-tally-skip="true"
                   onClick={onOpenAddCourierModal}
                   className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
                 >

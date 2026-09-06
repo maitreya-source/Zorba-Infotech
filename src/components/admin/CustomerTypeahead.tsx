@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Search, Phone, Check, Plus, Loader2, User, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { searchCustomers, getCustomer } from "@/lib/firestore";
+import { advanceToNextFormField } from "@/hooks/useTallyKeyboard";
 import type { Customer } from "@/lib/types";
 
 interface CustomerTypeaheadProps {
@@ -35,6 +36,7 @@ export default function CustomerTypeahead({
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync when external value changes
   useEffect(() => {
@@ -85,11 +87,20 @@ export default function CustomerTypeahead({
     setIsOpen(true);
   };
 
-  const handleSelect = async (cust: Customer) => {
+  const handleSelect = async (cust: Customer, advanceFocus = false) => {
     setSearchQuery(cust.name);
     if (onChange) onChange(cust.name);
     onSelectCustomer(cust);
     setIsOpen(false);
+    setActiveIndex(-1);
+
+    if (advanceFocus && inputRef.current) {
+      setTimeout(() => {
+        if (inputRef.current) {
+          advanceToNextFormField(inputRef.current);
+        }
+      }, 50);
+    }
 
     // If full address/details not present in slim index, fetch on demand in background
     if (!cust.address && cust.id) {
@@ -117,9 +128,16 @@ export default function CustomerTypeahead({
       e.preventDefault();
       setActiveIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
     } else if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      const currentEl = inputRef.current || e.currentTarget;
       if (isOpen && activeIndex >= 0 && activeIndex < results.length) {
-        e.preventDefault();
-        handleSelect(results[activeIndex]);
+        handleSelect(results[activeIndex], true);
+      } else {
+        setIsOpen(false);
+        setTimeout(() => {
+          advanceToNextFormField(currentEl);
+        }, 30);
       }
     } else if (e.key === "Escape") {
       setIsOpen(false);
@@ -134,6 +152,7 @@ export default function CustomerTypeahead({
     >
       <div className="relative">
         <Input
+          ref={inputRef}
           id={id}
           type="text"
           role="combobox"
@@ -141,7 +160,10 @@ export default function CustomerTypeahead({
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={() => {
-            setIsOpen(true);
+            // Only auto-open dropdown if no customer is currently selected
+            if (!selectedCustomerId) {
+              setIsOpen(true);
+            }
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
@@ -171,7 +193,7 @@ export default function CustomerTypeahead({
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => handleSelect(c)}
+                  onClick={() => handleSelect(c, true)}
                   className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs transition-colors cursor-pointer ${
                     isActive
                       ? "bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200"

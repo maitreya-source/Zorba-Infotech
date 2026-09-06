@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import {
   ArrowLeft,
   Phone,
@@ -268,6 +269,119 @@ export default function AdminCustomerDetail() {
     });
   };
 
+  const filteredQuotes = useMemo(() => {
+    const query = (search || "").toLowerCase().trim();
+    const queryDigits = query.replace(/\D/g, "");
+    return quotations.filter((q) => {
+      if (!query) return true;
+      const qNo = (q.quotationNo || "").toLowerCase();
+      const tName = (q.templateName || "").toLowerCase();
+      const notes = (q.notes || "").toLowerCase();
+      const items = Array.isArray(q.items) ? q.items : [];
+
+      const matchesNo = qNo.includes(query) || (queryDigits.length >= 1 && qNo.includes(queryDigits));
+      const matchesTemplate = tName.includes(query);
+      const matchesNotes = notes.includes(query);
+      const matchesItems = items.some((it) => {
+        if (!it) return false;
+        const pName = (it.productName || "").toLowerCase();
+        const pModel = (it.modelNumber || "").toLowerCase();
+        const pCat = (it.category || "").toLowerCase();
+        const pDesc = (it.description || "").toLowerCase();
+        return (
+          pName.includes(query) ||
+          pModel.includes(query) ||
+          pCat.includes(query) ||
+          pDesc.includes(query)
+        );
+      });
+
+      return matchesNo || matchesTemplate || matchesNotes || matchesItems;
+    });
+  }, [quotations, search]);
+
+  const activeList = useMemo(() => {
+    return activeTab === "quotations" ? filteredQuotes : filteredCalls;
+  }, [activeTab, filteredQuotes, filteredCalls]);
+
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: activeList,
+    onOpenItem: (item: any) => {
+      if (activeTab === "quotations") {
+        navigate(`/admin/quotations/${item.id}/edit`);
+      } else {
+        navigate(`/admin/service-calls/${item.id}/edit`);
+      }
+    },
+    onWhatsAppItem: (item: any) => {
+      if (activeTab === "quotations") {
+        setSelectedQuoteForModal(item as Quotation);
+        setShowQuoteWhatsApp(true);
+      } else {
+        handleOpenTicketWhatsApp(item as ServiceCall);
+      }
+    },
+    onPrintItem: (item: any) => {
+      if (activeTab === "quotations") {
+        setSelectedQuoteForModal(item as Quotation);
+        setShowQuotePrint(true);
+      } else {
+        setPrintCall(item as ServiceCall);
+      }
+    },
+    onNewItem: () => {
+      if (!customer?.id) return;
+      if (activeTab === "quotations") {
+        navigate(`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`);
+      } else {
+        navigate(`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`);
+      }
+    },
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+
+      // Alt+S -> Service Calls tab
+      if (e.altKey && (e.key.toLowerCase() === "s" || e.code === "KeyS")) {
+        e.preventDefault();
+        setActiveTab("all");
+        return;
+      }
+      // Alt+Q -> Quotations tab
+      if (e.altKey && (e.key.toLowerCase() === "q" || e.code === "KeyQ")) {
+        e.preventDefault();
+        setActiveTab("quotations");
+        return;
+      }
+
+      if (isInput) return;
+
+      if (e.key === "1") {
+        e.preventDefault();
+        setActiveTab("all");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        setActiveTab("active");
+      } else if (e.key === "3") {
+        e.preventDefault();
+        setActiveTab("completed");
+      } else if (e.key === "4" || e.key.toLowerCase() === "q") {
+        e.preventDefault();
+        setActiveTab("quotations");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   if (loading) {
     return <LoadingScreen fullScreen={false} title="Customer Profile" subtitle="Loading customer account & service history..." />;
   }
@@ -533,64 +647,77 @@ export default function AdminCustomerDetail() {
       <div className="space-y-3 pt-2">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Segmented Filter Pills */}
+          {/* Segmented Filter Pills */}
           <div className="overflow-x-auto no-scrollbar max-w-full pb-0.5">
             <div className="inline-flex items-center gap-1 p-1 bg-slate-200/60 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-800 shrink-0">
               <button
+                type="button"
                 onClick={() => setActiveTab("all")}
-                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "all"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                 }`}
+                title="All Service Calls (Shortcut: 1 or Alt+S)"
               >
                 <span>All Service Calls</span>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                   {calls.length}
                 </span>
+                <kbd className="hidden sm:inline-block text-[9px] font-mono px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">1</kbd>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab("active")}
-                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "active"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                 }`}
+                title="Active Repairs (Shortcut: 2)"
               >
                 <Activity className="h-3.5 w-3.5 text-blue-600" />
                 <span>Active Repairs</span>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                   {activeCalls.length}
                 </span>
+                <kbd className="hidden sm:inline-block text-[9px] font-mono px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">2</kbd>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab("completed")}
-                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "completed"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                 }`}
+                title="Completed / Delivered (Shortcut: 3)"
               >
                 <span>Completed / Delivered</span>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                   {completedCalls.length}
                 </span>
+                <kbd className="hidden sm:inline-block text-[9px] font-mono px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">3</kbd>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab("quotations")}
-                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "quotations"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                 }`}
+                title="Quotations (Shortcut: 4 or Alt+Q)"
               >
                 <FileText className="h-3.5 w-3.5 text-purple-600" />
                 <span>Quotations</span>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
                   {quotations.length}
                 </span>
+                <kbd className="hidden sm:inline-block text-[9px] font-mono px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">4 / Alt+Q</kbd>
               </button>
             </div>
           </div>
@@ -599,7 +726,7 @@ export default function AdminCustomerDetail() {
           <div className="relative min-w-[200px] w-full md:w-72">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
-              placeholder="Search by ticket no, model, issue…"
+              placeholder="Search by ticket no, model, issue… (/ to focus)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs w-full"
@@ -609,79 +736,51 @@ export default function AdminCustomerDetail() {
 
         {/* Quotations View vs Service Calls View */}
         {activeTab === "quotations" ? (
-          (() => {
-            const query = (search || "").toLowerCase().trim();
-            const queryDigits = query.replace(/\D/g, "");
-            const filteredQuotes = quotations.filter((q) => {
-              if (!query) return true;
-              const qNo = (q.quotationNo || "").toLowerCase();
-              const tName = (q.templateName || "").toLowerCase();
-              const notes = (q.notes || "").toLowerCase();
-              const items = Array.isArray(q.items) ? q.items : [];
-
-              const matchesNo = qNo.includes(query) || (queryDigits.length >= 1 && qNo.includes(queryDigits));
-              const matchesTemplate = tName.includes(query);
-              const matchesNotes = notes.includes(query);
-              const matchesItems = items.some((it) => {
-                if (!it) return false;
-                const pName = (it.productName || "").toLowerCase();
-                const pModel = (it.modelNumber || "").toLowerCase();
-                const pCat = (it.category || "").toLowerCase();
-                const pDesc = (it.description || "").toLowerCase();
-                return (
-                  pName.includes(query) ||
-                  pModel.includes(query) ||
-                  pCat.includes(query) ||
-                  pDesc.includes(query)
-                );
-              });
-
-              return matchesNo || matchesTemplate || matchesNotes || matchesItems;
-            });
-
-            if (filteredQuotes.length === 0) {
-              return (
-                <EmptyState
-                  icon={FileText}
-                  title={
-                    quotations.length === 0
-                      ? `No price estimate quotations recorded yet for ${customer.name}`
-                      : "No quotations matching your search query"
-                  }
-                  description={
-                    quotations.length === 0
-                      ? "Create an approximate price quotation for laptops, CCTV, or hardware packages."
-                      : "Try clearing your search query."
-                  }
-                  actionLabel="Create Quotation"
-                  actionIcon={Plus}
-                  onAction={() => navigate(`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`)}
-                />
-              );
-            }
-
-            return (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left min-w-[750px]">
-                    <thead>
-                      <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider bg-slate-50/60 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400">
-                        <th className="pl-6 pr-4 py-3.5">QUOTE # & DATE</th>
-                        <th className="px-4 py-3.5">ITEMS ESTIMATED</th>
-                        <th className="px-4 py-3.5">EST. GRAND TOTAL</th>
-                        <th className="pl-4 pr-6 py-3.5 text-right">DISPATCHES & ACTIONS</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                      {filteredQuotes.map((q) => (
-                        <tr key={q.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+          filteredQuotes.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title={
+                quotations.length === 0
+                  ? `No price estimate quotations recorded yet for ${customer.name}`
+                  : "No quotations matching your search query"
+              }
+              description={
+                quotations.length === 0
+                  ? "Create an approximate price quotation for laptops, CCTV, or hardware packages."
+                  : "Try clearing your search query."
+              }
+              actionLabel="Create Quotation"
+              actionIcon={Plus}
+              onAction={() => navigate(`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`)}
+            />
+          ) : (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[750px]">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider bg-slate-50/60 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400">
+                      <th className="pl-6 pr-4 py-3.5">QUOTE # & DATE</th>
+                      <th className="px-4 py-3.5">ITEMS ESTIMATED</th>
+                      <th className="px-4 py-3.5">EST. GRAND TOTAL</th>
+                      <th className="pl-4 pr-6 py-3.5 text-right">DISPATCHES & ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+                    {filteredQuotes.map((q, idx) => {
+                      const rowProps = getRowProps(idx);
+                      return (
+                        <tr
+                          key={q.id}
+                          {...rowProps}
+                          onClick={() => navigate(`/admin/quotations/${q.id}/edit`)}
+                          className={`transition-colors cursor-pointer group ${
+                            rowProps.className || "hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
+                          }`}
+                        >
                           <td className="pl-6 pr-4 py-4 align-middle">
-                            <Link
-                              to={`/admin/quotations/${q.id}/edit`}
-                              className="font-bold text-blue-600 dark:text-blue-400 font-mono text-sm tracking-tight hover:underline"
-                            >
+                            <div className="font-bold text-blue-600 dark:text-blue-400 font-mono text-sm tracking-tight group-hover:underline">
                               {q.quotationNo}
-                            </Link>
+                            </div>
                             {q.templateName && (
                               <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-0.5">
                                 {q.templateName}
@@ -706,7 +805,10 @@ export default function AdminCustomerDetail() {
                             ₹{q.grandTotal.toLocaleString("en-IN")}
                           </td>
 
-                          <td className="pl-4 pr-6 py-4 align-middle text-right">
+                          <td
+                            className="pl-4 pr-6 py-4 align-middle text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 variant="ghost"
@@ -747,7 +849,10 @@ export default function AdminCustomerDetail() {
                                 <Printer className="h-4 w-4" />
                               </Button>
 
-                              <Link to={`/admin/quotations/${q.id}/edit`}>
+                              <Link
+                                to={`/admin/quotations/${q.id}/edit`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -760,13 +865,13 @@ export default function AdminCustomerDetail() {
                             </div>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            );
-          })()
+            </div>
+          )
         ) : (
           /* Service Calls Table / List */
           filteredCalls.length === 0 ? (
@@ -801,12 +906,17 @@ export default function AdminCustomerDetail() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                    {filteredCalls.map((item) => (
-                      <tr
-                        key={item.id}
-                        onClick={() => navigate(`/admin/service-calls/${item.id}/edit`)}
-                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
-                      >
+                    {filteredCalls.map((item, idx) => {
+                      const rowProps = getRowProps(idx);
+                      return (
+                        <tr
+                          key={item.id}
+                          {...rowProps}
+                          onClick={() => navigate(`/admin/service-calls/${item.id}/edit`)}
+                          className={`transition-colors group cursor-pointer ${
+                            rowProps.className || "hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
+                          }`}
+                        >
                         {/* Ticket No & Date */}
                         <td className="pl-6 pr-4 py-4 align-middle">
                           <div className="font-bold text-[#2563EB] font-mono text-sm tracking-tight group-hover:underline">
@@ -933,7 +1043,8 @@ export default function AdminCustomerDetail() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                  })}
                   </tbody>
                 </table>
               </div>

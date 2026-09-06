@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import {
   Briefcase,
   Search,
@@ -98,6 +99,23 @@ export default function AdminJobApplications() {
     const start = (currentPage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: paginatedApps,
+    searchRef: searchInputRef,
+    onOpenItem: (app) => setSelectedApp(app),
+    onWhatsAppItem: (app) => {
+      const cleanPhone = app.phone.replace(/\D/g, "");
+      const waUrl = `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(
+        `Hi ${app.fullName}, regarding your application for the "${app.positionApplied}" position at Zorba Infotech Neemuch. We would like to connect with you.`
+      )}`;
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    },
+    onPrevPage: () => setCurrentPage((p) => Math.max(1, p - 1)),
+    onNextPage: () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
+  });
 
   const counts = useMemo(() => {
     return {
@@ -236,7 +254,8 @@ export default function AdminJobApplications() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
-              placeholder="Search by candidate name, position, phone..."
+              ref={searchInputRef}
+              placeholder="Search by candidate name, position, phone... (/ to focus)"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -288,7 +307,8 @@ export default function AdminJobApplications() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {paginatedApps.map((app) => {
+                {paginatedApps.map((app, idx) => {
+                  const rowProps = getRowProps(idx);
                   const cleanPhone = app.phone.replace(/\D/g, "");
                   const waUrl = `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(
                     `Hi ${app.fullName}, regarding your application for the "${app.positionApplied}" position at Zorba Infotech Neemuch. We would like to connect with you.`
@@ -297,8 +317,11 @@ export default function AdminJobApplications() {
                   return (
                     <tr
                       key={app.id}
+                      {...rowProps}
                       onClick={() => setSelectedApp(app)}
-                      className="hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer group"
+                      className={`transition-colors cursor-pointer group ${
+                        rowProps.className || "hover:bg-blue-50/50 dark:hover:bg-blue-950/40"
+                      }`}
                     >
                       <td className="px-4 py-3">
                         <div className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">

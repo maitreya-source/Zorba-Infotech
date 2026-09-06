@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import {
   ArrowLeft,
   Wrench,
@@ -230,6 +231,22 @@ export default function AdminTeamMemberDetail() {
   const balanceDue = useMemo(() => {
     return commissionEarned - totalPaid;
   }, [commissionEarned, totalPaid]);
+
+  const displayCalls = useMemo(() => {
+    return tab === "completed"
+      ? completedPaidCalls
+      : tab === "payment_due"
+      ? completedPaymentDueCalls
+      : tab === "pending"
+      ? pendingCalls
+      : monthCalls;
+  }, [tab, completedPaidCalls, completedPaymentDueCalls, pendingCalls, monthCalls]);
+
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: displayCalls,
+    enabled: tab !== "payouts",
+    onOpenItem: (call) => navigate(`/admin/service-calls/${call.id}/edit`),
+  });
 
   // Open Edit Modal
   const handleOpenEditModal = () => {
@@ -670,51 +687,45 @@ export default function AdminTeamMemberDetail() {
 
         {/* Tab Content */}
         {tab !== "payouts" ? (
-          (() => {
-            const displayCalls =
-              tab === "completed"
-                ? completedPaidCalls
-                : tab === "payment_due"
-                ? completedPaymentDueCalls
-                : tab === "pending"
-                ? pendingCalls
-                : monthCalls;
+          displayCalls.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400">
+              No service calls found for this filter in {monthLabel}.
+            </div>
+          ) : (
+            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500">
+                    <th className="py-2.5 px-3">Ticket #</th>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Customer</th>
+                    <th className="py-2.5 px-3">Device / Issue</th>
+                    <th className="py-2.5 px-3">Job Status</th>
+                    <th className="py-2.5 px-3">Customer Payment</th>
+                    <th className="py-2.5 px-3 text-right">Service Charge</th>
+                    {isTechnician && (
+                      <th className="py-2.5 px-3 text-right">Tech Cut ({commissionRate}%)</th>
+                    )}
+                    <th className="py-2.5 px-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                  {displayCalls.map((c, idx) => {
+                    const rowProps = getRowProps(idx);
+                    const scNum = Number(c.serviceCharges) || 0;
+                    const cut = Math.round((scNum * commissionRate) / 100);
+                    const isCompleted = c.status === "completed" || c.status === "delivered";
+                    const isPaidByCustomer = isCallPaymentReceived(c);
 
-            if (displayCalls.length === 0) {
-              return (
-                <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400">
-                  No service calls found for this filter in {monthLabel}.
-                </div>
-              );
-            }
-
-            return (
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500">
-                      <th className="py-2.5 px-3">Ticket #</th>
-                      <th className="py-2.5 px-3">Date</th>
-                      <th className="py-2.5 px-3">Customer</th>
-                      <th className="py-2.5 px-3">Device / Issue</th>
-                      <th className="py-2.5 px-3">Job Status</th>
-                      <th className="py-2.5 px-3">Customer Payment</th>
-                      <th className="py-2.5 px-3 text-right">Service Charge</th>
-                      {isTechnician && (
-                        <th className="py-2.5 px-3 text-right">Tech Cut ({commissionRate}%)</th>
-                      )}
-                      <th className="py-2.5 px-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                    {displayCalls.map((c) => {
-                      const scNum = Number(c.serviceCharges) || 0;
-                      const cut = Math.round((scNum * commissionRate) / 100);
-                      const isCompleted = c.status === "completed" || c.status === "delivered";
-                      const isPaidByCustomer = isCallPaymentReceived(c);
-
-                      return (
-                        <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
+                    return (
+                      <tr
+                        key={c.id}
+                        {...rowProps}
+                        onClick={() => navigate(`/admin/service-calls/${c.id}/edit`)}
+                        className={`transition-colors cursor-pointer group ${
+                          rowProps.className || "hover:bg-slate-50/60 dark:hover:bg-slate-900/40"
+                        }`}
+                      >
                           <td className="py-2.5 px-3 font-mono font-bold text-blue-600 dark:text-blue-400">
                             #{c.ticketNo}
                           </td>
@@ -787,10 +798,12 @@ export default function AdminTeamMemberDetail() {
                               )}
                             </td>
                           )}
-                          <td className="py-2.5 px-3 text-center">
+                          <td
+                            className="py-2.5 px-3 text-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Link
                               to={`/admin/service-calls/${c.id}/edit`}
-                              target="_blank"
                               className="text-blue-600 hover:text-blue-800 p-1 inline-flex items-center gap-1 font-semibold"
                             >
                               <span>Open</span>
@@ -803,8 +816,7 @@ export default function AdminTeamMemberDetail() {
                   </tbody>
                 </table>
               </div>
-            );
-          })()
+            )
         ) : (
           /* Monthly Payouts Ledger */
           <div className="space-y-3">

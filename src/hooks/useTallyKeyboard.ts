@@ -454,6 +454,63 @@ export interface UseTallyFormOptions {
   enabled?: boolean;
 }
 
+/** Auto-advance helper: finds next focusable field in the form container and focuses it (skipping tally-skip elements) */
+export function advanceToNextFormField(
+  currentEl: HTMLElement,
+  backwards = false,
+  onSave?: () => void,
+  customRoot?: HTMLElement | null
+) {
+  const root = customRoot || currentEl.closest("form") || currentEl.closest('[data-shortcut-container="form"]') || document.body;
+  const focusableSelector = [
+    'input:not([type="hidden"]):not([disabled]):not([readonly]):not([data-tally-skip])',
+    'select:not([disabled]):not([data-tally-skip])',
+    'textarea:not([disabled]):not([readonly]):not([data-tally-skip])',
+    '[role="combobox"]:not([disabled]):not([data-tally-skip])',
+    'button[role="combobox"]:not([disabled]):not([data-tally-skip])',
+    '[data-tally-field]:not([disabled]):not([data-tally-skip])',
+    'button[data-tally-field]:not([disabled]):not([data-tally-skip])',
+  ].join(", ");
+
+  const elements = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+    (el) =>
+      (el.offsetParent !== null ||
+        (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))) &&
+      !el.closest('[data-tally-ignore="true"]')
+  );
+
+  const focusableEl = currentEl.closest<HTMLElement>(focusableSelector) || currentEl;
+  let currentIndex = elements.indexOf(focusableEl);
+  if (currentIndex === -1) {
+    const allEls = Array.from(root.querySelectorAll<HTMLElement>("*"));
+    const myPos = allEls.indexOf(currentEl);
+    const nextEls = elements.filter((el) => allEls.indexOf(el) > myPos);
+    if (nextEls.length > 0) {
+      nextEls[0].focus();
+      if (nextEls[0] instanceof HTMLInputElement && ["text", "number", "tel", "email"].includes(nextEls[0].type)) {
+        nextEls[0].select();
+      }
+    }
+    return;
+  }
+
+  const nextIndex = backwards ? currentIndex - 1 : currentIndex + 1;
+  if (nextIndex >= 0 && nextIndex < elements.length) {
+    const nextEl = elements[nextIndex];
+    nextEl.focus();
+    try {
+      nextEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch {
+      // fallback if scrollIntoView not supported
+    }
+    if (nextEl instanceof HTMLInputElement && ["text", "number", "tel", "email"].includes(nextEl.type)) {
+      nextEl.select();
+    }
+  } else if (!backwards && currentIndex === elements.length - 1 && onSave) {
+    onSave();
+  }
+}
+
 export function useTallyFormNavigation({
   formRef,
   onSave,
@@ -471,44 +528,7 @@ export function useTallyFormNavigation({
 
   // Auto-advance helper: finds next focusable field in the form container
   const advanceToNextField = useCallback((currentEl: HTMLElement, backwards = false) => {
-    const root = formRef?.current || document.body;
-    const focusableSelector = [
-      'input:not([type="hidden"]):not([disabled]):not([readonly]):not([data-tally-skip])',
-      'select:not([disabled]):not([data-tally-skip])',
-      'textarea:not([disabled]):not([readonly]):not([data-tally-skip])',
-      '[role="combobox"]:not([disabled]):not([data-tally-skip])',
-      'button[role="combobox"]:not([disabled])',
-      '[data-tally-field]:not([disabled])',
-      'button[data-tally-field]:not([disabled])',
-    ].join(", ");
-
-    const elements = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-      (el) =>
-        (el.offsetParent !== null ||
-          (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))) &&
-        !el.closest('[data-tally-ignore="true"]')
-    );
-
-    const focusableEl = currentEl.closest<HTMLElement>(focusableSelector) || currentEl;
-    const currentIndex = elements.indexOf(focusableEl);
-    if (currentIndex === -1) return;
-
-    const nextIndex = backwards ? currentIndex - 1 : currentIndex + 1;
-    if (nextIndex >= 0 && nextIndex < elements.length) {
-      const nextEl = elements[nextIndex];
-      nextEl.focus();
-      try {
-        nextEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      } catch {
-        // fallback if scrollIntoView not supported
-      }
-      if (nextEl instanceof HTMLInputElement && ["text", "number", "tel", "email"].includes(nextEl.type)) {
-        nextEl.select();
-      }
-    } else if (!backwards && currentIndex === elements.length - 1) {
-      // Reached the end of the form fields! Pressing Enter on the last field saves the form!
-      onSave();
-    }
+    advanceToNextFormField(currentEl, backwards, onSave, formRef?.current);
   }, [formRef, onSave]);
 
   useEffect(() => {
@@ -587,11 +607,16 @@ export function useTallyFormNavigation({
       // 6. Enter-to-advance inside form inputs, selects, and comboboxes
       const target = e.target as HTMLElement | null;
       if (target && isFormNavigableElement(target)) {
-        // In TEXTAREA: Enter is normal newline; Ctrl+Enter or Shift+Enter advances
+        // In TEXTAREA: Enter alone advances to next field; Ctrl+Enter or Shift+Enter inserts newline
         if (target.tagName === "TEXTAREA") {
-          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          if ((e.ctrlKey || e.metaKey || e.shiftKey) && e.key === "Enter") {
+            // Allow native multiline newline insertion
+            return;
+          }
+          if (e.key === "Enter") {
             e.preventDefault();
             advanceToNextField(target, false);
+            return;
           }
           return;
         }
