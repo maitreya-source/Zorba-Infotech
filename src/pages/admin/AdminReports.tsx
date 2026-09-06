@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Calendar,
   Printer,
@@ -57,6 +57,7 @@ type SortField = "date" | "ticket" | "customer" | "revenue";
 type SortDirection = "asc" | "desc";
 
 export default function AdminReports() {
+  const navigate = useNavigate();
   const { activeProfile } = useStaffProfile();
   const monthInputRef = useRef<HTMLInputElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -941,13 +942,20 @@ export default function AdminReports() {
               </thead>
               <tbody className="divide-y divide-border/60">
                 {paginatedLedgerCalls.map((call) => (
-                  <tr key={call.id} className="hover:bg-muted/30 transition-colors">
+                  <tr
+                    key={call.id}
+                    onClick={(e) => {
+                      const t = e.target as HTMLElement;
+                      if (t.closest("button") || t.closest("a")) return;
+                      navigate(`/admin/service-calls/${call.id}/edit`);
+                    }}
+                    className="hover:bg-blue-50/60 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
+                  >
                     <td className="p-3 font-mono font-bold text-primary whitespace-nowrap">
                       <Link
-                        to={`/admin/service-calls?search=${encodeURIComponent(call.ticketNo)}`}
-                        target="_blank"
+                        to={`/admin/service-calls/${call.id}/edit`}
                         className="hover:underline flex items-center gap-1"
-                        title="Open in Service Calls Dashboard"
+                        title="Open Service Call Ticket"
                       >
                         <span>{call.ticketNo}</span>
                         <ExternalLink className="h-3 w-3 opacity-60" />
@@ -1090,12 +1098,20 @@ export default function AdminReports() {
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {day.calls.map((call) => (
-                      <tr key={call.id} className="hover:bg-muted/30 transition-colors">
+                      <tr
+                        key={call.id}
+                        onClick={(e) => {
+                          const t = e.target as HTMLElement;
+                          if (t.closest("button") || t.closest("a")) return;
+                          navigate(`/admin/service-calls/${call.id}/edit`);
+                        }}
+                        className="hover:bg-blue-50/60 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
+                      >
                         <td className="p-2.5 pl-3 font-mono font-bold text-primary whitespace-nowrap">
                           <Link
-                            to={`/admin/service-calls?search=${encodeURIComponent(call.ticketNo)}`}
-                            target="_blank"
+                            to={`/admin/service-calls/${call.id}/edit`}
                             className="hover:underline flex items-center gap-1"
+                            title="Open Service Call Ticket"
                           >
                             <span>{call.ticketNo}</span>
                             <ExternalLink className="h-3 w-3 opacity-60" />

@@ -48,10 +48,12 @@ const STAGE_OPTIONS: {
   defaultStatus: ServiceCallStatus;
   icon: React.ComponentType<{ className?: string }>;
   iconColor: string;
+  hindiTitle: string;
 }[] = [
   {
     stage: "replacement_received_customer",
     title: "Received from Customer (Alt+1)",
+    hindiTitle: "कस्टमर से डिवाइस प्राप्त हुआ",
     defaultStatus: "received",
     icon: Inbox,
     iconColor: "text-blue-500",
@@ -59,6 +61,7 @@ const STAGE_OPTIONS: {
   {
     stage: "replacement_sent_service_center",
     title: "Replacement Sent to Service Center (Alt+2)",
+    hindiTitle: "सर्विस सेंटर पार्सल भेजा गया",
     defaultStatus: "sent_to_service_center",
     icon: Truck,
     iconColor: "text-amber-500",
@@ -66,6 +69,7 @@ const STAGE_OPTIONS: {
   {
     stage: "replacement_received_service_center",
     title: "Replacement Received from Service Center (Alt+3)",
+    hindiTitle: "सर्विस सेंटर से डिवाइस वापस मिला",
     defaultStatus: "received",
     icon: Package,
     iconColor: "text-purple-500",
@@ -73,6 +77,7 @@ const STAGE_OPTIONS: {
   {
     stage: "replacement_given_customer",
     title: "Replacement Product Given to Customer (Alt+4)",
+    hindiTitle: "कस्टमर को डिवाइस वापस सौंप दिया",
     defaultStatus: "delivered",
     icon: Send,
     iconColor: "text-emerald-500",
@@ -80,6 +85,7 @@ const STAGE_OPTIONS: {
   {
     stage: "payment_received",
     title: "Payment Received from Customer",
+    hindiTitle: "कस्टमर से पेमेंट प्राप्त हुआ",
     defaultStatus: "completed",
     icon: Receipt,
     iconColor: "text-emerald-600",
@@ -87,6 +93,7 @@ const STAGE_OPTIONS: {
   {
     stage: "status_change",
     title: "General Status / Milestone Update",
+    hindiTitle: "सामान्य स्टेटस अपडेट करें",
     defaultStatus: "in_progress",
     icon: Activity,
     iconColor: "text-indigo-500",
@@ -94,6 +101,7 @@ const STAGE_OPTIONS: {
   {
     stage: "comment_added",
     title: "Internal Audit Log / Comment",
+    hindiTitle: "आंतरिक नोट / ऑडिट कमेंट जोड़ें",
     defaultStatus: "in_progress",
     icon: FileText,
     iconColor: "text-slate-500",
@@ -147,14 +155,14 @@ export default function AddTimelineEventModal({
         <DialogHeader className="border-b pb-3">
           <DialogTitle className="flex items-center gap-2 font-display text-base text-slate-900 dark:text-white">
             <History className="h-5 w-5 text-[#2563EB]" />
-            Record Timeline Lifecycle Milestone
+            लाइफसाइकिल इवेंट जोड़ें (Record Milestone)
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {/* Active Operator Banner */}
           <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
-            <span className="text-slate-500 font-medium">Logged By Profile:</span>
+            <span className="text-slate-500 font-medium">दर्ज करने वाले ऑपरेटर:</span>
             <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
               <AvatarGraphic avatarId={activeProfile?.avatar || "penguin"} size="sm" />
               <span>{activeProfile?.name || "Desk Operator"}</span>
@@ -164,20 +172,23 @@ export default function AddTimelineEventModal({
           {/* Milestone Action Selection */}
           <div>
             <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Lifecycle Milestone / Action
+              लाइफसाइकिल स्टेज / माइलस्टोन (Lifecycle Milestone)
             </Label>
             <Select value={stage} onValueChange={(val: any) => setStage(val)}>
-              <SelectTrigger className="mt-1.5 h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-semibold">
+              <SelectTrigger className="mt-1.5 h-12 sm:h-10 text-base sm:text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-semibold">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {STAGE_OPTIONS.map((opt) => {
                   const Icon = opt.icon;
                   return (
-                    <SelectItem key={opt.stage} value={opt.stage} className="text-xs py-2">
-                      <div className="flex items-center gap-2">
-                        <Icon className={`h-4 w-4 ${opt.iconColor}`} />
-                        <span>{opt.title}</span>
+                    <SelectItem key={opt.stage} value={opt.stage} className="text-xs py-2 cursor-pointer">
+                      <div className="flex items-center gap-2.5">
+                        <Icon className={`h-4 w-4 ${opt.iconColor} shrink-0`} />
+                        <div className="flex flex-col text-left">
+                          <span className="font-bold text-slate-900 dark:text-slate-100">{opt.hindiTitle}</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{opt.title}</span>
+                        </div>
                       </div>
                     </SelectItem>
                   );
@@ -211,14 +222,14 @@ export default function AddTimelineEventModal({
           {/* Comments / Audit Notes */}
           <div>
             <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Comments / Audit Notes
+              आंतरिक नोट / विवरण (Comments / Audit Notes)
             </Label>
             <Textarea
-              placeholder="e.g. Dispatched to Bangalore SC / Checked physical condition..."
+              placeholder="टिप्पणी या आंतरिक विवरण लिखें (e.g. Bangalore SC bheja gaya / condition ok)..."
               value={comments}
               onChange={(e) => setComments(e.target.value)}
               rows={3}
-              className="mt-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+              className="mt-1.5 text-base sm:text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
             />
           </div>
 

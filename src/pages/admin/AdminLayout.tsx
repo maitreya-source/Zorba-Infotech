@@ -60,10 +60,21 @@ export default function AdminLayout() {
   const { activeProfile, showSelectorModal, setShowSelectorModal } = useStaffProfile();
   const navigate = useNavigate();
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => typeof window !== "undefined" && window.innerWidth < 1280);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+
+  // Auto-collapse sidebar on squeezed screens (< 1280px) to balance layout and avoid cramming center
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1280) {
+        setCollapsed(true);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Global hotkeys for Omnisearch (Ctrl+K or /) and Shortcuts (?)
   useEffect(() => {
@@ -158,6 +169,57 @@ export default function AdminLayout() {
     };
   }, []);
 
+  // Lock document-level scrolling so wheel/touch scrolls only internal containers, and strictly anchor window to (0, 0)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    document.documentElement.classList.add("admin-viewport-locked");
+    document.body.classList.add("admin-viewport-locked");
+
+    const forceZeroScroll = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        window.scrollTo(0, 0);
+      }
+      if (document.documentElement.scrollTop !== 0 || document.documentElement.scrollLeft !== 0) {
+        document.documentElement.scrollTop = 0;
+        document.documentElement.scrollLeft = 0;
+      }
+      if (document.body.scrollTop !== 0 || document.body.scrollLeft !== 0) {
+        document.body.scrollTop = 0;
+        document.body.scrollLeft = 0;
+      }
+    };
+
+    window.addEventListener("scroll", forceZeroScroll, { passive: true });
+
+    // Intercept wheel events on outer layout chrome (header, rails, frames) to prevent window scroll displacement
+    const handleWindowWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const scrollable = target.closest("main, aside, [role='dialog'], [data-radix-portal], .overflow-y-auto");
+      if (!scrollable) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("wheel", handleWindowWheel, { passive: false });
+
+    return () => {
+      document.documentElement.classList.remove("admin-viewport-locked");
+      document.body.classList.remove("admin-viewport-locked");
+      window.removeEventListener("scroll", forceZeroScroll);
+      window.removeEventListener("wheel", handleWindowWheel);
+    };
+  }, []);
+
+  // Ensure window position resets to top on every route navigation
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [location.pathname]);
+
   const handleSignOut = async () => {
     invalidateCustomersCache();
     await signOut();
@@ -170,8 +232,12 @@ export default function AdminLayout() {
     location.pathname !== "/admin/service-calls" &&
     location.pathname.startsWith("/admin/service-calls");
 
+  const isQuotationForm =
+    location.pathname !== "/admin/quotations" &&
+    location.pathname.startsWith("/admin/quotations");
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+    <div data-admin-layout className="fixed inset-0 flex overflow-hidden bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       {/* Mobile Backdrop Overlay */}
       {mobileSidebarOpen && (
         <div
@@ -182,7 +248,7 @@ export default function AdminLayout() {
 
       {/* Sidebar: Fixed Off-Canvas Drawer on Mobile, Static Rail on Desktop */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 h-screen flex shrink-0 flex-col bg-[#0F172A] text-slate-300 transition-all duration-300 print:hidden overflow-hidden select-none ${
+        className={`fixed md:static inset-y-0 left-0 z-50 h-full flex shrink-0 flex-col bg-[#0F172A] text-slate-300 transition-all duration-300 print:hidden overflow-hidden select-none ${
           mobileSidebarOpen ? "translate-x-0 w-64 shadow-2xl" : "-translate-x-full md:translate-x-0"
         } ${collapsed ? "md:w-18" : "md:w-64"}`}
       >
@@ -330,7 +396,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main Container Area with Fixed Top Navbar & Dedicated Scrollable Ticket Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Continuous Dark Navy Top Header Bar (h-14) */}
         <header className="shrink-0 h-14 flex items-center justify-between px-3 md:px-6 bg-[#0F172A] border-b border-slate-800/80 text-slate-300 z-10 print:hidden gap-2 md:gap-3">
           <div className="flex items-center gap-1.5 md:gap-2 text-xs text-slate-400 font-medium shrink-0 min-w-0">
@@ -354,6 +420,17 @@ export default function AdminLayout() {
                 </span>
                 <span id="admin-breadcrumb-ticket" className="inline-flex items-center ml-1" />
               </>
+            ) : isQuotationForm ? (
+              <>
+                <Link to="/admin/quotations" className="text-slate-300 hover:text-white transition-colors truncate hidden sm:inline">
+                  Quotations
+                </Link>
+                <span className="text-slate-600 hidden sm:inline">/</span>
+                <span className="text-slate-300 truncate font-semibold">
+                  {location.pathname.includes("/new") ? "New Quotation" : "Edit Quotation"}
+                </span>
+                <span id="admin-breadcrumb-ticket" className="inline-flex items-center ml-1" />
+              </>
             ) : (
               <span className="font-bold text-white tracking-wide truncate">{activeNav}</span>
             )}
@@ -363,26 +440,26 @@ export default function AdminLayout() {
           <div id="admin-header-center" className="flex items-center justify-center flex-1 min-w-0 overflow-x-auto no-scrollbar" />
 
           {/* Right: Search + Shortcuts + Live Staff On Duty Board + Back Link */}
-          <div className="flex items-center gap-2 md:gap-2.5 shrink-0">
-            {/* Global Omnisearch Trigger */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Global Omnisearch Trigger - hidden on squeezed/mobile screens */}
             <button
               type="button"
               onClick={() => setShowSearchModal(true)}
-              className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+              className="h-9 hidden lg:inline-flex items-center gap-2 px-3 rounded-xl border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
               title="Search Tickets, Customers & Models (Ctrl+K)"
             >
               <Search className="h-3.5 w-3.5 text-slate-400" />
-              <span className="hidden md:inline">Search...</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-bold bg-slate-900/60 text-slate-400 rounded border border-slate-700/60">
+              <span className="hidden xl:inline">Search...</span>
+              <kbd className="hidden 2xl:inline-block px-1.5 py-0.5 text-[10px] font-mono font-bold bg-slate-900/60 text-slate-400 rounded border border-slate-700/60">
                 Ctrl K
               </kbd>
             </button>
 
-            {/* Keyboard Shortcuts Trigger */}
+            {/* Keyboard Shortcuts Trigger - hidden on screens < 2xl */}
             <button
               type="button"
               onClick={() => setShowShortcutsModal(true)}
-              className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+              className="h-9 hidden 2xl:inline-flex items-center gap-1.5 px-3 rounded-xl border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
               title="Keyboard Shortcuts (?)"
             >
               <Keyboard className="h-3.5 w-3.5 text-slate-400" />
@@ -392,27 +469,42 @@ export default function AdminLayout() {
               </kbd>
             </button>
 
-            {/* Live Staff On Duty Pill */}
-            <StaffOnDutyBoard onlineStaff={onlineStaff} />
+            {/* Live Staff On Duty Pill - hidden on screens < xl */}
+            <div className="hidden xl:block">
+              <StaffOnDutyBoard onlineStaff={onlineStaff} />
+            </div>
 
+            {/* Prominent Prioritized Back Action */}
             {isServiceCallForm ? (
               <Link
                 to="/admin/service-calls"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all"
+                className="h-9 inline-flex items-center gap-2 rounded-xl border border-blue-500/50 bg-blue-600/20 hover:bg-blue-600/30 text-blue-200 hover:text-white px-3 text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer"
+                title="Return to Service Calls List"
               >
-                <ArrowLeft className="h-3.5 w-3.5 text-slate-400" />
+                <ArrowLeft className="h-4 w-4 shrink-0 text-blue-400" />
                 <span className="hidden sm:inline">Back to List</span>
-                <span className="sm:hidden">List</span>
+                <span className="sm:hidden">Back</span>
+              </Link>
+            ) : isQuotationForm ? (
+              <Link
+                to="/admin/quotations"
+                className="h-9 inline-flex items-center gap-2 rounded-xl border border-blue-500/50 bg-blue-600/20 hover:bg-blue-600/30 text-blue-200 hover:text-white px-3 text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer"
+                title="Return to Quotations List"
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0 text-blue-400" />
+                <span className="hidden sm:inline">Back to Quotes</span>
+                <span className="sm:hidden">Back</span>
               </Link>
             ) : (
               <a
                 href="/"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold text-slate-200 shadow-xs transition-all"
+                className="h-9 inline-flex items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-3 text-xs font-semibold text-slate-200 shadow-xs transition-all shrink-0"
+                title="Open Main Website"
               >
-                <ArrowLeft className="h-3.5 w-3.5 text-slate-400" />
-                <span className="hidden sm:inline">Back to Main Website</span>
+                <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span className="hidden sm:inline">Back to Website</span>
                 <span className="sm:hidden">Website</span>
               </a>
             )}
@@ -420,15 +512,15 @@ export default function AdminLayout() {
         </header>
 
         {/* Dedicated Independent Scrollable Ticket / Main Content Container */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 p-2 sm:p-4 md:p-6 focus:outline-none">
+        <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 p-2 sm:p-4 md:p-6 pb-4 md:pb-6 focus:outline-none overscroll-contain">
           <Suspense fallback={<LoadingScreen fullScreen={false} title="Admin Workspace" subtitle="Loading view..." />}>
             <Outlet />
           </Suspense>
         </main>
       </div>
 
-      {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-screen on Desktop/Laptop >=1024px) */}
-      <div id="admin-right-rail" className="h-screen shrink-0 empty:hidden print:hidden z-20 hidden lg:block" />
+      {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-full on Desktop/Laptop >=1024px) */}
+      <div id="admin-right-rail" className="h-full shrink-0 empty:hidden print:hidden z-20 hidden lg:block" />
 
       {/* Mandatory Staff Profile Selector Modal */}
       <StaffProfileSelectorModal

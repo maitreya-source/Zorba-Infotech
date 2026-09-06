@@ -11,6 +11,9 @@ import {
   Package,
   CheckCircle2,
   XCircle,
+  Printer,
+  MessageSquare,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -32,6 +35,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   getCustomers,
   getDeviceCategories,
@@ -86,6 +91,8 @@ import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryMo
 import { useResourcePresence } from "@/lib/realtimeSync";
 import ResourceCollisionAlert from "@/components/admin/ResourceCollisionAlert";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
+import EditServiceCenterModal from "@/components/admin/EditServiceCenterModal";
+import AddServiceCenterAddressModal from "@/components/admin/service-call/AddServiceCenterAddressModal";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
 import DispatchSlipPrintModal from "@/components/admin/DispatchSlipPrintModal";
@@ -99,18 +106,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 
 const QUICK_TAGS = [
-  "Power Dead Troubleshooting",
-  "Cable Termination & Setup",
-  "Display & Output Replacement",
-  "Warranty OEM Inspection",
-  "Parts Replacement",
-  "CCTV General Service",
-  "Power Supply Check",
+  "Power Dead",
+  "Screen Broken",
+  "No Display",
+  "OS Boot Failure",
+  "Slow / Freezing",
+  "Keyboard Issue",
+  "Printer Paper Jam",
+  "Warranty Claim",
 ];
 
 const STATUS_LIST: {
   value: ServiceCallStatus;
   label: string;
+  hindiLabel: string;
   icon: React.ComponentType<{ className?: string }>;
   iconColor: string;
   bgClass: string;
@@ -119,6 +128,7 @@ const STATUS_LIST: {
   {
     value: "received",
     label: "Received",
+    hindiLabel: "डिवाइस जमा हुआ",
     icon: Inbox,
     iconColor: "text-blue-600 dark:text-blue-400",
     bgClass: "bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60",
@@ -127,6 +137,7 @@ const STATUS_LIST: {
   {
     value: "sent_to_service_center",
     label: "Sent to Service Center",
+    hindiLabel: "सर्विस सेंटर भेजा गया",
     icon: Building2,
     iconColor: "text-indigo-600 dark:text-indigo-400",
     bgClass: "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60",
@@ -135,6 +146,7 @@ const STATUS_LIST: {
   {
     value: "in_progress",
     label: "In Progress",
+    hindiLabel: "काम चालू है",
     icon: Clock,
     iconColor: "text-purple-600 dark:text-purple-400",
     bgClass: "bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/60",
@@ -143,6 +155,7 @@ const STATUS_LIST: {
   {
     value: "waiting_for_parts",
     label: "Waiting for Parts",
+    hindiLabel: "पार्ट्स का इंतजार",
     icon: Package,
     iconColor: "text-amber-600 dark:text-amber-400",
     bgClass: "bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60",
@@ -151,6 +164,7 @@ const STATUS_LIST: {
   {
     value: "completed",
     label: "Completed",
+    hindiLabel: "तैयार / ठीक हो गया",
     icon: CheckCircle2,
     iconColor: "text-emerald-600 dark:text-emerald-400",
     bgClass: "bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60",
@@ -159,6 +173,7 @@ const STATUS_LIST: {
   {
     value: "delivered",
     label: "Delivered",
+    hindiLabel: "ग्राहक को सौंप दिया",
     icon: Send,
     iconColor: "text-teal-600 dark:text-teal-400",
     bgClass: "bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60",
@@ -167,6 +182,7 @@ const STATUS_LIST: {
   {
     value: "cancelled",
     label: "Cancelled",
+    hindiLabel: "रद्द किया गया",
     icon: XCircle,
     iconColor: "text-rose-600 dark:text-rose-400",
     bgClass: "bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60",
@@ -274,6 +290,15 @@ export default function AdminServiceCallForm() {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [quickTimelineStage, setQuickTimelineStage] = useState<TimelineEvent["stage"] | null>(null);
   const [showQuickTimelineModal, setShowQuickTimelineModal] = useState(false);
+
+  // Post-Save Success Modal State for Counter / Mobile Staff
+  const [saveSuccessInfo, setSaveSuccessInfo] = useState<{
+    ticketNo: string;
+    customerName: string;
+    customerPhone: string;
+    grandTotal: number;
+    id: string;
+  } | null>(null);
   const [showEventsListModal, setShowEventsListModal] = useState(false);
 
   const [dataLoading, setDataLoading] = useState<boolean>(Boolean(id));
@@ -287,6 +312,8 @@ export default function AdminServiceCallForm() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
+  const [showEditCenterModal, setShowEditCenterModal] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCourierModal, setShowCourierModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showDispatchPrintModal, setShowDispatchPrintModal] = useState(false);
@@ -878,6 +905,25 @@ export default function AdminServiceCallForm() {
     };
   };
 
+  // Container-scoped scroll to input inside <main> to prevent document/window displacement
+  const safeScrollToField = (fieldId: string) => {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    const mainContainer = el.closest("main");
+    if (mainContainer) {
+      const elRect = el.getBoundingClientRect();
+      const containerRect = mainContainer.getBoundingClientRect();
+      const relativeTop = elRect.top - containerRect.top;
+      mainContainer.scrollBy({
+        top: relativeTop - 80,
+        behavior: "smooth",
+      });
+    }
+    if (typeof el.focus === "function") {
+      el.focus({ preventScroll: true });
+    }
+  };
+
   // Helper to ensure ticket is created/saved before opening Print or WhatsApp without booting user to list
   const ensureSavedTicket = async (): Promise<ServiceCall | null> => {
     const cName = (customerName || "").trim();
@@ -892,11 +938,7 @@ export default function AdminServiceCallForm() {
     if (Object.keys(errors).length > 0) {
       setInvalidFields(errors);
       const firstId = !cName || !cPhone ? "cust-name-typeahead" : "issue-description-input";
-      const el = document.getElementById(firstId);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.focus();
-      }
+      safeScrollToField(firstId);
       toast.error("Please fill in required fields highlighted in red.");
       return null;
     }
@@ -956,11 +998,7 @@ export default function AdminServiceCallForm() {
     if (Object.keys(errors).length > 0) {
       setInvalidFields(errors);
       const firstId = !cName || !cPhone ? "cust-name-typeahead" : "issue-description-input";
-      const el = document.getElementById(firstId);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.focus();
-      }
+      safeScrollToField(firstId);
       toast.error("Please fill in required fields highlighted in red.");
       return;
     }
@@ -978,14 +1016,20 @@ export default function AdminServiceCallForm() {
       if (isEditing && effectiveId) {
         await updateServiceCall(effectiveId, payload);
         toast.success("Service Call ticket updated successfully!");
+        navigate("/admin/service-calls");
       } else {
         const created = await createServiceCall(payload);
         setCreatedTicketId(created.id);
         setTicketNo(created.ticketNo);
         toast.success(`Service Call created: ${created.ticketNo}`);
+        setSaveSuccessInfo({
+          ticketNo: created.ticketNo,
+          customerName: cName,
+          customerPhone: cPhone,
+          grandTotal: grandTotal,
+          id: created.id,
+        });
       }
-
-      navigate("/admin/service-calls");
     } catch (err: any) {
       console.error("Save error:", err);
       toast.error(err?.message || "Failed to save service call");
@@ -1157,7 +1201,7 @@ export default function AdminServiceCallForm() {
     onAltW: () => handleOpenCustomerWhatsApp(),
     onCtrlF2: () => {
       if (dateInputRef.current) {
-        dateInputRef.current.focus();
+        dateInputRef.current.focus({ preventScroll: true });
         if (typeof dateInputRef.current.showPicker === "function") {
           dateInputRef.current.showPicker();
         }
@@ -1184,13 +1228,45 @@ export default function AdminServiceCallForm() {
   }
 
   return (
-    <div className="space-y-4 max-w-[1440px] mx-auto pb-16 text-xs">
+    <div className="space-y-4 max-w-[1440px] mx-auto pb-20 lg:pb-0 text-xs">
       <form id="service-call-form" onSubmit={handleSubmit} className="space-y-4 max-w-5xl mx-auto">
         {/* Real-time Concurrent Editing Collision Warning */}
         <ResourceCollisionAlert activeEditors={activeEditors} resourceLabel="service call ticket" />
 
         {/* Card 0: Service Workflow Mode Switcher + Header Metadata (Status, Tech Assignee, Date) */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-4 md:p-5 space-y-4">
+          {/* Header Title & Ticket No Badge with Large Legible Font & Copy Button */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+            <div>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {isEditing ? "Edit Service Call Ticket" : "New Service Call Ticket"}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Counter intake, workshop diagnostics, and customer delivery
+              </p>
+            </div>
+            {ticketNo && (
+              <div className="inline-flex items-center gap-2.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 px-3.5 py-1.5 rounded-xl shadow-2xs">
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                  Ticket #
+                </span>
+                <span className="text-base sm:text-lg font-extrabold font-mono text-blue-700 dark:text-blue-300 tracking-wider">
+                  {ticketNo}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(ticketNo);
+                    toast.success(`Copied ticket number: ${ticketNo}`);
+                  }}
+                  className="p-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer"
+                  title="Copy Ticket Number"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
           {/* Top Service Type Mode Switcher Integrated into Header Card */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -1203,40 +1279,40 @@ export default function AdminServiceCallForm() {
               <button
                 type="button"
                 onClick={() => setType("company_service_center")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   type === "company_service_center"
                     ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/60 dark:border-slate-700"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <Building2 className="h-4 w-4 shrink-0" />
-                <span>Company Service Center</span>
+                <span>Service Center (Company RMA)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setType("in_house_repair")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   type === "in_house_repair"
                     ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/60 dark:border-slate-700"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <Wrench className="h-4 w-4 shrink-0" />
-                <span>In-House Service / Refill</span>
+                <span>In-House Repair (Workshop)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setType("onsite_visit")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   type === "onsite_visit"
                     ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/60 dark:border-slate-700"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <MapPin className="h-4 w-4 shrink-0" />
-                <span>Onsite Visit & Install</span>
+                <span>Onsite Visit (Customer Location)</span>
               </button>
             </div>
           </div>
@@ -1244,11 +1320,11 @@ export default function AdminServiceCallForm() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end pt-3 border-t border-slate-100 dark:border-slate-800/80">
             {/* Overall Ticket Status */}
             <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Overall Ticket Status
               </Label>
               <Select value={status} onValueChange={(val: ServiceCallStatus) => setStatus(val)}>
-                <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+                <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
                   <div className="flex items-center gap-2 truncate">
                     {(() => {
                       const found = STATUS_LIST.find((s) => s.value === status);
@@ -1259,7 +1335,9 @@ export default function AdminServiceCallForm() {
                           <div className={`h-5 w-5 rounded-md ${found.bgClass} flex items-center justify-center shrink-0`}>
                             <Icon className={`h-3 w-3 ${found.iconColor}`} />
                           </div>
-                          <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">{found.label}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                            {found.label}
+                          </span>
                         </>
                       );
                     })()}
@@ -1274,7 +1352,10 @@ export default function AdminServiceCallForm() {
                           <div className={`h-6 w-6 rounded-lg ${item.bgClass} flex items-center justify-center shrink-0`}>
                             <Icon className={`h-3.5 w-3.5 ${item.iconColor}`} />
                           </div>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{item.label}</span>
+                          <div className="flex flex-col text-left">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{item.label}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{item.hindiLabel}</span>
+                          </div>
                         </div>
                       </SelectItem>
                     );
@@ -1285,7 +1366,7 @@ export default function AdminServiceCallForm() {
 
             {/* Assigned Technician */}
             <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Technical Assignee
               </Label>
               <Select
@@ -1296,8 +1377,8 @@ export default function AdminServiceCallForm() {
                   if (found) setTechnicianName(found.name);
                 }}
               >
-                <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                  <SelectValue placeholder="Assign Tech (from Team Directory)..." />
+                <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+                  <SelectValue placeholder="Select Technician..." />
                 </SelectTrigger>
                 <SelectContent>
                   {technicians.map((t) => (
@@ -1392,12 +1473,20 @@ export default function AdminServiceCallForm() {
             }
           }}
           onOpenAddCenterModal={() => setShowCenterModal(true)}
+          onOpenEditCenterModal={() => setShowEditCenterModal(true)}
           selectedAddressId={selectedAddressId}
           onSelectAddress={(val) => {
             setSelectedAddressId(val);
             const currentCenter = serviceCenters.find((sc) => sc.id === selectedServiceCenterId);
             const addr = currentCenter?.addresses.find((a) => a.id === val);
             if (addr) setServiceCenterAddress(addr.address);
+          }}
+          onOpenAddAddressModal={() => {
+            if (!selectedServiceCenterId) {
+              toast.info("Please select an Authorized Service Center first to add a dispatch address");
+              return;
+            }
+            setShowAddressModal(true);
           }}
           couriers={couriers}
           courierName={courierName}
@@ -1621,6 +1710,41 @@ export default function AdminServiceCallForm() {
           }
         }}
       />
+      <AddServiceCenterAddressModal
+        open={showAddressModal}
+        onOpenChange={setShowAddressModal}
+        serviceCenter={serviceCenters.find((sc) => sc.id === selectedServiceCenterId) || null}
+        onOpenEditCenterModal={() => setShowEditCenterModal(true)}
+        onAddressAdded={(newAddr, scId) => {
+          setServiceCenters((prev) =>
+            prev.map((sc) =>
+              sc.id === scId
+                ? { ...sc, addresses: [...(sc.addresses || []), newAddr] }
+                : sc
+            )
+          );
+          setSelectedAddressId(newAddr.id);
+          setServiceCenterAddress(newAddr.address);
+        }}
+      />
+      {selectedServiceCenterId && (
+        <EditServiceCenterModal
+          center={serviceCenters.find((sc) => sc.id === selectedServiceCenterId) || null}
+          open={showEditCenterModal}
+          onOpenChange={setShowEditCenterModal}
+          onUpdated={async () => {
+            const scList = await getServiceCenters();
+            setServiceCenters(scList);
+            const updatedSc = scList.find((s) => s.id === selectedServiceCenterId);
+            if (updatedSc && updatedSc.addresses && updatedSc.addresses.length > 0) {
+              if (!updatedSc.addresses.some((a) => a.id === selectedAddressId)) {
+                setSelectedAddressId(updatedSc.addresses[0].id);
+                setServiceCenterAddress(updatedSc.addresses[0].address);
+              }
+            }
+          }}
+        />
+      )}
       <JobCardPrintModal
         serviceCall={{
           id: id || "preview",
@@ -1759,14 +1883,123 @@ export default function AdminServiceCallForm() {
         saving={paymentSaving}
       />
 
-      {/* Top Header Breadcrumb Ticket Number Portal */}
+      {/* Post-Save Success Modal ("PhonePe Green Tick" confirmation for Counter Staff) */}
+      <Dialog open={!!saveSuccessInfo} onOpenChange={(open) => !open && setSaveSuccessInfo(null)}>
+        <DialogContent className="max-w-md p-6 rounded-3xl text-center space-y-5">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 shadow-sm animate-in zoom-in-95 duration-200">
+            <CheckCircle2 className="h-9 w-9" />
+          </div>
+
+          <div className="space-y-1.5">
+            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
+              रिपेयर पर्ची बन गई! ✓
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Ticket #{saveSuccessInfo?.ticketNo} successfully saved
+            </p>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 text-left border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-slate-500 font-medium">Customer:</span>
+              <span className="font-bold text-slate-900 dark:text-white">{saveSuccessInfo?.customerName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500 font-medium">Phone:</span>
+              <span className="font-bold font-mono text-blue-600 dark:text-blue-400">{saveSuccessInfo?.customerPhone}</span>
+            </div>
+            <div className="flex justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+              <span className="text-slate-500 font-medium">Estimated Total:</span>
+              <span className="font-extrabold font-mono text-sm text-slate-900 dark:text-white">
+                ₹{saveSuccessInfo?.grandTotal?.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2.5 pt-1">
+            {/* 1-Tap WhatsApp Receipt */}
+            <Button
+              type="button"
+              onClick={() => {
+                const info = saveSuccessInfo;
+                setSaveSuccessInfo(null);
+                if (info) {
+                  handleOpenCustomerWhatsApp();
+                }
+              }}
+              className="w-full h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-98 transition-all cursor-pointer"
+            >
+              <MessageSquare className="h-5 w-5" />
+              <span>WhatsApp पर रसीद भेजें (Send Slip)</span>
+            </Button>
+
+            {/* Print Job Card */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSaveSuccessInfo(null);
+                handleOpenPrintModal();
+              }}
+              className="w-full h-12 rounded-2xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Printer className="h-4 w-4 text-blue-600" />
+              <span>काउंटर पर्ची प्रिंट करें (Print Job Card)</span>
+            </Button>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setSaveSuccessInfo(null);
+                  navigate("/admin/service-calls");
+                }}
+                className="h-11 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer"
+              >
+                📋 लिस्ट देखें (Back)
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setSaveSuccessInfo(null);
+                  navigate("/admin/service-calls/new");
+                  window.location.reload();
+                }}
+                className="h-11 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 cursor-pointer"
+              >
+                ➕ नया टिकट (Next)
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Top Header Breadcrumb Ticket Number Portal with High-Legibility Font & Copy */}
       {breadcrumbTicketEl && ticketNo &&
         createPortal(
-          <div className="flex items-center gap-2 ml-2">
-            <span className="text-slate-600">/</span>
-            <span className="font-bold text-white tracking-wide font-mono">
-              {ticketNo}
-            </span>
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-1 sm:ml-2">
+            <span className="text-slate-600 hidden sm:inline">/</span>
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-slate-800/90 border border-slate-700/80 px-2.5 py-0.5 sm:py-1 rounded-xl shadow-xs">
+              <span className="text-xs sm:text-sm font-extrabold text-blue-300 font-mono tracking-wider">
+                {ticketNo}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(ticketNo);
+                  toast.success(`Copied ticket number: ${ticketNo}`);
+                }}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                title="Copy Ticket Number"
+                aria-label="Copy Ticket Number"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>,
           breadcrumbTicketEl
         )}

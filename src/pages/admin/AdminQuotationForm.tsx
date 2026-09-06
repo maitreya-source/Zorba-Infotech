@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -24,6 +25,7 @@ import {
   Edit2,
   RefreshCw,
   Package,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +136,11 @@ export default function AdminQuotationForm() {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showEscPrompt, setShowEscPrompt] = useState(false);
+  const [breadcrumbTicketEl, setBreadcrumbTicketEl] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setBreadcrumbTicketEl(document.getElementById("admin-breadcrumb-ticket"));
+  }, []);
 
   // Change tracking snapshot
   const initialSnapshotRef = useRef<string>("");
@@ -315,22 +322,34 @@ export default function AdminQuotationForm() {
     };
   };
 
+  // Container-scoped scroll to input inside <main> to prevent document/window displacement
+  const safeScrollToField = (fieldId: string) => {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    const mainContainer = el.closest("main");
+    if (mainContainer) {
+      const elRect = el.getBoundingClientRect();
+      const containerRect = mainContainer.getBoundingClientRect();
+      const relativeTop = elRect.top - containerRect.top;
+      mainContainer.scrollBy({
+        top: relativeTop - 80,
+        behavior: "smooth",
+      });
+    }
+    if (typeof el.focus === "function") {
+      el.focus({ preventScroll: true });
+    }
+  };
+
   // Auto-saves quotation when user clicks Print or WhatsApp without booting them off the screen
   const ensureSavedQuotation = async (): Promise<Quotation | null> => {
     const { isValid, errors, cName, cPhone, cleanItems } = validateForm();
     if (!isValid) {
       setInvalidFields(errors);
       if (errors.customerName || errors.customerPhone) {
-        const el = document.getElementById("quot-cust-typeahead");
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.focus();
-        }
+        safeScrollToField("quot-cust-typeahead");
       } else if (errors.items) {
-        const el = document.getElementById("quot-items-table");
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+        safeScrollToField("quot-items-table");
       }
       toast.error("Please fill in customer details and at least one product row.");
       return null;
@@ -409,16 +428,9 @@ export default function AdminQuotationForm() {
     if (!isValid) {
       setInvalidFields(errors);
       if (errors.customerName || errors.customerPhone) {
-        const el = document.getElementById("quot-cust-typeahead");
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.focus();
-        }
+        safeScrollToField("quot-cust-typeahead");
       } else if (errors.items) {
-        const el = document.getElementById("quot-items-table");
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+        safeScrollToField("quot-items-table");
       }
       toast.error("Please fill in customer details and at least one product row.");
       return;
@@ -669,7 +681,7 @@ export default function AdminQuotationForm() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto text-slate-900 dark:text-slate-100 text-sm">
+    <div className="space-y-6 max-w-6xl mx-auto text-slate-900 dark:text-slate-100 text-sm pb-16">
       {/* Top Header & Breadcrumb */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
@@ -677,20 +689,36 @@ export default function AdminQuotationForm() {
             variant="ghost"
             size="icon"
             onClick={() => navigate("/admin/quotations")}
-            className="h-9 w-9 rounded-xl text-slate-500 hover:text-slate-900"
+            className="h-9 w-9 rounded-xl text-slate-500 hover:text-slate-900 cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="h-5 w-5 text-blue-600" />
-                <span>{effectiveId ? `Edit Quotation #${quotationNo}` : "Create Price Estimate Quotation"}</span>
+                <span>{effectiveId ? "Edit Quotation" : "Create Price Estimate Quotation"}</span>
               </h1>
               {quotationNo && (
-                <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-mono font-bold border-blue-200 text-xs">
-                  #{quotationNo}
-                </Badge>
+                <div className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-xl shadow-2xs">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                    QUOTE #
+                  </span>
+                  <span className="text-sm font-mono font-extrabold text-blue-700 dark:text-blue-300">
+                    {quotationNo}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(quotationNo);
+                      toast.success(`Copied quotation number: ${quotationNo}`);
+                    }}
+                    className="p-1 rounded-md text-blue-500 hover:text-blue-700 dark:hover:text-white hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors cursor-pointer"
+                    title="Copy Quotation Number"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -761,66 +789,68 @@ export default function AdminQuotationForm() {
       {/* Real-time Concurrent Editing Collision Warning */}
       <ResourceCollisionAlert activeEditors={activeEditors} resourceLabel="quotation" />
 
-      {/* Main Quotation Form Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Customer & Line Items */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Section 1: Customer Details (Search by typing across 5000+ records) */}
-          <div
-            data-shortcut-section="customer"
-            className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4"
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
-                  <UserPlus className="h-4 w-4" />
-                </div>
-                <span className="font-extrabold text-sm text-slate-900 dark:text-white font-display">
-                  1. Customer Information
-                </span>
+      {/* Main Quotation Form - Full Width Single Column Layout */}
+      <div className="space-y-6">
+        {/* Section 1: Customer Details & Date of Issuance */}
+        <div
+          data-shortcut-section="customer"
+          className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+                <UserPlus className="h-4 w-4" />
               </div>
-
-              <div className="flex items-center gap-2">
-                {selectedCustomerId && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowEditCustomerModal(true)}
-                      className="h-7 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 font-bold"
-                    >
-                      <Edit2 className="h-3 w-3 mr-1" />
-                      <span>Edit Profile</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearCustomer}
-                      className="h-7 text-xs text-slate-500 hover:text-slate-800"
-                    >
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      <span>Change Customer</span>
-                    </Button>
-                  </>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCustomerModal(true)}
-                  className="h-7 text-xs font-bold rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 gap-1 cursor-pointer"
-                  title="Create New Customer (Alt + C)"
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>New Customer (Alt+C)</span>
-                </Button>
+              <div>
+                <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white font-display">
+                  1. Customer Information & Quotation Details
+                </span>
+                <p className="text-[11px] text-slate-400">Search customer across records and select issuance date</p>
               </div>
             </div>
 
-            {/* Typeahead Search Input */}
-            <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {selectedCustomerId && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowEditCustomerModal(true)}
+                    className="h-8 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 font-bold cursor-pointer"
+                  >
+                    <Edit2 className="h-3 w-3 mr-1" />
+                    <span>Edit Profile</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearCustomer}
+                    className="h-8 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    <span>Change Customer</span>
+                  </Button>
+                </>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCustomerModal(true)}
+                className="h-8 text-xs font-bold rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 gap-1 cursor-pointer"
+                title="Create New Customer (Alt + C)"
+              >
+                <Plus className="h-3 w-3" />
+                <span>New Customer (Alt+C)</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Row: Customer Typeahead (2 cols) & Date of Issuance (1 col) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
               <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Search Customer by Name, Mobile, or Company <span className="text-red-500 font-bold">*</span>
               </Label>
@@ -849,419 +879,485 @@ export default function AdminQuotationForm() {
               )}
             </div>
 
-            {/* Non-Editable Populated Customer Card */}
-            {(customerName || customerPhone || selectedCustomerId) && (
-              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 p-4 space-y-2.5 animate-in fade-in duration-150">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  {/* Customer Name */}
-                  <div>
-                    <span className="text-slate-400 font-semibold block text-[10px] uppercase">
-                      Customer Name
-                    </span>
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                      {customerName || "—"}
-                    </span>
-                  </div>
-
-                  {/* Phone */}
-                  <div>
-                    <span className="text-slate-400 font-semibold block text-[10px] uppercase">
-                      Phone Number
-                    </span>
-                    <span className="font-mono font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
-                      <Phone className="h-4 w-4 text-blue-500" />
-                      {customerPhone ? formatIndianPhoneNumber(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
-                    </span>
-                  </div>
-
-                  {/* Email */}
-                  <div>
-                    <span className="text-slate-400 font-semibold block text-[10px] uppercase">
-                      Email Address (Non-Editable)
-                    </span>
-                    <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mt-0.5">
-                      <Mail className="h-3.5 w-3.5 text-blue-500" />
-                      {customerEmail || <span className="text-slate-400 font-normal italic">Not provided</span>}
-                    </span>
-                  </div>
-
-                  {/* Address */}
-                  <div>
-                    <span className="text-slate-400 font-semibold block text-[10px] uppercase">
-                      Address
-                    </span>
-                    <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mt-0.5">
-                      <MapPin className="h-3.5 w-3.5 text-blue-500" />
-                      {customerAddress || <span className="text-slate-400 font-normal italic">Over Counter / Neemuch</span>}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Date of Issuance
+              </Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={async (e) => {
+                  const newDate = e.target.value;
+                  setDate(newDate);
+                  if (!id) {
+                    const nextNo = await peekNextQuotationNumber(newDate);
+                    setQuotationNo(nextNo);
+                  }
+                }}
+                className="h-10 text-xs rounded-xl font-medium"
+              />
+            </div>
           </div>
 
-          {/* Section 2: Quotation Line Items Table (Async Search across 4000+ catalog products) */}
-          <div
-            data-shortcut-section="product"
-            className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400">
-                  <PackagePlus className="h-4 w-4" />
-                </div>
+          {/* Non-Editable Populated Customer Card */}
+          {(customerName || customerPhone || selectedCustomerId) && (
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 p-4 space-y-2.5 animate-in fade-in duration-150">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                {/* Customer Name */}
                 <div>
-                  <span className="font-extrabold text-sm text-slate-900 dark:text-white font-display">
-                    2. Quotation Products & Estimated Pricing
+                  <span className="text-slate-400 font-semibold block text-[10px] uppercase">
+                    Customer Name
                   </span>
-                  {templateName && (
-                    <span className="ml-2 text-[11px] text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md border border-purple-200">
-                      Template: {templateName}
-                    </span>
-                  )}
+                  <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    {customerName || "—"}
+                  </span>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <span className="text-slate-400 font-semibold block text-[10px] uppercase">
+                    Phone Number
+                  </span>
+                  <span className="font-mono font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+                    <Phone className="h-4 w-4 text-blue-500" />
+                    {customerPhone ? formatIndianPhoneNumber(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
+                  </span>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <span className="text-slate-400 font-semibold block text-[10px] uppercase">
+                    Email Address
+                  </span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mt-0.5">
+                    <Mail className="h-3.5 w-3.5 text-blue-500" />
+                    {customerEmail || <span className="text-slate-400 font-normal italic">Not provided</span>}
+                  </span>
+                </div>
+
+                {/* Address */}
+                <div>
+                  <span className="text-slate-400 font-semibold block text-[10px] uppercase">
+                    Address
+                  </span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mt-0.5">
+                    <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                    {customerAddress || <span className="text-slate-400 font-normal italic">Over Counter / Neemuch</span>}
+                  </span>
                 </div>
               </div>
+            </div>
+          )}
+        </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowProductModal(true)}
-                  className="h-8 text-xs font-bold rounded-xl border-purple-200 text-purple-700 dark:text-purple-300 hover:bg-purple-50 gap-1 cursor-pointer"
-                  title="Quick Create Product in Catalog (Alt + C)"
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>New Product (Alt+C)</span>
-                </Button>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleAddItemRow}
-                  className="h-8 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 gap-1 cursor-pointer"
-                  title="Add Line Item (Alt + A)"
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>Add Row (Alt+A)</span>
-                </Button>
+        {/* Section 2: Quotation Line Items Table (Async Search across 4000+ catalog products - Expanded Full Width) */}
+        <div
+          data-shortcut-section="product"
+          className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400">
+                <PackagePlus className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white font-display">
+                  2. Quotation Products & Estimated Pricing
+                </span>
+                {templateName && (
+                  <span className="ml-2 text-[11px] text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md border border-purple-200">
+                    Template: {templateName}
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Line Items Table */}
-            <div
-              id="quot-items-table"
-              className={`border rounded-2xl shadow-2xs transition-all ${
-                invalidFields.items
-                  ? "border-rose-400 dark:border-rose-700 ring-2 ring-rose-300 dark:ring-rose-950/60"
-                  : "border-slate-200 dark:border-slate-800"
-              }`}
-            >
-              <table className="w-full text-sm text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200">
-                    <th className="py-3.5 px-3 w-10 text-center">#</th>
-                    <th className="py-3.5 px-3">Product Name & Specifications</th>
-                    <th className="py-3.5 px-3 w-20 text-center">Qty</th>
-                    <th className="py-3.5 px-3 w-32 text-right">Est. Price (₹)</th>
-                    <th className="py-3.5 px-3 w-32 text-right">Total (₹)</th>
-                    <th className="py-3.5 px-2 w-10 text-center"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {items.map((it, idx) => {
-                    const hasSelectedProduct = Boolean(it.productId);
-
-                    return (
-                      <tr key={it.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
-                        {/* Index */}
-                        <td className="py-3.5 px-3 text-center font-mono text-slate-400 align-top">
-                          {idx + 1}
-                        </td>
-
-                        {/* Product Name & Specifications Column (Expanded) */}
-                        <td className="py-3.5 px-3 relative">
-                          {hasSelectedProduct ? (
-                            <div className="space-y-1.5">
-                              {/* Line 1: Product Name and Catalog Edit Button */}
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">
-                                  {it.productName}
-                                </span>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  {it.productId && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setEditProductCatalogId(it.productId);
-                                        setShowEditProductModal(true);
-                                      }}
-                                      className="h-6 px-1.5 text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50"
-                                      title="Edit Product Details in Catalog"
-                                    >
-                                      <Edit2 className="h-3 w-3 mr-0.5" />
-                                      <span>Edit in Catalog</span>
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Line 2: Category first, then Model after Category */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge className="bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 text-[10px] font-bold px-2 py-0.5">
-                                  {it.category || "General"}
-                                </Badge>
-                                {it.modelNumber && (
-                                  <span className="font-mono text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1">
-                                    <Tag className="h-3.5 w-3.5 text-purple-500" />
-                                    <span>Model: {it.modelNumber}</span>
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Line 3: Optional Custom Description / Specs */}
-                              <Input
-                                placeholder="Additional notes, warranty, or config specs..."
-                                value={it.description || ""}
-                                onChange={(e) => handleUpdateItem(idx, "description", e.target.value)}
-                                className="h-8 text-xs rounded-lg mt-1 text-slate-600 dark:text-slate-400"
-                              />
-                            </div>
-                          ) : (
-                            <ProductTypeahead
-                              value={it.productName}
-                              onSelectProduct={(prod) => handleSelectProductForRow(idx, prod)}
-                              onAddNewProduct={() => setShowProductModal(true)}
-                              placeholder="Type to search 4000+ products by name, model, brand..."
-                            />
-                          )}
-                        </td>
-
-                        {/* Quantity (Editable) */}
-                        <td className="py-3.5 px-2 text-center align-top">
-                          <Input
-                            type="number"
-                            min="1"
-                            placeholder="1"
-                            value={it.quantity === 0 ? "" : it.quantity}
-                            onFocus={(e) => e.target.select()}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              const clean = raw === "" ? 1 : Math.max(1, Number(raw.replace(/^0+(?=\d)/, '')) || 1);
-                              handleUpdateItem(idx, "quantity", clean);
-                            }}
-                            className="h-9 text-sm font-mono font-bold text-center rounded-xl w-16 mx-auto"
-                          />
-                        </td>
-
-                        {/* Approx Unit Price (Editable) */}
-                        <td className="py-3.5 px-2 text-right align-top">
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={it.estimatedPrice === 0 ? "" : it.estimatedPrice}
-                            onFocus={(e) => e.target.select()}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));
-                              handleUpdateItem(idx, "estimatedPrice", clean);
-                            }}
-                            className="h-9 text-sm font-mono text-right rounded-xl w-28 ml-auto font-bold"
-                          />
-                        </td>
-
-                        {/* Line Total */}
-                        <td className="py-3.5 px-3 text-right font-mono font-black text-sm text-slate-950 dark:text-white align-top pt-5">
-                          ₹{((Number(it.quantity) || 1) * (Number(it.estimatedPrice) || 0)).toLocaleString("en-IN")}
-                        </td>
-
-                        {/* Delete Action */}
-                        <td className="py-3.5 px-1 text-center align-top pt-4">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(idx)}
-                            className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors"
-                            title="Remove Row"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {invalidFields.items && (
-              <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 px-4 py-2 bg-rose-50 dark:bg-rose-950/50 rounded-xl mt-2 flex items-center gap-1.5">
-                <span>At least one product item with a valid name, quantity, and price is required.</span>
-              </p>
-            )}
-
-            {/* Quick Template Saving CTA */}
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-[11px] text-slate-500">
-                Tip: Common laptop/CCTV configurations can be saved as reusable templates.
-              </span>
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={() => setShowTemplateModal(true)}
-                className="h-7 text-xs font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 gap-1.5"
+                onClick={() => setShowProductModal(true)}
+                className="h-8 text-xs font-bold rounded-xl border-purple-200 text-purple-700 dark:text-purple-300 hover:bg-purple-50 gap-1 cursor-pointer"
+                title="Quick Create Product in Catalog (Alt + C)"
               >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Save this Item List as Template</span>
+                <Plus className="h-3 w-3" />
+                <span>New Product (Alt+C)</span>
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleAddItemRow}
+                className="h-8 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 gap-1 cursor-pointer"
+                title="Add Line Item (Alt + A)"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Add Row (Alt+A)</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Line Items Table */}
+          <div
+            id="quot-items-table"
+            className={`border rounded-2xl shadow-2xs transition-all overflow-x-auto ${
+              invalidFields.items
+                ? "border-rose-400 dark:border-rose-700 ring-2 ring-rose-300 dark:ring-rose-950/60"
+                : "border-slate-200 dark:border-slate-800"
+            }`}
+          >
+            <table className="w-full text-sm text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200">
+                  <th className="py-3.5 px-3 w-10 text-center">#</th>
+                  <th className="py-3.5 px-3 min-w-[280px]">Product Name & Specifications</th>
+                  <th className="py-3.5 px-3 w-28 text-center">Qty</th>
+                  <th className="py-3.5 px-3 w-36 text-right">Approx Unit Price (₹)</th>
+                  <th className="py-3.5 px-3 w-36 text-right">Total (₹)</th>
+                  <th className="py-3.5 px-2 w-12 text-center"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                {items.map((it, idx) => {
+                  const hasSelectedProduct = Boolean(it.productId);
+
+                  return (
+                    <tr key={it.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
+                      {/* Index */}
+                      <td className="py-3.5 px-3 text-center font-mono text-slate-400 align-top">
+                        {idx + 1}
+                      </td>
+
+                      {/* Product Name & Specifications Column (Expanded) */}
+                      <td className="py-3.5 px-3 relative">
+                        {hasSelectedProduct ? (
+                          <div className="space-y-1.5">
+                            {/* Line 1: Product Name and Catalog Edit Button */}
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">
+                                {it.productName}
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {it.productId && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditProductCatalogId(it.productId);
+                                      setShowEditProductModal(true);
+                                    }}
+                                    className="h-6 px-1.5 text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50"
+                                    title="Edit Product Details in Catalog"
+                                  >
+                                    <Edit2 className="h-3 w-3 mr-0.5" />
+                                    <span>Edit in Catalog</span>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Line 2: Category first, then Model after Category */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className="bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 text-[10px] font-bold px-2 py-0.5">
+                                {it.category || "General"}
+                              </Badge>
+                              {it.modelNumber && (
+                                <span className="font-mono text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                                  <Tag className="h-3.5 w-3.5 text-purple-500" />
+                                  <span>Model: {it.modelNumber}</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Line 3: Optional Custom Description / Specs */}
+                            <Input
+                              placeholder="Additional notes, warranty, or config specs..."
+                              value={it.description || ""}
+                              onChange={(e) => handleUpdateItem(idx, "description", e.target.value)}
+                              className="h-8 text-xs rounded-lg mt-1 text-slate-600 dark:text-slate-400"
+                            />
+                          </div>
+                        ) : (
+                          <ProductTypeahead
+                            value={it.productName}
+                            onSelectProduct={(prod) => handleSelectProductForRow(idx, prod)}
+                            onAddNewProduct={() => setShowProductModal(true)}
+                            placeholder="Type to search 4000+ products by name, model, brand..."
+                          />
+                        )}
+                      </td>
+
+                      {/* Quantity (Editable) */}
+                      <td className="py-3.5 px-2 text-center align-top">
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="1"
+                          value={it.quantity === 0 ? "" : it.quantity}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const clean = raw === "" ? 1 : Math.max(1, Number(raw.replace(/^0+(?=\d)/, '')) || 1);
+                            handleUpdateItem(idx, "quantity", clean);
+                          }}
+                          className="h-11 sm:h-9 text-base sm:text-sm font-mono font-bold text-center rounded-xl w-20 sm:w-20 mx-auto"
+                        />
+                      </td>
+
+                      {/* Approx Unit Price (Editable) */}
+                      <td className="py-3.5 px-2 text-right align-top">
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={it.estimatedPrice === 0 ? "" : it.estimatedPrice}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));
+                            handleUpdateItem(idx, "estimatedPrice", clean);
+                          }}
+                          className="h-11 sm:h-9 text-base sm:text-sm font-mono text-right rounded-xl w-32 sm:w-32 ml-auto font-bold"
+                        />
+                      </td>
+
+                      {/* Line Total */}
+                      <td className="py-3.5 px-3 text-right font-mono font-black text-sm text-slate-950 dark:text-white align-top pt-5">
+                        ₹{((Number(it.quantity) || 1) * (Number(it.estimatedPrice) || 0)).toLocaleString("en-IN")}
+                      </td>
+
+                      {/* Delete Action */}
+                      <td className="py-3.5 px-1 text-center align-top pt-4">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(idx)}
+                          className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors"
+                          title="Remove Row"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {invalidFields.items && (
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 px-4 py-2 bg-rose-50 dark:bg-rose-950/50 rounded-xl mt-2 flex items-center gap-1.5">
+              <span>At least one product item with a valid name, quantity, and price is required.</span>
+            </p>
+          )}
+
+          {/* Quick Template Saving CTA */}
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-[11px] text-slate-500">
+              Tip: Common laptop/CCTV configurations can be saved as reusable templates.
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowTemplateModal(true)}
+              className="h-7 text-xs font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 gap-1.5 cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Save this Item List as Template</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Section 3: Dedicated Bottom Pricing & Invoice Summary Card (Matching ServiceCallBillingPartsCard style) */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                <FileText className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white font-display">
+                  3. Estimated Pricing & Invoice Summary
+                </span>
+                <p className="text-[11px] text-slate-400">Subtotal calculation, discount deduction, commercial terms and internal remarks</p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-xl">
+              {items.length} item{items.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left 7 Cols: Terms & Conditions + Internal Staff Remarks */}
+            <div className="lg:col-span-7 space-y-4">
+              {/* Terms & Conditions Box */}
+              <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-2.5">
+                <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-extrabold text-xs">
+                  <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span>Terms & Conditions / Estimate Notice</span>
+                </div>
+                <Textarea
+                  rows={4}
+                  value={termsAndConditions}
+                  onChange={(e) => setTermsAndConditions(e.target.value)}
+                  className="text-xs rounded-xl bg-white dark:bg-slate-900 border-amber-200 dark:border-amber-900/60 leading-relaxed font-sans"
+                />
+                <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80">
+                  Printed and transmitted on WhatsApp/Email estimate copies for complete customer transparency.
+                </p>
+              </div>
+
+              {/* Internal Staff Remarks */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Internal Staff Remarks (Private / Shop only)
+                </Label>
+                <Textarea
+                  placeholder="e.g. Customer promised response by Monday; special dealer quote provided."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className="text-xs rounded-xl"
+                />
+              </div>
+            </div>
+
+            {/* Right 5 Cols: Pricing Breakdown & Grand Total */}
+            <div className="lg:col-span-5 flex flex-col justify-between p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 space-y-4">
+              <div className="space-y-3">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-400 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+                  Commercial Summary
+                </div>
+
+                <div className="flex justify-between items-center text-sm text-slate-600 dark:text-slate-300">
+                  <span>Items Subtotal:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    ₹{subtotal.toLocaleString("en-IN")}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-sm text-slate-600 dark:text-slate-300">Special Discount:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 font-mono text-sm">₹</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={discountInput === "0" ? "" : discountInput}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setDiscountInput(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
+                      }}
+                      className="h-8 text-xs font-mono text-right w-28 rounded-xl font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                  <div>
+                    <div className="text-xs text-slate-400 font-bold uppercase">Estimated Grand Total</div>
+                    <div className="text-[11px] text-slate-500">Includes all line items & taxes</div>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-blue-600 dark:text-blue-400">
+                    ₹{grandTotal.toLocaleString("en-IN")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Anchored Action Controls Bar (NO sticky bottom-0!) */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/admin/quotations")}
+                className="h-10 px-4 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer w-full sm:w-auto"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1.5" />
+                <span>Back to Quotations</span>
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleOpenPrintModal}
+                className="h-10 px-3.5 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Printer className="h-4 w-4" />
+                <span className="hidden sm:inline">Print (Alt+P)</span>
+                <span className="sm:hidden">Print</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleOpenWhatsAppModal}
+                className="h-10 px-3.5 text-xs font-bold rounded-xl border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <MessageSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="hidden sm:inline">WhatsApp (Alt+W)</span>
+                <span className="sm:hidden">WhatsApp</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowEmailModal(true)}
+                className="h-10 px-3.5 text-xs font-bold rounded-xl border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span>Email</span>
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => handleSubmit()}
+                disabled={saving}
+                className="h-10 px-5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-sm cursor-pointer active:scale-98 transition-all"
+              >
+                <Save className="h-4 w-4" />
+                <span>{saving ? "Saving..." : effectiveId ? "Update Quotation (Ctrl+A)" : "Save Quotation (Ctrl+A)"}</span>
               </Button>
             </div>
           </div>
         </div>
-
-        {/* Right 1 Col: Metadata, Pricing & Terms */}
-        <div className="space-y-6">
-          {/* Metadata Card */}
-          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-            <h2 className="font-extrabold text-sm text-slate-900 dark:text-white font-display border-b border-slate-100 dark:border-slate-800 pb-2">
-              Quotation Date
-            </h2>
-
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Date of Issuance
-                </Label>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={async (e) => {
-                    const newDate = e.target.value;
-                    setDate(newDate);
-                    if (!id) {
-                      const nextNo = await peekNextQuotationNumber(newDate);
-                      setQuotationNo(nextNo);
-                    }
-                  }}
-                  className="h-9 text-xs rounded-xl"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Pricing & Totals Card */}
-          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-            <h2 className="font-extrabold text-sm text-slate-900 dark:text-white font-display border-b border-slate-100 dark:border-slate-800 pb-2">
-              Estimated Pricing Breakdown
-            </h2>
-
-            <div className="space-y-2.5">
-              <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                <span>Items Subtotal:</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-white">
-                  ₹{subtotal.toLocaleString("en-IN")}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center gap-4">
-                <span className="text-slate-600 dark:text-slate-400">Special Discount (₹):</span>
-                <Input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={discountInput === "0" ? "" : discountInput}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    setDiscountInput(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
-                  }}
-                  className="h-8 text-xs font-mono text-right w-28 rounded-xl"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white">
-                  Estimated Grand Total:
-                </span>
-                <span className="text-xl font-black font-mono text-blue-600 dark:text-blue-400">
-                  ₹{grandTotal.toLocaleString("en-IN")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Mandatory Estimation Terms & Conditions */}
-          <div className="p-5 rounded-3xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 shadow-2xs space-y-3">
-            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-extrabold text-xs">
-              <ShieldAlert className="h-4 w-4 text-amber-600" />
-              <span>Terms & Conditions / Estimate Notice</span>
-            </div>
-            <Textarea
-              rows={5}
-              value={termsAndConditions}
-              onChange={(e) => setTermsAndConditions(e.target.value)}
-              className="text-xs rounded-xl bg-white dark:bg-slate-900 border-amber-200 dark:border-amber-900/60 leading-relaxed font-sans"
-            />
-            <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80">
-              Clearly stated on printed, emailed, and WhatsApp quotation copies for customer transparency.
-            </p>
-          </div>
-
-          {/* Internal Notes */}
-          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Internal Staff Remarks (Not shown to customer)
-            </Label>
-            <Textarea
-              placeholder="e.g. Customer promised response by Monday"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className="text-xs rounded-xl"
-            />
-          </div>
-        </div>
       </div>
 
-      {/* Bottom Actions Bar */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col">
-            <span className="text-[11px] text-slate-400">Total Estimated Price:</span>
-            <span className="text-lg font-mono font-black text-blue-400">
-              ₹{grandTotal.toLocaleString("en-IN")}
-            </span>
-          </div>
-          <span className="text-slate-600 hidden sm:inline">|</span>
-          <span className="text-xs text-slate-300 hidden sm:inline">
-            {items.length} product item{items.length === 1 ? "" : "s"}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/admin/quotations")}
-            className="h-9 text-xs rounded-xl bg-slate-800 border-slate-700 text-slate-300 hover:text-white"
-          >
-            Back (Esc)
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => handleSubmit()}
-            disabled={saving}
-            className="h-9 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-500 text-white gap-1.5 shadow-sm cursor-pointer"
-          >
-            <Save className="h-4 w-4" />
-            <span>{saving ? "Saving..." : effectiveId ? "Update Quotation (Ctrl+A)" : "Save Quotation (Ctrl+A)"}</span>
-          </Button>
-        </div>
-      </div>
+      {/* Top Header Breadcrumb Quotation Number Portal */}
+      {breadcrumbTicketEl && quotationNo &&
+        createPortal(
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-1 sm:ml-2">
+            <span className="text-slate-600 hidden sm:inline">/</span>
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-slate-800/90 border border-slate-700/80 px-2.5 py-0.5 sm:py-1 rounded-xl shadow-xs">
+              <span className="text-xs sm:text-sm font-extrabold text-blue-300 font-mono tracking-wider">
+                {quotationNo}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(quotationNo);
+                  toast.success(`Copied quotation number: ${quotationNo}`);
+                }}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                title="Copy Quotation Number"
+                aria-label="Copy Quotation Number"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>,
+          breadcrumbTicketEl
+        )}
 
       {/* Modals */}
       <CreateCustomerModal

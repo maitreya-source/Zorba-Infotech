@@ -73,7 +73,7 @@ export default function ServiceCallCustomerCard({
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <Label htmlFor="cust-name-typeahead" className="text-sm font-bold text-slate-800 dark:text-slate-200">
-            Customer Name / Mobile Search <span className="text-rose-600 font-bold">*</span>
+            Customer Name / Mobile Number <span className="text-rose-600 font-bold">*</span>
           </Label>
         </div>
         <CustomerTypeahead
@@ -84,7 +84,7 @@ export default function ServiceCallCustomerCard({
           onChange={onCustomerNameChange}
           onSelectCustomer={onSelectCustomer}
           onAddNewCustomer={onOpenNewCustomerModal}
-          placeholder="Type customer name or mobile number (e.g. 95891 99738)..."
+          placeholder="Search customer by name or 10-digit mobile (e.g. 95891 99738)..."
         />
         {nameError && (
           <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1">

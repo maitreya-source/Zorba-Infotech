@@ -20,10 +20,10 @@
     <link rel="alternate icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/logo-512x512.png" />
 
-    <!-- Google Fonts Preconnect & High-Legibility Typefaces (Plus Jakarta Sans & Space Grotesk) -->
+    <!-- Google Fonts Preconnect & High-Legibility Typefaces (Plus Jakarta Sans, Noto Sans Devanagari & Space Grotesk) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
 
     <!-- Facebook Domain Verification -->
     <meta name="facebook-domain-verification" content="y9woic2c4mp9sz4oya36rr3q089x9w" />
@@ -127,6 +127,26 @@
       #root {
         min-height: 100vh;
         width: 100%;
+      }
+      /* Admin Viewport Strict Lock */
+      html.admin-viewport-locked,
+      html.admin-viewport-locked body,
+      html.admin-viewport-locked #root,
+      html:has([data-admin-layout]),
+      body:has([data-admin-layout]),
+      body:has([data-admin-layout]) #root {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        overflow: hidden !important;
+        overscroll-behavior: none !important;
       }
       @keyframes zorbaSpin {
         to { transform: rotate(360deg); }

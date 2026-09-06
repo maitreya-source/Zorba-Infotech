@@ -21,7 +21,7 @@ export default function StaffOnDutyBoard({ onlineStaff }: StaffOnDutyBoardProps)
     <>
       <button
         onClick={() => setShowModal(true)}
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
+        className={`h-9 inline-flex items-center gap-2 rounded-xl px-3 text-xs font-semibold transition-all cursor-pointer shadow-2xs border ${
           count > 0
             ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25"
             : "bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-800"

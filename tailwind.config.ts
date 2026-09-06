@@ -15,8 +15,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["'Plus Jakarta Sans'", "Inter", "system-ui", "sans-serif"],
-        display: ["Space Grotesk", "system-ui", "sans-serif"],
+        sans: ["'Plus Jakarta Sans'", "'Noto Sans Devanagari'", "Inter", "system-ui", "sans-serif"],
+        display: ["Space Grotesk", "'Noto Sans Devanagari'", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

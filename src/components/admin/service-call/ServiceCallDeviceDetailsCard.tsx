@@ -44,8 +44,10 @@ interface ServiceCallDeviceDetailsCardProps {
   selectedServiceCenterId: string;
   onSelectServiceCenter: (id: string) => void;
   onOpenAddCenterModal: () => void;
+  onOpenEditCenterModal?: () => void;
   selectedAddressId: string;
   onSelectAddress: (id: string) => void;
+  onOpenAddAddressModal?: () => void;
   couriers: Courier[];
   courierName: string;
   onSelectCourier: (name: string) => void;
@@ -85,8 +87,10 @@ export default function ServiceCallDeviceDetailsCard({
   selectedServiceCenterId,
   onSelectServiceCenter,
   onOpenAddCenterModal,
+  onOpenEditCenterModal,
   selectedAddressId,
   onSelectAddress,
+  onOpenAddAddressModal,
   couriers,
   courierName,
   onSelectCourier,
@@ -119,7 +123,7 @@ export default function ServiceCallDeviceDetailsCard({
           {/* Device Category */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Device Category
               </Label>
               <button
@@ -131,7 +135,7 @@ export default function ServiceCallDeviceDetailsCard({
               </button>
             </div>
             <Select value={deviceCategory} onValueChange={onDeviceCategoryChange}>
-              <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+              <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -146,15 +150,15 @@ export default function ServiceCallDeviceDetailsCard({
 
           {/* Warranty Status */}
           <div>
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
               Warranty Status
             </Label>
             <Select value={warrantyStatus} onValueChange={(val: WarrantyStatus) => onWarrantyStatusChange(val)}>
-              <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+              <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
                 <SelectValue placeholder="Warranty" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="not_applicable">N/A General Service</SelectItem>
+                <SelectItem value="not_applicable">General Service (N/A)</SelectItem>
                 <SelectItem value="in_warranty">In Warranty (OEM)</SelectItem>
                 <SelectItem value="out_of_warranty">Out of Warranty</SelectItem>
               </SelectContent>
@@ -163,7 +167,7 @@ export default function ServiceCallDeviceDetailsCard({
 
           {/* Model Number / Name */}
           <div className="sm:col-span-2">
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
               Model Number / Name
             </Label>
             <ModelTypeahead
@@ -191,19 +195,19 @@ export default function ServiceCallDeviceDetailsCard({
         {/* Secondary Metadata Sub-Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
               Serial Number / IMEI
             </Label>
             <Input
               placeholder="e.g. 15082026"
               value={serialNumber}
               onChange={(e) => onSerialNumberChange(e.target.value)}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
+              className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
             />
           </div>
 
           <div>
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
               Quantity
             </Label>
             <Input
@@ -216,31 +220,31 @@ export default function ServiceCallDeviceDetailsCard({
                 const raw = e.target.value;
                 onQuantityChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
               }}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors text-center"
+              className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors text-center"
             />
           </div>
 
           <div>
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
               Purchase Date (DOP)
             </Label>
             <Input
               type="date"
               value={dateOfPurchase}
               onChange={(e) => onDateOfPurchaseChange(e.target.value)}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
+              className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:bg-white transition-colors"
             />
           </div>
 
           <div>
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-              Invoice / Bill Number
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+              Bill / Invoice No.
             </Label>
             <Input
               placeholder="e.g. INV-2024-9981"
               value={billNumber}
               onChange={(e) => onBillNumberChange(e.target.value)}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
+              className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
             />
           </div>
         </div>
@@ -252,12 +256,12 @@ export default function ServiceCallDeviceDetailsCard({
           </Label>
           <Textarea
             id="issue-description-input"
-            placeholder="Describe symptoms, requested repair, or installation tasks..."
+            placeholder="Customer reported issue or service required (e.g. Screen broken, not powering on, no display, Windows reinstall)..."
             value={issueDescription}
             onChange={(e) => onIssueDescriptionChange(e.target.value)}
             rows={2}
             required
-            className={`text-sm rounded-xl bg-slate-50/60 dark:bg-slate-950 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors ${
+            className={`text-base sm:text-sm rounded-xl bg-slate-50/60 dark:bg-slate-950 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors ${
               issueError
                 ? "border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30 text-rose-900 dark:text-rose-100"
                 : "border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
@@ -269,21 +273,49 @@ export default function ServiceCallDeviceDetailsCard({
             </p>
           )}
 
-          {/* Quick Tags Suggestions */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1.5 no-scrollbar text-xs">
-            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium shrink-0">Suggestions:</span>
-            {quickTags.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => {
-                  onIssueDescriptionChange((prev) => (prev ? `${prev}, ${tag}` : tag));
-                }}
-                className="shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap"
-              >
-                {tag}
-              </button>
-            ))}
+          {/* Quick Accessories Handover Chips */}
+          <div className="space-y-1 pt-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar text-xs">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                Accessories Handover:
+              </span>
+              {[
+                { label: "+ Charger", val: "Charger received" },
+                { label: "+ Laptop Bag", val: "Laptop bag received" },
+                { label: "+ Power Adapter / Cable", val: "Power adapter/cable received" },
+                { label: "+ Device Only", val: "Device only (no accessories)" },
+              ].map((acc) => (
+                <button
+                  key={acc.label}
+                  type="button"
+                  onClick={() => {
+                    onIssueDescriptionChange((prev) => (prev ? `${prev}, [${acc.val}]` : `[${acc.val}]`));
+                  }}
+                  className="shrink-0 rounded-xl border border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/40 px-3 py-1.5 min-h-[32px] text-xs font-bold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors cursor-pointer whitespace-nowrap active:scale-95 shadow-2xs"
+                >
+                  {acc.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Symptoms Suggestions */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar text-xs">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                Common Symptoms:
+              </span>
+              {quickTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    onIssueDescriptionChange((prev) => (prev ? `${prev}, ${tag}` : tag));
+                  }}
+                  className="shrink-0 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 min-h-[32px] text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap active:scale-95 shadow-2xs"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -306,7 +338,7 @@ export default function ServiceCallDeviceDetailsCard({
                 variant="outline"
                 size="sm"
                 onClick={onOpenDispatchPrint}
-                className="h-7 text-xs font-semibold rounded-lg gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer"
+                className="h-8 text-xs font-semibold rounded-lg gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer"
                 title="Print Dispatch Slip with Zorba & Service Center Addresses"
               >
                 <Truck className="h-3.5 w-3.5" />
@@ -319,23 +351,35 @@ export default function ServiceCallDeviceDetailsCard({
             {/* Select Service Center */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Service Center
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Authorized Service Center
                 </Label>
-                <button
-                  type="button"
-                  onClick={onOpenAddCenterModal}
-                  className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
-                >
-                  + Add
-                </button>
+                <div className="flex items-center gap-2">
+                  {selectedServiceCenterId && onOpenEditCenterModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenEditCenterModal}
+                      className="text-[10px] font-semibold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 cursor-pointer"
+                      title="Edit Service Center details & locations"
+                    >
+                      Edit Center
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onOpenAddCenterModal}
+                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
               </div>
               <Select
                 value={selectedServiceCenterId}
                 onValueChange={onSelectServiceCenter}
               >
-                <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                  <SelectValue placeholder="Select Service Center" />
+                <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+                  <SelectValue placeholder="Select Center..." />
                 </SelectTrigger>
                 <SelectContent>
                   {serviceCenters.map((sc) => (
@@ -349,15 +393,26 @@ export default function ServiceCallDeviceDetailsCard({
 
             {/* Dispatch Parcel Address */}
             <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Dispatch Address
-              </Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Dispatch Address
+                </Label>
+                {onOpenAddAddressModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenAddAddressModal}
+                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                )}
+              </div>
               <Select
                 value={selectedAddressId}
                 onValueChange={onSelectAddress}
               >
-                <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                  <SelectValue placeholder="Dispatch Address" />
+                <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+                  <SelectValue placeholder="Select Dispatch Address..." />
                 </SelectTrigger>
                 <SelectContent>
                   {serviceCenters
@@ -374,7 +429,7 @@ export default function ServiceCallDeviceDetailsCard({
             {/* Courier Partner Selection */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Courier Partner
                 </Label>
                 <button
@@ -389,8 +444,8 @@ export default function ServiceCallDeviceDetailsCard({
                 value={courierName}
                 onValueChange={onSelectCourier}
               >
-                <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
-                  <SelectValue placeholder="Select Courier Partner" />
+                <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+                  <SelectValue placeholder="Select Courier..." />
                 </SelectTrigger>
                 <SelectContent>
                   {couriers.map((c) => (
@@ -404,20 +459,20 @@ export default function ServiceCallDeviceDetailsCard({
 
             {/* Courier Tracking RMA / Docket No */}
             <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Docket / RMA Tracking No.
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Courier Tracking / RMA No.
               </Label>
               <Input
                 placeholder="e.g. TRK-9981 / AUG-2026"
                 value={rmaNumber}
                 onChange={(e) => onRmaNumberChange(e.target.value)}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
+                className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
               />
             </div>
 
             {/* Courier Charges */}
             <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
                 Courier Charges (₹)
               </Label>
               <Input
@@ -430,7 +485,7 @@ export default function ServiceCallDeviceDetailsCard({
                   const raw = e.target.value;
                   onCourierChargesInputChange(raw === "" ? "" : raw.replace(/^0+(?=\d)/, ''));
                 }}
-                className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
+                className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-mono text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
               />
             </div>
           </div>
@@ -449,14 +504,14 @@ export default function ServiceCallDeviceDetailsCard({
             </h2>
           </div>
           <div>
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-              Customer Site / Installation Address
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+              Customer Site / Address
             </Label>
             <Input
               placeholder="Enter complete onsite location..."
               value={onsiteAddress}
               onChange={(e) => onOnsiteAddressChange(e.target.value)}
-              className="h-9 text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
+              className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors"
             />
           </div>
         </div>

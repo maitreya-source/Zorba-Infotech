@@ -25,6 +25,7 @@ import {
   ChevronRight,
   Truck,
   MessageSquare,
+  Phone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,7 @@ const statusPriority: Record<ServiceCallStatus, number> = {
 const STATUS_OPTIONS: {
   value: ServiceCallStatus;
   label: string;
+  hindiLabel: string;
   icon: React.ComponentType<{ className?: string }>;
   iconColor: string;
   bgClass: string;
@@ -84,6 +86,7 @@ const STATUS_OPTIONS: {
   {
     value: "received",
     label: "Received",
+    hindiLabel: "डिवाइस जमा हुआ",
     icon: Inbox,
     iconColor: "text-blue-600 dark:text-blue-400",
     bgClass: "bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60",
@@ -91,6 +94,7 @@ const STATUS_OPTIONS: {
   {
     value: "sent_to_service_center",
     label: "Sent to Service Center",
+    hindiLabel: "सर्विस सेंटर भेजा गया",
     icon: Building2,
     iconColor: "text-indigo-600 dark:text-indigo-400",
     bgClass: "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60",
@@ -98,6 +102,7 @@ const STATUS_OPTIONS: {
   {
     value: "in_progress",
     label: "In Progress",
+    hindiLabel: "काम चालू है",
     icon: Clock,
     iconColor: "text-purple-600 dark:text-purple-400",
     bgClass: "bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/60",
@@ -105,6 +110,7 @@ const STATUS_OPTIONS: {
   {
     value: "waiting_for_parts",
     label: "Waiting for Parts",
+    hindiLabel: "पार्ट्स का इंतजार",
     icon: Package,
     iconColor: "text-amber-600 dark:text-amber-400",
     bgClass: "bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60",
@@ -112,6 +118,7 @@ const STATUS_OPTIONS: {
   {
     value: "completed",
     label: "Completed",
+    hindiLabel: "तैयार / ठीक हो गया",
     icon: CheckCircle2,
     iconColor: "text-emerald-600 dark:text-emerald-400",
     bgClass: "bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60",
@@ -119,6 +126,7 @@ const STATUS_OPTIONS: {
   {
     value: "delivered",
     label: "Delivered",
+    hindiLabel: "ग्राहक को सौंप दिया",
     icon: Send,
     iconColor: "text-teal-600 dark:text-teal-400",
     bgClass: "bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60",
@@ -126,6 +134,7 @@ const STATUS_OPTIONS: {
   {
     value: "cancelled",
     label: "Cancelled",
+    hindiLabel: "रद्द किया गया",
     icon: XCircle,
     iconColor: "text-rose-600 dark:text-rose-400",
     bgClass: "bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60",
@@ -256,14 +265,14 @@ export default function AdminServiceCalls() {
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-100 dark:bg-purple-950/60">
             <span className="h-1.5 w-1.5 rounded-full bg-purple-600" />
-            Service Center
+            Sent to Service Center
           </span>
         );
       case "waiting_for_parts":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            Waiting Parts
+            Waiting for Parts
           </span>
         );
       case "completed":
@@ -411,6 +420,27 @@ export default function AdminServiceCalls() {
     return sorted.slice(start, start + pageSize);
   }, [sorted, currentPage, pageSize]);
 
+  // Smart cross-tab search discovery for elders/counter staff
+  const matchingOtherTabCount = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q || q.length < 2) return 0;
+    if (activeTab === "active") {
+      return inactiveCalls.filter((c) =>
+        c.ticketNo.toLowerCase().includes(q) ||
+        c.customerName.toLowerCase().includes(q) ||
+        c.customerPhone.toLowerCase().includes(q)
+      ).length;
+    }
+    if (activeTab === "inactive") {
+      return activeCalls.filter((c) =>
+        c.ticketNo.toLowerCase().includes(q) ||
+        c.customerName.toLowerCase().includes(q) ||
+        c.customerPhone.toLowerCase().includes(q)
+      ).length;
+    }
+    return 0;
+  }, [search, activeTab, activeCalls, inactiveCalls]);
+
   // Keyboard Shortcuts handler
   useTallyShortcuts({
     onAltC: () => navigate("/admin/service-calls/new"),
@@ -429,92 +459,59 @@ export default function AdminServiceCalls() {
 
   return (
     <div className="p-2 md:p-4 space-y-4 max-w-[1440px] mx-auto text-xs">
-      {/* 1. Integrated Blue Hero Header Card (Consistent with Technicians & Staff pages) */}
-      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 md:p-5 text-white shadow-md">
-        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
-              Service Calls Dashboard
-            </h1>
-            <p className="text-xs text-slate-300">
-              Manage service intake tickets, OEM parcel tracking, repair lifecycle, and technician assignments
-            </p>
+      {/* 1. Compact Executive Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:px-4 sm:py-3 shadow-xs">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-lg sm:text-xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white">
+            Service Calls
+          </h1>
+          <div className="flex items-center gap-1.5 flex-wrap text-xs">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+              {totalCalls} Total
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              {inProgressCount} Active
+            </span>
+            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+              <span className="h-1.5 w-1.5 rounded-full bg-purple-600" />
+              {serviceCenterCount} Center
+            </span>
+            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/60">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+              {onsiteCount} Onsite
+            </span>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-            <Link to="/admin/reports">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 px-3 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 border-white/20 text-white shadow-2xs backdrop-blur-md"
-              >
-                Reports
-              </Button>
-            </Link>
-
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link to="/admin/reports">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowCustomerModal(true)}
-              className="h-9 px-3 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 border-white/20 text-white shadow-2xs backdrop-blur-md"
+              className="h-10 sm:h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
             >
-              Add Customer
+              Reports
             </Button>
+          </Link>
 
-            <Link to="/admin/service-calls/new">
-              <Button
-                size="sm"
-                className="h-9 px-4 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white shadow-glow-sm gap-1.5"
-              >
-                <Plus className="h-4 w-4" /> New Service Call
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCustomerModal(true)}
+            className="h-10 sm:h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+          >
+            Add Customer
+          </Button>
 
-      {/* 2. KPI Stat Cards (4 Cards: Total, Active, Service Center, Onsite) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-        {/* Card 1: TOTAL SVC CALLS */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-xs">
-          <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            TOTAL SVC CALLS
-          </div>
-          <div className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white font-display mt-1">
-            {totalCalls}
-          </div>
-        </div>
-
-        {/* Card 2: ACTIVE WORK */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-xs">
-          <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            ACTIVE WORK
-          </div>
-          <div className="text-xl md:text-2xl font-extrabold text-[#D97706] font-display mt-1">
-            {inProgressCount}
-          </div>
-        </div>
-
-        {/* Card 3: SERVICE CENTER */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-xs">
-          <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            SERVICE CENTER
-          </div>
-          <div className="text-xl md:text-2xl font-extrabold text-[#7C3AED] font-display mt-1">
-            {serviceCenterCount}
-          </div>
-        </div>
-
-        {/* Card 4: ONSITE CARE */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-xs">
-          <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            ONSITE CARE
-          </div>
-          <div className="text-xl md:text-2xl font-extrabold text-[#0D9488] font-display mt-1">
-            {onsiteCount}
-          </div>
+          <Link to="/admin/service-calls/new">
+            <Button
+              size="sm"
+              className="h-10 sm:h-9 px-3.5 sm:px-4 text-xs font-bold rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white shadow-glow-sm gap-1.5 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" /> New Service Call
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -581,70 +578,92 @@ export default function AdminServiceCalls() {
           </div>
         </div>
 
-        {/* Right Filters (Responsive Grid on Mobile) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex items-center gap-2.5 w-full xl:w-auto">
-          <div className="relative min-w-[180px] sm:col-span-2 md:flex-1 md:w-64">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+        {/* Right Filters (Search + 3 Select Dropdowns) */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 w-full xl:w-auto">
+          <div className="relative min-w-[180px] md:flex-1 md:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search ticket, customer, device..."
+              placeholder="Search ticket, customer, phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs w-full"
+              className="pl-10 h-11 sm:h-10 text-base sm:text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs w-full placeholder:text-slate-400"
             />
           </div>
 
-          <Select value={fyFilter} onValueChange={setFyFilter}>
-            <SelectTrigger className="w-full md:w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
-              <SelectValue placeholder="All FYs" />
-            </SelectTrigger>
-            <SelectContent className="max-h-56">
-              <SelectItem value="all">All Financial Years</SelectItem>
-              {fys.map((fy) => (
-                <SelectItem key={fy.id} value={fy.id}>
-                  {fy.label || fy.id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-3 gap-2 md:flex md:items-center">
+            <Select value={fyFilter} onValueChange={setFyFilter}>
+              <SelectTrigger className="w-full md:w-36 h-10 sm:h-9 px-2 sm:px-3 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
+                <SelectValue placeholder="All FYs" />
+              </SelectTrigger>
+              <SelectContent className="max-h-56">
+                <SelectItem value="all">All Financial Years</SelectItem>
+                {fys.map((fy) => (
+                  <SelectItem key={fy.id} value={fy.id}>
+                    {fy.label || fy.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full md:w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="company_service_center">Service Center</SelectItem>
-              <SelectItem value="in_house_repair">In-House Repair</SelectItem>
-              <SelectItem value="onsite_visit">Onsite Visit</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full md:w-36 h-10 sm:h-9 px-2 sm:px-3 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="company_service_center">Service Center</SelectItem>
+                <SelectItem value="in_house_repair">In-House Repair</SelectItem>
+                <SelectItem value="onsite_visit">Onsite Visit</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full md:w-36 h-10 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold sm:col-span-2 md:col-span-1">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {activeTab === "active" ? (
-                <>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="received">Received</SelectItem>
-                  <SelectItem value="sent_to_service_center">Sent to Service Center</SelectItem>
-                  <SelectItem value="waiting_for_parts">Waiting for Parts</SelectItem>
-                </>
-              ) : (
-                <>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </>
-              )}
-            </SelectContent>
-          </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-36 h-10 sm:h-9 px-2 sm:px-3 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {activeTab === "active" ? (
+                  <>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="received">Received</SelectItem>
+                    <SelectItem value="sent_to_service_center">Sent to Service Center</SelectItem>
+                    <SelectItem value="waiting_for_parts">Waiting for Parts</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* 4. Main Table Card Container */}
+      {/* Cross-tab Search Discovery Banner for Elders/Counter Staff */}
+      {matchingOtherTabCount > 0 && sorted.length === 0 && (
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700/80 text-amber-950 dark:text-amber-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="text-xs sm:text-sm">
+            <span className="font-extrabold text-amber-800 dark:text-amber-300">💡 Note:</span> No results in{" "}
+            <strong>{activeTab === "active" ? "Active Calls" : "Completed / Delivered"}</strong>, but found{" "}
+            <span className="underline font-bold font-mono">{matchingOtherTabCount}</span> matching ticket(s) in{" "}
+            <strong>{activeTab === "active" ? "Completed / Delivered" : "Active Calls"}</strong>!
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setActiveTab(activeTab === "active" ? "inactive" : "active")}
+            className="h-11 px-4 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold rounded-xl text-xs shrink-0 cursor-pointer shadow-xs"
+          >
+            Switch to {activeTab === "active" ? "Completed" : "Active"} ({matchingOtherTabCount})
+          </Button>
+        </div>
+      )}
+
+      {/* 4. Main Table / Mobile Cards Container */}
       {loading ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6">
           <LoadingScreen fullScreen={false} title="Service Calls" subtitle="Loading repair job cards..." />
@@ -669,9 +688,145 @@ export default function AdminServiceCalls() {
           onAction={() => navigate("/admin/service-calls/new")}
         />
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+        <div className="space-y-4">
+          {/* Mobile Card View (< md) */}
+          <div className="md:hidden space-y-3.5">
+            {paginatedCalls.map((item) => {
+              const displayDate = item.dateTime
+                ? new Date(item.dateTime).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—";
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={(e) => {
+                    const t = e.target as HTMLElement;
+                    if (
+                      t.closest("button") ||
+                      t.closest("a") ||
+                      t.closest("[role='combobox']") ||
+                      t.closest("[data-state]")
+                    ) {
+                      return;
+                    }
+                    navigate(`/admin/service-calls/${item.id}/edit`);
+                  }}
+                  className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3.5 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700/60 active:scale-[0.99] transition-all"
+                >
+                  {/* Card Header: Customer Name & Ticket Number */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
+                        {item.customerName || "Walk-in Customer"}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                        📅 {displayDate}
+                      </div>
+                    </div>
+                    <span className="shrink-0 font-mono font-bold text-xs bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/80 px-2.5 py-1 rounded-xl">
+                      {item.ticketNo}
+                    </span>
+                  </div>
+
+                  {/* Device Category & Problem Box */}
+                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 text-xs space-y-1 border border-slate-100 dark:border-slate-800">
+                    <div className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-1.5">
+                      <span>💻</span>
+                      <span>{item.deviceCategory}</span>
+                      {item.modelNumber && (
+                        <span className="text-slate-500 dark:text-slate-400 font-normal">({item.modelNumber})</span>
+                      )}
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                      <strong className="text-slate-700 dark:text-slate-200">Issue:</strong>{" "}
+                      {item.issueDescription || "General diagnosis & service"}
+                    </p>
+                  </div>
+
+                  {/* Status and Total Row */}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <div>
+                      <Select
+                        value={item.status}
+                        onValueChange={(val: ServiceCallStatus) => handleStatusChange(item.id, val)}
+                        disabled={!!item.isDeleted}
+                      >
+                        <SelectTrigger className="h-auto border-0 bg-transparent p-0 shadow-none focus:ring-0 w-fit">
+                          <SelectValue>{getStatusDotBadge(item.status, item.isDeleted)}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((opt) => {
+                            const Icon = opt.icon;
+                            return (
+                              <SelectItem key={opt.value} value={opt.value} className="text-xs py-2 cursor-pointer">
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`h-6 w-6 rounded-lg ${opt.bgClass} flex items-center justify-center shrink-0`}>
+                                    <Icon className={`h-3.5 w-3.5 ${opt.iconColor}`} />
+                                  </div>
+                                  <div className="flex flex-col text-left">
+                                    <span className="font-bold text-slate-800 dark:text-slate-200">{opt.hindiLabel}</span>
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{opt.label}</span>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">Total Bill</div>
+                      <div className="text-base font-extrabold font-mono text-slate-900 dark:text-white">
+                        ₹{item.grandTotal.toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Big 48px Action Buttons: Call, WhatsApp, Details */}
+                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    {/* 1-Tap Call */}
+                    <a
+                      href={`tel:${item.customerPhone}`}
+                      className="h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-2xs"
+                      title={`Call ${item.customerPhone}`}
+                    >
+                      <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span>Call</span>
+                    </a>
+
+                    {/* 1-Tap WhatsApp */}
+                    <button
+                      type="button"
+                      onClick={() => setWhatsAppCall(item)}
+                      className="h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-all cursor-pointer"
+                      title="Send WhatsApp Update"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>WhatsApp</span>
+                    </button>
+
+                    {/* 1-Tap Edit / Details */}
+                    <Link
+                      to={`/admin/service-calls/${item.id}/edit`}
+                      className="h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-all border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      <span>Details</span>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table View (>= md) */}
+          <div className="hidden md:block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-extrabold uppercase tracking-wider bg-slate-100/70 dark:bg-slate-800/40 text-slate-700 dark:text-slate-200">
                   {renderSortHeader("TICKET & DATE", "ticket", "pl-6 pr-4 py-3.5")}
@@ -770,7 +925,10 @@ export default function AdminServiceCalls() {
                                     <div className={`h-6 w-6 rounded-lg ${opt.bgClass} flex items-center justify-center shrink-0`}>
                                       <Icon className={`h-3.5 w-3.5 ${opt.iconColor}`} />
                                     </div>
-                                    <span className="font-semibold text-slate-800 dark:text-slate-200">{opt.label}</span>
+                                    <div className="flex flex-col text-left">
+                                      <span className="font-bold text-slate-800 dark:text-slate-200">{opt.hindiLabel}</span>
+                                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{opt.label}</span>
+                                    </div>
                                   </div>
                                 </SelectItem>
                               );
@@ -886,17 +1044,18 @@ export default function AdminServiceCalls() {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination Controls */}
-          <TablePagination
-            pageNumber={currentPage}
-            currentItemsCount={paginatedCalls.length}
-            hasMore={currentPage < totalPages}
-            label="service calls"
-            onPageChange={(newPage) => setCurrentPage(newPage)}
-          />
         </div>
-      )}
+
+        {/* Pagination Controls (Shared for Mobile & Desktop) */}
+        <TablePagination
+          pageNumber={currentPage}
+          currentItemsCount={paginatedCalls.length}
+          hasMore={currentPage < totalPages}
+          label="service calls"
+          onPageChange={(newPage) => setCurrentPage(newPage)}
+        />
+      </div>
+    )}
 
       {/* Inline Modals */}
       <CreateCustomerModal open={showCustomerModal} onOpenChange={setShowCustomerModal} />
