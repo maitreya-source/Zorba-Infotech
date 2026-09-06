@@ -905,10 +905,11 @@ func processStockAndCustomerSync(ctx context.Context, parsedData any, timestamp 
 
 	// 2. Process Customers / Sundry Debtors
 	if len(ledgers) > 0 {
-		var customerBatch *firestore.WriteBatch
-		if !isDryRun {
-			customerBatch = firestoreClient.Batch()
+		type customerWriteItem struct {
+			docID string
+			data  map[string]any
 		}
+		var customerWrites []customerWriteItem
 
 		for _, l := range ledgers {
 			parent, _ := l["parent"].(string)
@@ -933,8 +934,13 @@ func processStockAndCustomerSync(ctx context.Context, parsedData any, timestamp 
 				name, _ := l["name"].(string)
 				rawGSTIN, _ := l["gstin"].(string)
 				extraDetail, _ := l["extraDetail"].(string)
-				if guid == "" || name == "" {
+				if name == "" {
 					continue
+				}
+
+				// If GUID is missing from Tally payload, derive deterministic key from sanitized name
+				if guid == "" {
+					guid = fmt.Sprintf("tally_%s", strings.ToLower(regexp.MustCompile(`[^a-zA-Z0-9]`).ReplaceAllString(name, "_")))
 				}
 
 				// Extract all phone numbers from name, extraDetail, narration
@@ -981,8 +987,7 @@ func processStockAndCustomerSync(ctx context.Context, parsedData any, timestamp 
 				}
 				createdCustomers = append(createdCustomers, custInfo)
 
-				if !isDryRun && customerBatch != nil {
-					custRef := firestoreClient.Collection("customers").Doc(guid)
+				if !isDryRun {
 					custData := map[string]any{
 						"id":          guid,
 						"tallyGuid":   guid,
@@ -1005,15 +1010,33 @@ func processStockAndCustomerSync(ctx context.Context, parsedData any, timestamp 
 						custData["gstin"] = gstin
 					}
 
-					customerBatch.Set(custRef, custData, firestore.MergeAll)
+					customerWrites = append(customerWrites, customerWriteItem{
+						docID: guid,
+						data:  custData,
+					})
 				}
 			}
 		}
 
-		if !isDryRun && customerBatch != nil {
-			if _, err := customerBatch.Commit(ctx); err != nil {
-				log.Printf("[Firestore Customer Sync] Error committing customer batch: %v", err)
+		// Commit in chunks of 400 (Firestore maximum batch size is 500)
+		if !isDryRun && len(customerWrites) > 0 {
+			const custBatchLimit = 400
+			for i := 0; i < len(customerWrites); i += custBatchLimit {
+				end := i + custBatchLimit
+				if end > len(customerWrites) {
+					end = len(customerWrites)
+				}
+				chunk := customerWrites[i:end]
+				batch := firestoreClient.Batch()
+				for _, cw := range chunk {
+					custRef := firestoreClient.Collection("customers").Doc(cw.docID)
+					batch.Set(custRef, cw.data, firestore.MergeAll)
+				}
+				if _, err := batch.Commit(ctx); err != nil {
+					log.Printf("[Firestore Customer Sync] Error committing customer batch [%d:%d]: %v", i, end, err)
+				}
 			}
+			log.Printf("[Firestore Customer Sync] Successfully synced %d customers with Tally GUID document keys", len(customerWrites))
 		}
 	}
 

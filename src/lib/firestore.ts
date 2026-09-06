@@ -19,6 +19,7 @@ import {
   writeBatch,
   deleteField,
   getCountFromServer,
+  onSnapshot,
   type QueryDocumentSnapshot,
   type DocumentSnapshot,
 } from "firebase/firestore";
@@ -284,32 +285,19 @@ let _isProductIndexInitialized = false;
 let _isSyncingProductIndex = false;
 let _lastProductSyncTimestamp = 0;
 
-// Load local cache synchronously on startup (< 1ms) with auto-invalidation on new version
+// Load local product sync timestamp synchronously on startup (< 1ms)
 function loadLocalProductIndex(): void {
   if (typeof window === "undefined") return;
   try {
-    const storedVersion = localStorage.getItem(STORAGE_KEY_CATALOG_VERSION);
-    if (storedVersion !== CATALOG_MANIFEST_VERSION) {
-      // Version changed! Automatically clear old stale caches
-      localStorage.removeItem("zorba_prod_index_v2");
-      localStorage.removeItem("zorba_prod_sync_v2");
-      localStorage.removeItem("zorba_categories_cache");
-      safeLocalStorageSet(STORAGE_KEY_CATALOG_VERSION, CATALOG_MANIFEST_VERSION);
-      _productIndex = [];
-      _lastProductSyncTimestamp = 0;
-      return;
-    }
-
-    const raw = localStorage.getItem(STORAGE_KEY_PRODUCT_INDEX);
-    if (raw) {
-      _productIndex = JSON.parse(raw);
-    }
+    // Purge large legacy product blob from localStorage to free browser storage quota (saves ~2.4 MB)
+    localStorage.removeItem(STORAGE_KEY_PRODUCT_INDEX);
+    localStorage.removeItem("zorba_prod_index_v2");
     const syncStr = localStorage.getItem(STORAGE_KEY_PRODUCT_SYNC);
     if (syncStr) {
       _lastProductSyncTimestamp = parseInt(syncStr, 10) || 0;
     }
   } catch (e) {
-    console.warn("Failed to load product index from localStorage:", e);
+    console.warn("Failed to check local product sync timestamp:", e);
   }
 }
 loadLocalProductIndex();
@@ -351,10 +339,7 @@ export async function syncProductIndex(forceFull = false): Promise<void> {
       let loadedFromManifest = false;
       if (typeof window !== "undefined" && !forceFull) {
         try {
-          const res = await fetch(`/data/products_manifest.json?v=${CATALOG_MANIFEST_VERSION}`, {
-            cache: "no-cache",
-            headers: { "Cache-Control": "no-cache" },
-          });
+          const res = await fetch(`/data/products_manifest.json?v=${CATALOG_MANIFEST_VERSION}`);
           if (res.ok) {
             const manifestData = await res.json();
             if (Array.isArray(manifestData) && manifestData.length > 0) {
@@ -403,33 +388,37 @@ export async function syncProductIndex(forceFull = false): Promise<void> {
       }
 
       // 2. If manifest was unavailable or full refresh requested, query Firestore
-      if (!loadedFromManifest) {
-        const snap = await fetchWithTimeout(getDocs(collection(db, "products")));
-        const items: ProductIndexItem[] = snap.docs.map((d) => {
-          const data = d.data();
-          return {
-            id: d.id,
-            name: data.name || "",
-            brand: data.brand || "",
-            model: data.model || "",
-            itemCode: data.itemCode || "",
-            categoryId: data.categoryId || "",
-            category: data.category || "",
-            price: data.price !== undefined ? data.price : null,
-            stockCount: typeof data.stockCount === "number" ? data.stockCount : 0,
-            uom: data.uom || "Nag.",
-            inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
-            showOnWebsite: data.showOnWebsite !== undefined ? Boolean(data.showOnWebsite) : true,
-            showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? Boolean(data.showPriceOnWebsite) : true,
-            featured: Boolean(data.featured),
-            photoUrl: data.photoUrl || null,
-            description: data.description || "",
-            order: data.order !== undefined ? data.order : null,
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
-          };
-        });
-        _productIndex = items;
+      if (!loadedFromManifest && _productIndex.length === 0) {
+        try {
+          const snap = await fetchWithTimeout(getDocs(collection(db, "products")));
+          const items: ProductIndexItem[] = snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              name: data.name || "",
+              brand: data.brand || "",
+              model: data.model || "",
+              itemCode: data.itemCode || "",
+              categoryId: data.categoryId || "",
+              category: data.category || "",
+              price: data.price !== undefined ? data.price : null,
+              stockCount: typeof data.stockCount === "number" ? data.stockCount : 0,
+              uom: data.uom || "Nag.",
+              inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
+              showOnWebsite: data.showOnWebsite !== undefined ? Boolean(data.showOnWebsite) : true,
+              showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? Boolean(data.showPriceOnWebsite) : true,
+              featured: Boolean(data.featured),
+              photoUrl: data.photoUrl || null,
+              description: data.description || "",
+              order: data.order !== undefined ? data.order : null,
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
+            };
+          });
+          _productIndex = items;
+        } catch (fsErr) {
+          console.warn("Firestore products fetch fallback error:", fsErr);
+        }
       }
     } else {
       // Delta sync: fetch only updated docs since last sync with 60s overlap buffer
@@ -438,39 +427,42 @@ export async function syncProductIndex(forceFull = false): Promise<void> {
         collection(db, "products"),
         where("updatedAt", ">", sinceTime)
       );
-      const snap = await fetchWithTimeout(getDocs(deltaQ));
-      if (!snap.empty) {
-        const itemMap = new Map<string, ProductIndexItem>(_productIndex.map((p) => [p.id, p]));
-        snap.docs.forEach((d) => {
-          const data = d.data();
-          itemMap.set(d.id, {
-            id: d.id,
-            name: data.name || "",
-            brand: data.brand || "",
-            model: data.model || "",
-            itemCode: data.itemCode || "",
-            categoryId: data.categoryId || "",
-            category: data.category || "",
-            price: data.price !== undefined ? data.price : null,
-            stockCount: typeof data.stockCount === "number" ? data.stockCount : 0,
-            uom: data.uom || "Nag.",
-            inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
-            showOnWebsite: data.showOnWebsite !== undefined ? Boolean(data.showOnWebsite) : true,
-            showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? Boolean(data.showPriceOnWebsite) : true,
-            featured: Boolean(data.featured),
-            photoUrl: data.photoUrl || null,
-            description: data.description || "",
-            order: data.order !== undefined ? data.order : null,
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
+      try {
+        const snap = await fetchWithTimeout(getDocs(deltaQ));
+        if (!snap.empty) {
+          const itemMap = new Map<string, ProductIndexItem>(_productIndex.map((p) => [p.id, p]));
+          snap.docs.forEach((d) => {
+            const data = d.data();
+            itemMap.set(d.id, {
+              id: d.id,
+              name: data.name || "",
+              brand: data.brand || "",
+              model: data.model || "",
+              itemCode: data.itemCode || "",
+              categoryId: data.categoryId || "",
+              category: data.category || "",
+              price: data.price !== undefined ? data.price : null,
+              stockCount: typeof data.stockCount === "number" ? data.stockCount : 0,
+              uom: data.uom || "Nag.",
+              inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
+              showOnWebsite: data.showOnWebsite !== undefined ? Boolean(data.showOnWebsite) : true,
+              showPriceOnWebsite: data.showPriceOnWebsite !== undefined ? Boolean(data.showPriceOnWebsite) : true,
+              featured: Boolean(data.featured),
+              photoUrl: data.photoUrl || null,
+              description: data.description || "",
+              order: data.order !== undefined ? data.order : null,
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
+            });
           });
-        });
-        _productIndex = Array.from(itemMap.values());
+          _productIndex = Array.from(itemMap.values());
+        }
+      } catch (deltaErr) {
+        console.warn("Delta products sync error:", deltaErr);
       }
     }
 
     if (typeof window !== "undefined") {
-      safeLocalStorageSet(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
       safeLocalStorageSet(STORAGE_KEY_PRODUCT_SYNC, String(Date.now()));
     }
   } catch (err) {
@@ -1511,7 +1503,9 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
     }
   }
 
-  const docRef = doc(collection(db, "customers"));
+  const dataAny = data as any;
+  const explicitId = dataAny.id || dataAny.tallyGuid || dataAny.guid;
+  const docRef = explicitId ? doc(db, "customers", explicitId) : doc(collection(db, "customers"));
   const formattedName = toTitleCase(data.name);
   const formattedPhone = formatIndianPhoneNumber(data.phone);
   const formattedCompany = data.companyName ? toTitleCase(data.companyName) : undefined;
@@ -1523,6 +1517,7 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
   const newCust: Customer = {
     id: docRef.id,
     ...data,
+    tallyGuid: dataAny.tallyGuid || dataAny.guid || (explicitId ? explicitId : undefined),
     name: formattedName,
     phone: formattedPhone,
     additionalPhones,
@@ -1533,7 +1528,7 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
     updatedAt: now,
   };
 
-  await setDoc(docRef, cleanFirestoreData(newCust));
+  await setDoc(docRef, cleanFirestoreData(newCust), { merge: true });
 
   // Immediate local cache update for instant UI feedback
   const slimItem: CustomerIndexItem = {
@@ -1568,7 +1563,7 @@ export interface BatchImportCustomerResult {
  * Prevents sequential network request freezes during large CSV imports.
  */
 export async function batchCreateCustomers(
-  items: Omit<Customer, "id" | "createdAt">[],
+  items: (Omit<Customer, "id" | "createdAt"> & { id?: string; tallyGuid?: string; guid?: string })[],
   onProgress?: (processed: number, total: number) => void
 ): Promise<BatchImportCustomerResult> {
   let importedCount = 0;
@@ -1594,25 +1589,30 @@ export async function batchCreateCustomers(
     }
 
     const dup = _customerIndex.find((c) => normalizePhone10(c.phone) === target10);
-    if (dup) {
+    const itemAny = item as any;
+    const explicitId = itemAny.id || itemAny.tallyGuid || itemAny.guid;
+
+    if (dup && !explicitId) {
       duplicateCount++;
       continue;
     }
 
     seenPhonesInBatch.add(target10);
 
-    const docRef = doc(collection(db, "customers"));
+    const docId = explicitId || (dup ? dup.id : undefined);
+    const docRef = docId ? doc(db, "customers", docId) : doc(collection(db, "customers"));
     const now = Date.now();
     const newCust: Customer = {
       id: docRef.id,
       ...item,
+      tallyGuid: itemAny.tallyGuid || itemAny.guid || (docId ? docId : undefined),
       name: toTitleCase(item.name),
       phone: formatIndianPhoneNumber(item.phone),
       additionalPhones: item.additionalPhones?.map(formatIndianPhoneNumber),
       companyName: item.companyName ? toTitleCase(item.companyName) : undefined,
       address: item.address ? toTitleCase(item.address) : undefined,
       city: item.city ? toTitleCase(item.city) : undefined,
-      createdAt: now,
+      createdAt: dup?.createdAt || now,
       updatedAt: now,
     };
     toInsert.push(newCust);
@@ -1626,7 +1626,7 @@ export async function batchCreateCustomers(
 
     for (const cust of chunk) {
       const docRef = doc(db, "customers", cust.id);
-      batch.set(docRef, cleanFirestoreData(cust));
+      batch.set(docRef, cleanFirestoreData(cust), { merge: true });
     }
 
     await batch.commit();

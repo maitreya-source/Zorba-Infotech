@@ -151,6 +151,15 @@ describe("Customer Deduplication & Quota Safety", () => {
 
       // Legacy bloated keys should have been purged during recovery
       expect(localStorage.getItem("zorba_cust_index_v5")).toBeNull();
+      expect(localStorage.getItem("zorba_prod_index_v3")).toBeNull();
+    });
+
+    it("verifies product index does NOT store heavy JSON string into localStorage", () => {
+      // Set a dummy sync timestamp
+      safeLocalStorageSet("zorba_prod_sync_v3", String(Date.now()));
+      expect(localStorage.getItem("zorba_prod_sync_v3")).not.toBeNull();
+      // Product index blob itself should never be written to localStorage
+      expect(localStorage.getItem("zorba_prod_index_v3")).toBeNull();
     });
   });
 

@@ -88,6 +88,8 @@ export interface Customer {
   group?: string;
   companyName?: string;
   notes?: string;
+  tallyGuid?: string;
+  gstin?: string;
   createdAt: string | number;
   updatedAt?: number;
 }
