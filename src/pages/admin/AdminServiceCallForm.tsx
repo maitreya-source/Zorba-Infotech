@@ -104,6 +104,7 @@ import ServiceCallPaymentModal from "@/components/admin/service-call/ServiceCall
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import { useTallyFormNavigation } from "@/hooks/useTallyKeyboard";
 
 const QUICK_TAGS = [
   "Power Dead",
@@ -1215,6 +1216,24 @@ export default function AdminServiceCallForm() {
     },
   });
 
+  const formContainerRef = useRef<HTMLFormElement>(null);
+
+  // Tally Voucher Navigation (Enter-to-advance through fields, Ctrl+A to save, Alt+Arrow to toggle mode)
+  useTallyFormNavigation({
+    formRef: formContainerRef,
+    isDirty: hasUnsavedChanges(),
+    onSave: () => handleSubmit(),
+    onEsc: handleEsc,
+    onConfirmExit: () => navigate("/admin/service-calls"),
+    onAddRow: () => handleAddPartRow(),
+    onWorkflowModeChange: (dir) => {
+      const modes: ServiceCallType[] = ["company_service_center", "in_house_repair", "onsite_visit"];
+      const curIdx = modes.indexOf(type);
+      const nextIdx = dir === "next" ? (curIdx + 1) % modes.length : (curIdx - 1 + modes.length) % modes.length;
+      setType(modes[nextIdx]);
+    },
+  });
+
   if (dataLoading) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-8 max-w-5xl mx-auto shadow-xs my-6">
@@ -1229,7 +1248,7 @@ export default function AdminServiceCallForm() {
 
   return (
     <div className="space-y-4 max-w-[1440px] mx-auto pb-20 lg:pb-0 text-xs">
-      <form id="service-call-form" onSubmit={handleSubmit} className="space-y-4 max-w-5xl mx-auto">
+      <form ref={formContainerRef} id="service-call-form" onSubmit={handleSubmit} className="space-y-4 max-w-5xl mx-auto">
         {/* Real-time Concurrent Editing Collision Warning */}
         <ResourceCollisionAlert activeEditors={activeEditors} resourceLabel="service call ticket" />
 

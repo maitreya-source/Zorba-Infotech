@@ -37,6 +37,7 @@ import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import StaffProfileSelectorModal from "@/components/admin/StaffProfileSelectorModal";
 import GlobalAdminSearchModal from "@/components/admin/GlobalAdminSearchModal";
 import ShortcutsHelpModal from "@/components/admin/ShortcutsHelpModal";
+import { useTallyGlobalNavigation } from "@/hooks/useTallyKeyboard";
 
 const navItems = [
   { label: "Service Calls", to: "/admin/service-calls", icon: Activity },
@@ -60,55 +61,48 @@ export default function AdminLayout() {
   const { activeProfile, showSelectorModal, setShowSelectorModal } = useStaffProfile();
   const navigate = useNavigate();
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(() => typeof window !== "undefined" && window.innerWidth < 1280);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(
+    () => typeof window !== "undefined" && window.innerWidth >= 768 && window.innerWidth < 1280
+  );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
-  // Auto-collapse sidebar on squeezed screens (< 1280px) to balance layout and avoid cramming center
+  // Auto-collapse sidebar rail only on squeezed desktop/tablet screens (768px <= width < 1280px).
+  // Mobile drawer (< 768px) is NEVER collapsed so counter staff see full labels and actions.
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1280) {
-        setCollapsed(true);
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (window.innerWidth >= 768 && window.innerWidth < 1280) {
+        setDesktopCollapsed(true);
       }
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Global hotkeys for Omnisearch (Ctrl+K or /) and Shortcuts (?)
+  // A sidebar is only ever rendered in collapsed (icon-only) mode on DESKTOP/TABLET rail, NEVER in the mobile drawer!
+  const isCollapsed = !isMobile && desktopCollapsed;
+
+  // Tally-style global navigation chords (G -> S, G -> Q, Alt+G), Omnisearch (Ctrl+K, /), and Shortcuts (?)
+  const { isChordActive, cancelChord } = useTallyGlobalNavigation({
+    onOpenSearch: () => setShowSearchModal(true),
+    onOpenShortcuts: () => setShowShortcutsModal(true),
+  });
+
+  // Escape key to close mobile sidebar drawer if open
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput =
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.isContentEditable;
-
-      // Ctrl+K or Cmd+K
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      if (e.key === "Escape" && mobileSidebarOpen) {
         e.preventDefault();
-        setShowSearchModal((prev) => !prev);
-        return;
-      }
-      // Slash (/) when not in an input
-      if (e.key === "/" && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        setShowSearchModal(true);
-        return;
-      }
-      // ? when not in an input
-      if (e.key === "?" && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        setShowShortcutsModal(true);
-        return;
+        setMobileSidebarOpen(false);
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [mobileSidebarOpen]);
 
   // Real-time duty presence
   const { onlineStaff } = useStaffDutyPresence(activeProfile);
@@ -249,12 +243,12 @@ export default function AdminLayout() {
       {/* Sidebar: Fixed Off-Canvas Drawer on Mobile, Static Rail on Desktop */}
       <aside
         className={`fixed md:static inset-y-0 left-0 z-50 h-full flex shrink-0 flex-col bg-[#0F172A] text-slate-300 transition-all duration-300 print:hidden overflow-hidden select-none ${
-          mobileSidebarOpen ? "translate-x-0 w-64 shadow-2xl" : "-translate-x-full md:translate-x-0"
-        } ${collapsed ? "md:w-18" : "md:w-64"}`}
+          mobileSidebarOpen ? "translate-x-0 w-72 max-w-[85vw] shadow-2xl" : "-translate-x-full md:translate-x-0"
+        } ${isCollapsed ? "md:w-18" : "md:w-64"}`}
       >
         {/* Brand Header (Fixed - exact h-14 matching top bar and right rail) */}
         <div className="shrink-0 h-14 px-4 md:px-5 border-b border-slate-800/80 flex items-center justify-between">
-          {!collapsed ? (
+          {!isCollapsed ? (
             <div>
               <h1 className="text-lg font-extrabold font-display tracking-tight text-white leading-tight">
                 ZORBA
@@ -268,11 +262,11 @@ export default function AdminLayout() {
           <div className="flex items-center gap-1">
             {/* Desktop Collapse Toggle */}
             <button
-              onClick={() => setCollapsed(!collapsed)}
+              onClick={() => setDesktopCollapsed(!desktopCollapsed)}
               className="text-slate-400 hover:text-white p-1 rounded-md transition-colors hidden md:block cursor-pointer"
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
 
             {/* Mobile Close Toggle */}
@@ -288,7 +282,7 @@ export default function AdminLayout() {
 
         {/* Navigation Modules (Scrolls internally only if viewport is tiny) */}
         <div className="flex-1 py-4 px-3 overflow-y-auto space-y-1">
-          {!collapsed && (
+          {!isCollapsed && (
             <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Core Modules
             </div>
@@ -304,10 +298,10 @@ export default function AdminLayout() {
                 key={to}
                 to={to}
                 onClick={() => setMobileSidebarOpen(false)}
-                title={collapsed ? (badgeCount > 0 ? `${label} (${badgeCount} pending)` : label) : undefined}
+                title={isCollapsed ? (badgeCount > 0 ? `${label} (${badgeCount} pending)` : label) : undefined}
                 className={({ isActive }) =>
                   `group relative flex items-center gap-3 rounded-xl py-2.5 transition-all text-xs ${
-                    collapsed ? "justify-center px-0" : "px-3"
+                    isCollapsed ? "justify-center px-0" : "px-3"
                   } ${
                     isActive
                       ? "bg-slate-800/90 text-white font-bold border border-slate-700/80 shadow-xs"
@@ -317,7 +311,7 @@ export default function AdminLayout() {
               >
                 <div className="relative">
                   <Icon className="h-4 w-4 shrink-0 transition-colors group-hover:text-white" />
-                  {collapsed && badgeCount > 0 && (
+                  {isCollapsed && badgeCount > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
@@ -325,7 +319,7 @@ export default function AdminLayout() {
                   )}
                 </div>
 
-                {!collapsed && (
+                {!isCollapsed && (
                   <>
                     <span className="flex-1 truncate">{label}</span>
                     {badgeCount > 0 ? (
@@ -357,17 +351,17 @@ export default function AdminLayout() {
               setMobileSidebarOpen(false);
             }}
             className={`group flex items-center gap-3 cursor-pointer rounded-2xl p-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/80 transition-all duration-200 shadow-sm ${
-              collapsed ? "justify-center p-1.5" : ""
+              isCollapsed ? "justify-center p-1.5" : ""
             }`}
             title="Click to Switch Staff Profile"
           >
             <AvatarGraphic
               avatarId={activeProfile?.avatar || "penguin"}
-              size={collapsed ? "sm" : "md"}
+              size={isCollapsed ? "sm" : "md"}
               showGlow={Boolean(activeProfile)}
             />
 
-            {!collapsed && (
+            {!isCollapsed && (
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-extrabold text-white truncate leading-tight group-hover:text-blue-300 transition-colors">
@@ -385,12 +379,12 @@ export default function AdminLayout() {
           <button
             onClick={handleSignOut}
             className={`flex items-center gap-2 text-xs text-slate-400 hover:text-red-400 transition-colors w-full cursor-pointer ${
-              collapsed ? "justify-center" : "px-2 py-1"
+              isCollapsed ? "justify-center" : "px-2 py-1"
             }`}
             title={`Sign out from Gmail (${user?.email || "Google Account"})`}
           >
             <LogOut className="h-3.5 w-3.5 shrink-0" />
-            {!collapsed && <span className="truncate">Sign out from Gmail</span>}
+            {!isCollapsed && <span className="truncate">Sign out from Gmail</span>}
           </button>
         </div>
       </aside>
@@ -521,6 +515,47 @@ export default function AdminLayout() {
 
       {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-full on Desktop/Laptop >=1024px) */}
       <div id="admin-right-rail" className="h-full shrink-0 empty:hidden print:hidden z-20 hidden lg:block" />
+
+      {/* Tally 'Go To' Sequential Navigation HUD */}
+      {isChordActive && (
+        <aside
+          role="status"
+          aria-live="polite"
+          aria-label="Tally Go To Module Jumper"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-150 print:hidden"
+        >
+          <div className="flex items-center gap-3 bg-slate-900/95 text-white border border-blue-500/70 shadow-2xl px-5 py-2.5 rounded-2xl backdrop-blur-md text-xs font-medium">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-blue-500 animate-ping shrink-0" />
+            <span className="font-extrabold text-blue-400 uppercase tracking-wider font-mono text-[11px] shrink-0">
+              TALLY GO TO:
+            </span>
+            <div className="flex items-center gap-2.5 font-mono text-xs overflow-x-auto">
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">S</kbd> Service
+              </span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">Q</kbd> Quotes
+              </span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">P</kbd> Products
+              </span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">C</kbd> Customers
+              </span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">R</kbd> Reports
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={cancelChord}
+              className="ml-3 text-slate-400 hover:text-white text-[11px] underline underline-offset-2 cursor-pointer shrink-0"
+            >
+              Esc
+            </button>
+          </div>
+        </aside>
+      )}
 
       {/* Mandatory Staff Profile Selector Modal */}
       <StaffProfileSelectorModal

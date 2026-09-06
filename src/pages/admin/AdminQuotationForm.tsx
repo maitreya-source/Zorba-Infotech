@@ -50,6 +50,7 @@ import type {
   Product,
 } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import { useTallyFormNavigation } from "@/hooks/useTallyKeyboard";
 import CustomerTypeahead from "@/components/admin/CustomerTypeahead";
 import ProductTypeahead from "@/components/admin/ProductTypeahead";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
@@ -520,6 +521,27 @@ export default function AdminQuotationForm() {
     },
   });
 
+  const formContainerRef = useRef<HTMLDivElement>(null);
+
+  // Tally Voucher Navigation (Enter-to-advance through fields, Ctrl+A to save, Alt+A to add row)
+  useTallyFormNavigation({
+    formRef: formContainerRef,
+    isDirty: hasUnsavedChanges(),
+    onSave: () => handleSubmit(),
+    onEsc: () => {
+      if (showPrintModal || showWhatsAppModal || showEmailModal || showTemplateModal || showCustomerModal || showEditCustomerModal || showProductModal || showEditProductModal) {
+        return;
+      }
+      if (hasUnsavedChanges()) {
+        setShowEscPrompt(true);
+        return;
+      }
+      navigate("/admin/quotations");
+    },
+    onConfirmExit: () => navigate("/admin/quotations"),
+    onAddRow: () => handleAddItemRow(),
+  });
+
   // Customer Select Handler
   const handleSelectCustomer = (cust: Customer) => {
     setSelectedCustomerId(cust.id);
@@ -790,7 +812,7 @@ export default function AdminQuotationForm() {
       <ResourceCollisionAlert activeEditors={activeEditors} resourceLabel="quotation" />
 
       {/* Main Quotation Form - Full Width Single Column Layout */}
-      <div className="space-y-6">
+      <div ref={formContainerRef} className="space-y-6">
         {/* Section 1: Customer Details & Date of Issuance */}
         <div
           data-shortcut-section="customer"
@@ -1023,7 +1045,7 @@ export default function AdminQuotationForm() {
                   const hasSelectedProduct = Boolean(it.productId);
 
                   return (
-                    <tr key={it.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
+                    <tr key={it.id || idx} data-quote-row={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
                       {/* Index */}
                       <td className="py-3.5 px-3 text-center font-mono text-slate-400 align-top">
                         {idx + 1}
@@ -1114,6 +1136,21 @@ export default function AdminQuotationForm() {
                           placeholder="0"
                           value={it.estimatedPrice === 0 ? "" : it.estimatedPrice}
                           onFocus={(e) => e.target.select()}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              if (idx === items.length - 1) {
+                                handleAddItemRow();
+                                setTimeout(() => {
+                                  const nextRow = document.querySelector(`[data-quote-row="${idx + 1}"] input`) as HTMLElement | null;
+                                  nextRow?.focus();
+                                }, 60);
+                              } else {
+                                const nextRow = document.querySelector(`[data-quote-row="${idx + 1}"] input`) as HTMLElement | null;
+                                nextRow?.focus();
+                              }
+                            }
+                          }}
                           onChange={(e) => {
                             const raw = e.target.value;
                             const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));

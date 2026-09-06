@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -46,6 +46,7 @@ import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import { formatIndianPhoneNumber } from "@/lib/utils";
 import type { Quotation, QuotationTemplate } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import QuotationPrintModal from "@/components/admin/QuotationPrintModal";
 import QuotationWhatsAppModal from "@/components/admin/QuotationWhatsAppModal";
 import QuotationEmailModal from "@/components/admin/QuotationEmailModal";
@@ -183,21 +184,25 @@ export default function AdminQuotations() {
     return filteredQuotations.slice(start, start + pageSize);
   }, [filteredQuotations, currentPage, pageSize]);
 
-  // Keyboard Shortcuts (Alt+C -> New Quotation, Alt+P -> Print First, Alt+W -> WhatsApp First)
-  useTallyShortcuts({
-    onAltC: () => navigate("/admin/quotations/new"),
-    onAltP: () => {
-      if (paginatedQuotations.length > 0) {
-        setActiveQuoteForModal(paginatedQuotations[0]);
-        setShowPrintModal(true);
-      }
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Tally List Navigation (ArrowUp/Down to highlight row, Enter to open, '/' to focus search, Alt+P/W/D on selected row)
+  const { selectedIndex, getRowProps } = useTallyListNavigation<Quotation>({
+    items: paginatedQuotations,
+    searchRef: searchInputRef,
+    onOpenItem: (item) => navigate(`/admin/quotations/${item.id}/edit`),
+    onNewItem: () => navigate("/admin/quotations/new"),
+    onPrintItem: (item) => {
+      setActiveQuoteForModal(item);
+      setShowPrintModal(true);
     },
-    onAltW: () => {
-      if (paginatedQuotations.length > 0) {
-        setActiveQuoteForModal(paginatedQuotations[0]);
-        setShowWhatsAppModal(true);
-      }
+    onWhatsAppItem: (item) => {
+      setActiveQuoteForModal(item);
+      setShowWhatsAppModal(true);
     },
+    onDeleteItem: (item) => setDeleteQuoteId(item.id),
+    onPrevPage: () => setCurrentPage((p) => Math.max(1, p - 1)),
+    onNextPage: () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
   });
 
   // KPI Calculations
@@ -376,7 +381,8 @@ export default function AdminQuotations() {
           <div className="relative flex-1 lg:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search Quote #, customer, model, item..."
+              ref={searchInputRef}
+              placeholder="Search Quote #, customer, model, item... (Press '/' to focus)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-11 sm:h-8 text-base sm:text-xs rounded-xl"
@@ -557,23 +563,48 @@ export default function AdminQuotations() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {paginatedQuotations.map((q) => (
-                    <tr key={q.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
-                      {/* Quote No */}
-                      <td className="px-4 py-3.5">
-                        <Link
-                          to={`/admin/quotations/${q.id}/edit`}
-                          className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
-                        >
-                          <span>#{q.quotationNo}</span>
-                          <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-                        </Link>
-                        {q.templateName && (
-                          <div className="text-[11px] text-purple-700 dark:text-purple-300 font-bold mt-0.5">
-                            {q.templateName}
+                  {paginatedQuotations.map((q, idx) => {
+                    const rowProps = getRowProps(idx);
+                    return (
+                      <tr
+                        key={q.id}
+                        {...rowProps}
+                        onClick={(e) => {
+                          const target = e.target as HTMLElement;
+                          if (
+                            target.closest("button") ||
+                            target.closest("a") ||
+                            target.closest("[role='menuitem']") ||
+                            target.closest("[role='option']") ||
+                            target.closest("[data-radix-popper-content-wrapper]")
+                          ) {
+                            return;
+                          }
+                          rowProps.onClick?.();
+                          navigate(`/admin/quotations/${q.id}/edit`);
+                        }}
+                        className={`transition-colors cursor-pointer ${rowProps.className}`}
+                      >
+                        {/* Quote No */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            {idx === selectedIndex && (
+                              <span className="text-blue-600 dark:text-blue-400 font-black text-xs animate-in fade-in duration-100">▶</span>
+                            )}
+                            <Link
+                              to={`/admin/quotations/${q.id}/edit`}
+                              className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+                            >
+                              <span>#{q.quotationNo}</span>
+                              <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                            </Link>
                           </div>
-                        )}
-                      </td>
+                          {q.templateName && (
+                            <div className="text-[11px] text-purple-700 dark:text-purple-300 font-bold mt-0.5">
+                              {q.templateName}
+                            </div>
+                          )}
+                        </td>
 
                       {/* Date */}
                       <td className="px-4 py-3.5 text-slate-700 dark:text-slate-300 font-medium">
@@ -692,8 +723,9 @@ export default function AdminQuotations() {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
+                  );
+                })}
+              </tbody>
               </table>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -61,6 +61,7 @@ import DispatchSlipPrintModal from "@/components/admin/DispatchSlipPrintModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
 import ShortcutsHelpModal from "@/components/admin/ShortcutsHelpModal";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 
 type SortField = "status" | "ticket" | "customer" | "device" | "charges";
 type SortDirection = "asc" | "desc";
@@ -441,20 +442,19 @@ export default function AdminServiceCalls() {
     return 0;
   }, [search, activeTab, activeCalls, inactiveCalls]);
 
-  // Keyboard Shortcuts handler
-  useTallyShortcuts({
-    onAltC: () => navigate("/admin/service-calls/new"),
-    onAltA: () => navigate("/admin/service-calls/new"),
-    onAltP: () => {
-      if (paginatedCalls.length > 0) {
-        setPrintCall(paginatedCalls[0]);
-      }
-    },
-    onAltD: () => {
-      if (paginatedCalls.length > 0) {
-        setDeleteId(paginatedCalls[0].id);
-      }
-    },
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Tally List Navigation (ArrowUp/Down to highlight row, Enter to open, '/' to focus search, Alt+P/W/D on selected row)
+  const { selectedIndex, getRowProps } = useTallyListNavigation<ServiceCall>({
+    items: paginatedCalls,
+    searchRef: searchInputRef,
+    onOpenItem: (item) => navigate(`/admin/service-calls/${item.id}/edit`),
+    onNewItem: () => navigate("/admin/service-calls/new"),
+    onPrintItem: (item) => setPrintCall(item),
+    onWhatsAppItem: (item) => setWhatsAppCall(item),
+    onDeleteItem: (item) => setDeleteId(item.id),
+    onPrevPage: () => setCurrentPage((p) => Math.max(1, p - 1)),
+    onNextPage: () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
   });
 
   return (
@@ -583,7 +583,8 @@ export default function AdminServiceCalls() {
           <div className="relative min-w-[180px] md:flex-1 md:w-64">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search ticket, customer, phone..."
+              ref={searchInputRef}
+              placeholder="Search ticket, customer, phone... (Press '/' to focus)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 h-11 sm:h-10 text-base sm:text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs w-full placeholder:text-slate-400"
@@ -838,7 +839,7 @@ export default function AdminServiceCalls() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm">
-                {paginatedCalls.map((item) => {
+                {paginatedCalls.map((item, idx) => {
                   const displayDate = item.dateTime
                     ? new Date(item.dateTime).toLocaleDateString("en-IN", {
                         day: "numeric",
@@ -846,10 +847,12 @@ export default function AdminServiceCalls() {
                         year: "numeric",
                       })
                     : "—";
+                  const rowProps = getRowProps(idx);
 
                   return (
                     <tr
                       key={item.id}
+                      {...rowProps}
                       onClick={(e) => {
                         const target = e.target as HTMLElement;
                         if (
@@ -863,14 +866,20 @@ export default function AdminServiceCalls() {
                         ) {
                           return;
                         }
+                        rowProps.onClick?.();
                         navigate(`/admin/service-calls/${item.id}/edit`);
                       }}
-                      className="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
+                      className={`transition-colors group cursor-pointer ${rowProps.className}`}
                     >
                       {/* Ticket & Date */}
                       <td className="pl-6 pr-4 py-4 align-middle">
-                        <div className="font-bold text-[#2563EB] dark:text-blue-400 font-mono text-sm tracking-tight">
-                          {item.ticketNo}
+                        <div className="flex items-center gap-1.5">
+                          {idx === selectedIndex && (
+                            <span className="text-blue-600 dark:text-blue-400 font-black text-xs animate-in fade-in duration-100">▶</span>
+                          )}
+                          <div className="font-bold text-[#2563EB] dark:text-blue-400 font-mono text-sm tracking-tight">
+                            {item.ticketNo}
+                          </div>
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">{displayDate}</div>
                       </td>

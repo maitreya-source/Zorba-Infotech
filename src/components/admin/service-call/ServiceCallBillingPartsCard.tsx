@@ -177,7 +177,7 @@ export default function ServiceCallBillingPartsCard({
           )}
 
           {parts.map((p, idx) => (
-            <div key={p.id || idx} className="grid grid-cols-12 gap-3 items-center">
+            <div key={p.id || idx} data-part-row={idx} className="grid grid-cols-12 gap-3 items-center">
               <div className="col-span-7">
                 <ProductTypeahead
                   value={p.name}
@@ -215,6 +215,21 @@ export default function ServiceCallBillingPartsCard({
                   placeholder="0"
                   value={p.unitPrice === 0 ? "" : p.unitPrice}
                   onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (idx === parts.length - 1) {
+                        onAddPartRow();
+                        setTimeout(() => {
+                          const nextRowInput = document.querySelector(`[data-part-row="${idx + 1}"] input`) as HTMLElement | null;
+                          nextRowInput?.focus();
+                        }, 60);
+                      } else {
+                        const nextRowInput = document.querySelector(`[data-part-row="${idx + 1}"] input`) as HTMLElement | null;
+                        nextRowInput?.focus();
+                      }
+                    }
+                  }}
                   onChange={(e) => {
                     const raw = e.target.value;
                     const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));
