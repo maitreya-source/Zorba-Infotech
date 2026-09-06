@@ -169,9 +169,7 @@ export async function getCategories(forceRefresh = false): Promise<Category[]> {
   if (!forceRefresh) {
     _cachedCategories = DEFAULT_CATEGORIES as Category[];
     if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("zorba_categories_cache", JSON.stringify(_cachedCategories));
-      } catch {}
+      safeLocalStorageSet("zorba_categories_cache", JSON.stringify(_cachedCategories));
     }
     return _cachedCategories;
   }
@@ -190,9 +188,7 @@ export async function getCategories(forceRefresh = false): Promise<Category[]> {
     }
     _cachedCategories = categories;
     if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("zorba_categories_cache", JSON.stringify(categories));
-      } catch {}
+      safeLocalStorageSet("zorba_categories_cache", JSON.stringify(categories));
     }
     return categories;
   } catch (err: any) {
@@ -257,6 +253,31 @@ const CATALOG_MANIFEST_VERSION = "v3_20260828_clean";
 const STORAGE_KEY_PRODUCT_INDEX = `zorba_prod_index_${CATALOG_MANIFEST_VERSION}`;
 const STORAGE_KEY_PRODUCT_SYNC = `zorba_prod_sync_${CATALOG_MANIFEST_VERSION}`;
 const STORAGE_KEY_CATALOG_VERSION = "zorba_catalog_manifest_version";
+export const STORAGE_KEY_CUSTOMER_INDEX = "zorba_cust_index_v5";
+export const STORAGE_KEY_CUSTOMER_SYNC = "zorba_cust_sync_v5";
+
+/**
+ * Safe localStorage setter that never throws DOMException: QuotaExceededError.
+ * When browser storage quota is reached, it purges stale bulk cache keys to reclaim space.
+ */
+export function safeLocalStorageSet(key: string, value: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err: any) {
+    console.warn(`[safeLocalStorageSet] Storage quota exceeded for key "${key}":`, err?.message);
+    if (err?.name === "QuotaExceededError" || err?.code === 22 || err?.code === 1014) {
+      try {
+        localStorage.removeItem(STORAGE_KEY_CUSTOMER_INDEX);
+        localStorage.removeItem("zorba_cust_index_v4");
+        localStorage.removeItem(STORAGE_KEY_PRODUCT_INDEX);
+        localStorage.removeItem("zorba_categories_cache");
+      } catch {}
+    }
+    return false;
+  }
+}
 
 let _productIndex: ProductIndexItem[] = [];
 let _isProductIndexInitialized = false;
@@ -273,7 +294,7 @@ function loadLocalProductIndex(): void {
       localStorage.removeItem("zorba_prod_index_v2");
       localStorage.removeItem("zorba_prod_sync_v2");
       localStorage.removeItem("zorba_categories_cache");
-      localStorage.setItem(STORAGE_KEY_CATALOG_VERSION, CATALOG_MANIFEST_VERSION);
+      safeLocalStorageSet(STORAGE_KEY_CATALOG_VERSION, CATALOG_MANIFEST_VERSION);
       _productIndex = [];
       _lastProductSyncTimestamp = 0;
       return;
@@ -449,12 +470,8 @@ export async function syncProductIndex(forceFull = false): Promise<void> {
     }
 
     if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
-        localStorage.setItem(STORAGE_KEY_PRODUCT_SYNC, String(Date.now()));
-      } catch (storageErr) {
-        console.warn("Could not save product index to localStorage:", storageErr);
-      }
+      safeLocalStorageSet(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
+      safeLocalStorageSet(STORAGE_KEY_PRODUCT_SYNC, String(Date.now()));
     }
   } catch (err) {
     console.warn("Background product sync error:", err);
@@ -760,9 +777,7 @@ export async function createProduct(
   };
   _productIndex.unshift(slimItem);
   if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
-    } catch {}
+    safeLocalStorageSet(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
   }
 
   // Sync model number to service call models auto-suggest if present
@@ -815,9 +830,7 @@ export async function updateProduct(
         updatedAt: now,
       };
       if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
-        } catch {}
+        safeLocalStorageSet(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
       }
     }
 
@@ -848,9 +861,7 @@ export async function toggleProductWebsiteVisibility(
         updatedAt: now,
       };
       if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
-        } catch {}
+        safeLocalStorageSet(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
       }
     }
 
@@ -868,9 +879,7 @@ export async function deleteProduct(id: string): Promise<void> {
     if (idx !== -1) {
       _productIndex.splice(idx, 1);
       if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
-        } catch {}
+        safeLocalStorageSet(STORAGE_KEY_PRODUCT_INDEX, JSON.stringify(_productIndex));
       }
     }
     publishSyncSignal("products", { action: "delete", resourceId: id });
@@ -1077,8 +1086,99 @@ export interface CustomerIndexItem {
   updatedAt?: number;
 }
 
-const STORAGE_KEY_CUSTOMER_INDEX = "zorba_cust_index_v5";
-const STORAGE_KEY_CUSTOMER_SYNC = "zorba_cust_sync_v5";
+/**
+ * Deduplicate customer records by:
+ * 1. Unique Firestore document ID
+ * 2. Valid 10-digit mobile number (Indian mobile standards)
+ * 3. Normalized Name + Company for records without a mobile number (common in Tally ledger syncs)
+ * When duplicate records exist, merges fields prioritizing richer non-empty data and latest updatedAt.
+ */
+export function deduplicateCustomers<T extends {
+  id: string;
+  name: string;
+  phone?: string;
+  additionalPhones?: string[];
+  companyName?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  group?: string;
+  createdAt?: string | number;
+  updatedAt?: number;
+}>(items: T[]): T[] {
+  if (!items || items.length <= 1) return items;
+
+  const idMap = new Map<string, T>();
+  const phoneToId = new Map<string, string>();
+  const nameToId = new Map<string, string>();
+
+  for (const item of items) {
+    if (!item || !item.id) continue;
+
+    const p10 = normalizePhone10(item.phone);
+    const normName = (item.name || "").trim().toLowerCase();
+    const normCompany = (item.companyName || "").trim().toLowerCase();
+    const nameKey = normName ? `${normName}::${normCompany}` : "";
+
+    // Check if this document already matched by ID, phone, or name
+    let existingId: string | undefined;
+    if (idMap.has(item.id)) {
+      existingId = item.id;
+    } else if (p10 && p10.length >= 10 && phoneToId.has(p10)) {
+      existingId = phoneToId.get(p10);
+    } else if (!p10 && nameKey && nameToId.has(nameKey)) {
+      existingId = nameToId.get(nameKey);
+    }
+
+    if (existingId && idMap.has(existingId)) {
+      // Merge duplicate record with existing
+      const existing = idMap.get(existingId)!;
+      const mergedAdditionalPhones = Array.from(
+        new Set([
+          ...(existing.additionalPhones || []),
+          ...(item.additionalPhones || []),
+          ...(item.phone && item.phone !== existing.phone ? [item.phone] : []),
+        ])
+      );
+
+      const merged: T = {
+        ...existing,
+        name: existing.name || item.name,
+        phone: existing.phone || item.phone,
+        additionalPhones: mergedAdditionalPhones.length > 0 ? mergedAdditionalPhones : undefined,
+        companyName: existing.companyName || item.companyName,
+        email: existing.email || item.email,
+        address: (existing.address && existing.address.length > (item.address?.length || 0)) ? existing.address : (item.address || existing.address),
+        city: existing.city || item.city,
+        group: existing.group || item.group,
+        updatedAt: Math.max(
+          typeof existing.updatedAt === "number" ? existing.updatedAt : 0,
+          typeof item.updatedAt === "number" ? item.updatedAt : 0
+        ),
+      };
+
+      idMap.set(existingId, merged);
+      if (p10 && p10.length >= 10) phoneToId.set(p10, existingId);
+      if (nameKey) nameToId.set(nameKey, existingId);
+    } else {
+      idMap.set(item.id, item);
+      if (p10 && p10.length >= 10) {
+        phoneToId.set(p10, item.id);
+      }
+      if (item.additionalPhones) {
+        for (const extra of item.additionalPhones) {
+          const extra10 = normalizePhone10(extra);
+          if (extra10 && extra10.length >= 10) phoneToId.set(extra10, item.id);
+        }
+      }
+      if (nameKey) {
+        nameToId.set(nameKey, item.id);
+      }
+    }
+  }
+
+  return Array.from(idMap.values());
+}
 
 let _customerIndex: CustomerIndexItem[] = [];
 let _isCustomerIndexInitialized = false;
@@ -1162,9 +1262,7 @@ export function initCustomerRealtimeSync(): () => void {
       });
 
       if (changed) {
-        try {
-          localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
-        } catch {}
+        _customerIndex = deduplicateCustomers(_customerIndex);
         notifyCustomerSubscribers();
       }
     }, (err) => {
@@ -1182,23 +1280,20 @@ export function initCustomerRealtimeSync(): () => void {
   };
 }
 
-// Load local cache synchronously on startup (< 1ms)
+// Purge legacy bulk customer index from localStorage to permanently free browser quota
 function loadLocalCustomerIndex(): void {
   if (typeof window === "undefined") return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_CUSTOMER_INDEX);
-    if (raw) {
-      _customerIndex = JSON.parse(raw);
-    }
-  } catch (e) {
-    console.warn("Failed to load customer index from localStorage:", e);
-  }
+    localStorage.removeItem(STORAGE_KEY_CUSTOMER_INDEX);
+    localStorage.removeItem("zorba_cust_index_v4");
+  } catch {}
 }
 loadLocalCustomerIndex();
 
 /**
  * Non-blocking background delta-sync.
  * Downloads all or modified customer records since lastSync.
+ * Keeps entire index in-memory with automatic deduplication.
  */
 export async function syncCustomerIndex(forceFull = false): Promise<void> {
   if (_isSyncingIndex) return;
@@ -1230,7 +1325,7 @@ export async function syncCustomerIndex(forceFull = false): Promise<void> {
           updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
         };
       });
-      _customerIndex = items;
+      _customerIndex = deduplicateCustomers(items);
     } else {
       // Delta sync: fetch only updated docs since last sync with 60s overlap buffer
       const sinceTime = Math.max(0, lastSync - 60000);
@@ -1257,17 +1352,12 @@ export async function syncCustomerIndex(forceFull = false): Promise<void> {
             updatedAt: data.updatedAt || (typeof data.createdAt === "number" ? data.createdAt : 0),
           });
         });
-        _customerIndex = Array.from(itemMap.values());
+        _customerIndex = deduplicateCustomers(Array.from(itemMap.values()));
       }
     }
 
     if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
-        localStorage.setItem(STORAGE_KEY_CUSTOMER_SYNC, String(Date.now()));
-      } catch (storageErr) {
-        console.warn("Could not save customer index to localStorage:", storageErr);
-      }
+      safeLocalStorageSet(STORAGE_KEY_CUSTOMER_SYNC, String(Date.now()));
     }
     notifyCustomerSubscribers();
   } catch (err) {
@@ -1310,15 +1400,12 @@ export async function getCustomers(forceRefresh = false): Promise<Customer[]> {
         updatedAt: c.updatedAt || (typeof c.createdAt === "number" ? c.createdAt : 0),
       } as Customer;
     });
-    _customerIndex = list;
+    _customerIndex = deduplicateCustomers(list);
     if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
-        localStorage.setItem(STORAGE_KEY_CUSTOMER_SYNC, String(Date.now()));
-      } catch {}
+      safeLocalStorageSet(STORAGE_KEY_CUSTOMER_SYNC, String(Date.now()));
     }
     notifyCustomerSubscribers();
-    return list;
+    return _customerIndex as Customer[];
   } catch (err: any) {
     if (_customerIndex.length > 0) return _customerIndex as Customer[];
     console.error("getCustomers error:", err);
@@ -1463,12 +1550,7 @@ export async function createCustomer(data: Omit<Customer, "id" | "createdAt">): 
     updatedAt: now,
   };
   _customerIndex.unshift(slimItem);
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
-    } catch {}
-  }
-
+  _customerIndex = deduplicateCustomers(_customerIndex);
   notifyCustomerSubscribers();
   publishSyncSignal("customers", { action: "create", resourceId: newCust.id });
 
@@ -1568,11 +1650,7 @@ export async function batchCreateCustomers(
   }
 
   if (importedCount > 0) {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
-      } catch {}
-    }
+    _customerIndex = deduplicateCustomers(_customerIndex);
     publishSyncSignal("customers", { action: "create" });
   }
 
@@ -1639,11 +1717,6 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
       phone: formattedPhone || _customerIndex[idx].phone,
       updatedAt: now,
     };
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
-      } catch {}
-    }
     notifyCustomerSubscribers();
   }
 
@@ -1864,11 +1937,6 @@ export async function deleteCustomer(id: string): Promise<void> {
   const idx = _customerIndex.findIndex((c) => c.id === id);
   if (idx !== -1) {
     _customerIndex.splice(idx, 1);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY_CUSTOMER_INDEX, JSON.stringify(_customerIndex));
-      } catch {}
-    }
     notifyCustomerSubscribers();
   }
   publishSyncSignal("customers", { action: "delete", resourceId: id });

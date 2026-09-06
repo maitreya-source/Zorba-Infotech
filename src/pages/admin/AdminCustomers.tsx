@@ -1,9 +1,16 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserPlus, Users, Trash2, Search, Phone, Mail, MapPin, Building, RefreshCw, FileSpreadsheet, Pencil, Activity, ChevronRight, ChevronLeft } from "lucide-react";
+import { UserPlus, Users, Trash2, Search, Phone, Mail, MapPin, Building, RefreshCw, FileSpreadsheet, Pencil, Activity, ChevronRight, ChevronLeft, ArrowUpDown, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ConfirmDeleteDialog,
   EmptyState,
@@ -16,6 +23,7 @@ import {
   getCustomers,
   subscribeCustomers,
   deleteCustomer,
+  deduplicateCustomers,
 } from "@/lib/firestore";
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Customer } from "@/lib/types";
@@ -25,12 +33,16 @@ import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import ImportCustomersModal from "@/components/admin/ImportCustomersModal";
 
+export type CustomerSortOption = "name-asc" | "name-desc" | "company-asc" | "date-desc" | "phone-asc";
+
 export default function AdminCustomers() {
   const navigate = useNavigate();
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<CustomerSortOption>("name-asc");
+  const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [pageSize, setPageSize] = useState<number>(25);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -44,7 +56,7 @@ export default function AdminCustomers() {
     getCustomers()
       .then((list) => {
         if (isMounted) {
-          setAllCustomers(list);
+          setAllCustomers(deduplicateCustomers(list));
           setLoading(false);
         }
       })
@@ -58,7 +70,7 @@ export default function AdminCustomers() {
     // Real-time synchronization across all tabs and laptops
     const unsubSubscribers = subscribeCustomers((updatedList) => {
       if (isMounted) {
-        setAllCustomers([...updatedList]);
+        setAllCustomers(deduplicateCustomers(updatedList));
         setLoading(false);
       }
     });
@@ -66,7 +78,7 @@ export default function AdminCustomers() {
     const unsubSync = subscribeSyncSignal("customers", () => {
       getCustomers(true)
         .then((list) => {
-          if (isMounted) setAllCustomers(list);
+          if (isMounted) setAllCustomers(deduplicateCustomers(list));
         })
         .catch(() => {});
     });
@@ -78,53 +90,97 @@ export default function AdminCustomers() {
     };
   }, []);
 
-  // Pure, instant in-memory filtering across all 7,000+ customers
+  // Dynamically extract unique customer groups from loaded customers
+  const availableGroups = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of allCustomers) {
+      if (c.group && c.group.trim()) set.add(c.group.trim());
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allCustomers]);
+
+  // Pure, instant in-memory filtering & deterministic alphabetical sorting
   const filteredCustomers = useMemo(() => {
+    let list = allCustomers;
+
+    // Group Filter
+    if (selectedGroup && selectedGroup !== "ALL") {
+      list = list.filter((c) => (c.group || "").trim().toLowerCase() === selectedGroup.trim().toLowerCase());
+    }
+
+    // Search Query Filter
     const clean = search.trim().toLowerCase();
-    if (!clean) return allCustomers;
+    if (clean) {
+      const qDigits = clean.replace(/\D/g, "");
+      const tokens = clean.split(/\s+/).filter(Boolean);
 
-    const qDigits = clean.replace(/\D/g, "");
-    const tokens = clean.split(/\s+/).filter(Boolean);
+      list = list.filter((c) => {
+        const name = (c.name || "").toLowerCase();
+        const phone = (c.phone || "").toLowerCase();
+        const phoneDigits = phone.replace(/\D/g, "");
+        const company = (c.companyName || "").toLowerCase();
+        const email = (c.email || "").toLowerCase();
+        const group = (c.group || "").toLowerCase();
+        const city = (c.city || "").toLowerCase();
+        const address = (c.address || "").toLowerCase();
 
-    return allCustomers.filter((c) => {
-      const name = (c.name || "").toLowerCase();
-      const phone = (c.phone || "").toLowerCase();
-      const phoneDigits = phone.replace(/\D/g, "");
-      const company = (c.companyName || "").toLowerCase();
-      const email = (c.email || "").toLowerCase();
-      const group = (c.group || "").toLowerCase();
-      const city = (c.city || "").toLowerCase();
-      const address = (c.address || "").toLowerCase();
+        // Phone match
+        if (qDigits && qDigits.length >= 3) {
+          if (phoneDigits.includes(qDigits) || phone.includes(clean)) return true;
+          if (c.additionalPhones?.some((p) => (p || "").replace(/\D/g, "").includes(qDigits))) return true;
+        }
 
-      // Phone match
-      if (qDigits && qDigits.length >= 3) {
-        if (phoneDigits.includes(qDigits) || phone.includes(clean)) return true;
-        if (c.additionalPhones?.some((p) => (p || "").replace(/\D/g, "").includes(qDigits))) return true;
-      }
+        // Exact substring match in primary fields (e.g. "Jain", "Ultratech")
+        if (
+          name.includes(clean) ||
+          company.includes(clean) ||
+          group.includes(clean) ||
+          city.includes(clean) ||
+          email.includes(clean) ||
+          address.includes(clean)
+        ) {
+          return true;
+        }
 
-      // Exact substring match in primary fields (e.g. "Jain", "Ultratech")
-      if (
-        name.includes(clean) ||
-        company.includes(clean) ||
-        group.includes(clean) ||
-        city.includes(clean) ||
-        email.includes(clean) ||
-        address.includes(clean)
-      ) {
-        return true;
-      }
+        // All token words match
+        return tokens.every((tok) =>
+          name.includes(tok) ||
+          company.includes(tok) ||
+          group.includes(tok) ||
+          city.includes(tok) ||
+          address.includes(tok) ||
+          email.includes(tok)
+        );
+      });
+    }
 
-      // All token words match
-      return tokens.every((tok) =>
-        name.includes(tok) ||
-        company.includes(tok) ||
-        group.includes(tok) ||
-        city.includes(tok) ||
-        address.includes(tok) ||
-        email.includes(tok)
-      );
-    });
-  }, [allCustomers, search]);
+    // Default & Selected Sorting: Alphabetical (A-Z) by default
+    const sorted = [...list];
+    switch (sortBy) {
+      case "name-desc":
+        sorted.sort((a, b) => (b.name || "").localeCompare(a.name || "", undefined, { sensitivity: "base" }));
+        break;
+      case "company-asc":
+        sorted.sort((a, b) => (a.companyName || a.name || "").localeCompare(b.companyName || b.name || "", undefined, { sensitivity: "base" }));
+        break;
+      case "date-desc":
+        sorted.sort((a, b) => {
+          const tA = typeof a.updatedAt === "number" ? a.updatedAt : (typeof a.createdAt === "number" ? a.createdAt : 0);
+          const tB = typeof b.updatedAt === "number" ? b.updatedAt : (typeof b.createdAt === "number" ? b.createdAt : 0);
+          return tB - tA;
+        });
+        break;
+      case "phone-asc":
+        sorted.sort((a, b) => (a.phone || "").localeCompare(b.phone || ""));
+        break;
+      case "name-asc":
+      default:
+        sorted.sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+        break;
+    }
+
+    return sorted;
+  }, [allCustomers, search, selectedGroup, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
 
@@ -144,6 +200,41 @@ export default function AdminCustomers() {
   };
 
   const customerSearchRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut listener for directory: Alt+S cycles sort, Alt+G cycles groups
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Alt + S -> Cycle Sort
+      if (e.altKey && (e.key.toLowerCase() === "s" || e.code === "KeyS")) {
+        e.preventDefault();
+        const sortCycle: CustomerSortOption[] = ["name-asc", "name-desc", "company-asc", "date-desc", "phone-asc"];
+        setSortBy((prev) => {
+          const nextIdx = (sortCycle.indexOf(prev) + 1) % sortCycle.length;
+          toast.info(`Sorted by: ${sortCycle[nextIdx]}`);
+          return sortCycle[nextIdx];
+        });
+        return;
+      }
+
+      // Alt + G -> Cycle Group
+      if (e.altKey && (e.key.toLowerCase() === "g" || e.code === "KeyG")) {
+        if (availableGroups.length > 0) {
+          e.preventDefault();
+          setSelectedGroup((prev) => {
+            const allOptions = ["ALL", ...availableGroups];
+            const curIdx = allOptions.indexOf(prev);
+            const nextGrp = allOptions[(curIdx + 1) % allOptions.length];
+            setPageNumber(1);
+            toast.info(`Group filter: ${nextGrp === "ALL" ? "All Groups" : nextGrp}`);
+            return nextGrp;
+          });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [availableGroups]);
 
   // Tally Keyboard Navigation for Customer Directory
   const { selectedIndex, getRowProps } = useTallyListNavigation({
@@ -204,15 +295,89 @@ export default function AdminCustomers() {
         </div>
       </div>
 
-      {/* Filter / Search bar */}
+      {/* Filter / Search bar with Group and Sort selectors */}
       <SearchFilterBar
         inputRef={customerSearchRef}
         value={search}
         onChange={handleSearchChange}
         placeholder="Search by customer name, phone, company, email, group… (Press / to search)"
-        count={search.trim() ? filteredCustomers.length : allCustomers.length}
-        countLabel={search.trim() ? "Search Matches" : "Total Customers"}
-      />
+        count={filteredCustomers.length}
+        countLabel={
+          search.trim() || (selectedGroup && selectedGroup !== "ALL")
+            ? "Filtered Results"
+            : "Total Customers"
+        }
+      >
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Customer Group Filter */}
+          <div className="flex items-center gap-1.5">
+            <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <Select
+              value={selectedGroup}
+              onValueChange={(val) => {
+                setSelectedGroup(val);
+                setPageNumber(1);
+              }}
+            >
+              <SelectTrigger
+                className="h-8.5 text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl min-w-[130px] font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                title="Filter by Customer Group (Alt+G)"
+              >
+                <SelectValue placeholder="All Groups" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Groups ({allCustomers.length})</SelectItem>
+                {availableGroups.map((grp) => (
+                  <SelectItem key={grp} value={grp}>
+                    {grp}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Sort By Filter */}
+          <div className="flex items-center gap-1.5">
+            <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <Select
+              value={sortBy}
+              onValueChange={(val: CustomerSortOption) => setSortBy(val)}
+            >
+              <SelectTrigger
+                className="h-8.5 text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl min-w-[145px] font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                title="Sort Customer Directory (Alt+S)"
+              >
+                <SelectValue placeholder="Sort..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Alphabetical (A → Z)</SelectItem>
+                <SelectItem value="name-desc">Alphabetical (Z → A)</SelectItem>
+                <SelectItem value="company-asc">Company Name (A → Z)</SelectItem>
+                <SelectItem value="date-desc">Recently Updated</SelectItem>
+                <SelectItem value="phone-asc">Phone Number</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Reset Filters button if any active filter */}
+          {(search.trim() || (selectedGroup && selectedGroup !== "ALL") || sortBy !== "name-asc") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearch("");
+                setSelectedGroup("ALL");
+                setSortBy("name-asc");
+                setPageNumber(1);
+              }}
+              className="h-8.5 px-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl gap-1 cursor-pointer"
+              title="Reset all search, group, and sort filters"
+            >
+              <X className="h-3 w-3" /> Reset
+            </Button>
+          )}
+        </div>
+      </SearchFilterBar>
 
       {/* Main Directory Table */}
       {loading ? (

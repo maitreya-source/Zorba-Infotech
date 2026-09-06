@@ -394,7 +394,11 @@ export default function ServiceCallDeviceDetailsCard({
                 value={selectedServiceCenterId}
                 onValueChange={onSelectServiceCenter}
               >
-                <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+                <SelectTrigger
+                  id="sc-center-select"
+                  data-tally-field="service-center"
+                  className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors cursor-pointer"
+                >
                   <SelectValue placeholder="Select Center..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -429,7 +433,11 @@ export default function ServiceCallDeviceDetailsCard({
                 value={selectedAddressId}
                 onValueChange={onSelectAddress}
               >
-                <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+                <SelectTrigger
+                  id="sc-address-select"
+                  data-tally-field="dispatch-address"
+                  className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors cursor-pointer"
+                >
                   <SelectValue placeholder="Select Dispatch Address..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -464,7 +472,11 @@ export default function ServiceCallDeviceDetailsCard({
                 value={courierName}
                 onValueChange={onSelectCourier}
               >
-                <SelectTrigger className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors">
+                <SelectTrigger
+                  id="sc-courier-select"
+                  data-tally-field="courier-name"
+                  className="h-11 sm:h-9 text-base sm:text-xs rounded-xl bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 focus:bg-white transition-colors cursor-pointer"
+                >
                   <SelectValue placeholder="Select Courier..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -483,6 +495,8 @@ export default function ServiceCallDeviceDetailsCard({
                 Courier Tracking / RMA No.
               </Label>
               <Input
+                id="sc-rma-input"
+                data-tally-field="rma-number"
                 placeholder="e.g. TRK-9981 / AUG-2026"
                 value={rmaNumber}
                 onChange={(e) => onRmaNumberChange(e.target.value)}
@@ -496,6 +510,8 @@ export default function ServiceCallDeviceDetailsCard({
                 Courier Charges (₹)
               </Label>
               <Input
+                id="sc-charges-input"
+                data-tally-field="courier-charges"
                 type="number"
                 min="0"
                 placeholder="0"

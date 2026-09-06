@@ -18,6 +18,13 @@ export function isEditableElement(el: EventTarget | null): boolean {
 /** Check if an element is a navigable form control (input, textarea, select, combobox, or tally field) */
 export function isFormNavigableElement(el: EventTarget | null): boolean {
   if (!el || !(el instanceof HTMLElement)) return false;
+  // Never treat options or open popper contents as standalone form fields
+  if (el.closest('[data-radix-popper-content-wrapper]')) return false;
+  if (el.closest('[role="listbox"]')) return false;
+  if (el.getAttribute("role") === "option" || el.closest('[role="option"]')) return false;
+  if (el.getAttribute("aria-hidden") === "true") return false;
+  if (el.getAttribute("tabindex") === "-1" && !el.hasAttribute("data-tally-field")) return false;
+
   if (isEditableElement(el)) return true;
   const tag = el.tagName.toUpperCase();
   if (tag === "SELECT") return true;
@@ -463,21 +470,33 @@ export function advanceToNextFormField(
 ) {
   const root = customRoot || currentEl.closest("form") || currentEl.closest('[data-shortcut-container="form"]') || document.body;
   const focusableSelector = [
-    'input:not([type="hidden"]):not([disabled]):not([readonly]):not([data-tally-skip])',
-    'select:not([disabled]):not([data-tally-skip])',
-    'textarea:not([disabled]):not([readonly]):not([data-tally-skip])',
-    '[role="combobox"]:not([disabled]):not([data-tally-skip])',
-    'button[role="combobox"]:not([disabled]):not([data-tally-skip])',
-    '[data-tally-field]:not([disabled]):not([data-tally-skip])',
-    'button[data-tally-field]:not([disabled]):not([data-tally-skip])',
+    'input:not([type="hidden"]):not([disabled]):not([readonly]):not([data-tally-skip]):not([aria-hidden="true"])',
+    'select:not([disabled]):not([data-tally-skip]):not([aria-hidden="true"])',
+    'textarea:not([disabled]):not([readonly]):not([data-tally-skip]):not([aria-hidden="true"])',
+    '[role="combobox"]:not([disabled]):not([data-tally-skip]):not([aria-hidden="true"])',
+    'button[role="combobox"]:not([disabled]):not([data-tally-skip]):not([aria-hidden="true"])',
+    '[data-tally-field]:not([disabled]):not([data-tally-skip]):not([aria-hidden="true"])',
+    'button[data-tally-field]:not([disabled]):not([data-tally-skip]):not([aria-hidden="true"])',
   ].join(", ");
 
-  const elements = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-    (el) =>
-      (el.offsetParent !== null ||
-        (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))) &&
-      !el.closest('[data-tally-ignore="true"]')
-  );
+  const elements = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter((el) => {
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    // Exclude hidden selects injected by Radix UI or libraries
+    if (el.getAttribute("tabindex") === "-1" && !el.hasAttribute("data-tally-field")) return false;
+    if (el.closest('[data-tally-ignore="true"]')) return false;
+    if (el.closest('[data-radix-popper-content-wrapper]')) return false;
+
+    // Filter out 0/1px hidden inputs or display none elements in real browsers
+    if (typeof window !== "undefined" && typeof navigator !== "undefined" && !navigator.userAgent.includes("jsdom")) {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 1 && rect.height <= 1) return false;
+    }
+
+    return (
+      el.offsetParent !== null ||
+      (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))
+    );
+  });
 
   const focusableEl = currentEl.closest<HTMLElement>(focusableSelector) || currentEl;
   let currentIndex = elements.indexOf(focusableEl);
@@ -486,9 +505,13 @@ export function advanceToNextFormField(
     const myPos = allEls.indexOf(currentEl);
     const nextEls = elements.filter((el) => allEls.indexOf(el) > myPos);
     if (nextEls.length > 0) {
-      nextEls[0].focus();
-      if (nextEls[0] instanceof HTMLInputElement && ["text", "number", "tel", "email"].includes(nextEls[0].type)) {
-        nextEls[0].select();
+      const targetEl = backwards ? nextEls[nextEls.length - 1] : nextEls[0];
+      targetEl.focus();
+      try {
+        targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch {}
+      if (targetEl instanceof HTMLInputElement && ["text", "number", "tel", "email"].includes(targetEl.type)) {
+        targetEl.select();
       }
     }
     return;
@@ -621,11 +644,17 @@ export function useTallyFormNavigation({
           return;
         }
 
-        // If inside an open combobox/typeahead popup (user is picking an option), let user confirm choice
-        if (
+        // If inside an open combobox/typeahead popup or Radix dropdown (user is picking an option), let user confirm choice
+        const isPopupOpen = !!(
           target.getAttribute("aria-expanded") === "true" ||
-          document.querySelector('[data-typeahead-open="true"]')
-        ) {
+          target.closest('[aria-expanded="true"]') ||
+          document.querySelector('[data-radix-popper-content-wrapper]') ||
+          document.querySelector('[data-typeahead-open="true"]') ||
+          document.querySelector('[role="listbox"]') ||
+          target.closest('[role="listbox"]') ||
+          target.closest('[role="option"]')
+        );
+        if (isPopupOpen) {
           return;
         }
 
