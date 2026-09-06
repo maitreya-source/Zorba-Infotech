@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Truck,
   Plus,
@@ -25,10 +25,11 @@ import {
 } from "@/components/common";
 import { getCouriers, deleteCourier } from "@/lib/firestore";
 import type { Courier } from "@/lib/types";
-import { formatPhoneForDisplay, generateCourierFollowUpMessage } from "@/lib/utils";
-import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import { formatPhoneForDisplay, generateCourierFollowUpMessage, cn } from "@/lib/utils";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import CreateCourierModal from "@/components/admin/CreateCourierModal";
 import EditCourierModal from "@/components/admin/EditCourierModal";
+import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
 
 export default function AdminCouriers() {
   const [couriers, setCouriers] = useState<Courier[]>([]);
@@ -38,6 +39,7 @@ export default function AdminCouriers() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editCourier, setEditCourier] = useState<Courier | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [whatsappCourier, setWhatsappCourier] = useState<Courier | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -57,11 +59,6 @@ export default function AdminCouriers() {
     loadData();
   }, []);
 
-  useTallyShortcuts({
-    onAltC: () => setShowCreateModal(true),
-    onAltA: () => setShowCreateModal(true),
-  });
-
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
@@ -79,16 +76,7 @@ export default function AdminCouriers() {
       toast.error("No phone number saved for this courier");
       return;
     }
-    const cleanPhone = c.phone.replace(/\D/g, "");
-    const waPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
-    const text = encodeURIComponent(
-      generateCourierFollowUpMessage({
-        courierName: c.name,
-        courierDocketNumber: "PENDING-DOCKET",
-        ticketNo: "SC-LOGISTICS",
-      })
-    );
-    window.open(`https://wa.me/${waPhone}?text=${text}`, "_blank", "noopener,noreferrer");
+    setWhatsappCourier(c);
   };
 
   const filtered = couriers.filter((c) => {
@@ -99,6 +87,18 @@ export default function AdminCouriers() {
       (c.phone && c.phone.toLowerCase().includes(q)) ||
       (c.contactPerson && c.contactPerson.toLowerCase().includes(q))
     );
+  });
+
+  const courierSearchRef = useRef<HTMLInputElement>(null);
+
+  // Tally Keyboard Navigation for Couriers Directory (ArrowUp/Down, Enter to edit, / to search, Alt+A / Alt+C to add, Delete to delete)
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: filtered,
+    searchInputRef: courierSearchRef,
+    onOpenItem: (c) => setEditCourier(c),
+    onNewItem: () => setShowCreateModal(true),
+    onDeleteItem: (c) => setDeleteId(c.id),
+    onWhatsAppItem: (c) => handleWhatsAppFollowUp(c),
   });
 
   return (
@@ -122,16 +122,17 @@ export default function AdminCouriers() {
             size="sm"
             className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white shrink-0 rounded-xl cursor-pointer"
           >
-            <Plus className="h-4 w-4" /> Add Courier Partner (Alt+C)
+            <Plus className="h-4 w-4" /> Add Courier Partner (Alt+A / Alt+C)
           </Button>
         </div>
       </div>
 
       {/* Search & Filter Bar */}
       <SearchFilterBar
+        inputRef={courierSearchRef}
         value={search}
         onChange={setSearch}
-        placeholder="Search by courier name, phone, contact person…"
+        placeholder="Search by courier name, phone, contact person… (Press / to search)"
         count={filtered.length}
         countLabel="Total Partners"
       />
@@ -162,92 +163,110 @@ export default function AdminCouriers() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((c) => (
-            <div
-              key={c.id}
-              className="rounded-2xl border bg-card p-5 shadow-xs space-y-3 hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col justify-between"
-            >
-              <div className="space-y-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Truck className="h-4 w-4 text-[#2563EB]" /> {c.name}
-                    </h3>
-                    <div className="flex items-center gap-1.5 pt-0.5">
-                      {c.active !== false ? (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 text-[10px] gap-1 px-1.5 py-0">
-                          <CheckCircle2 className="h-2.5 w-2.5" /> Active Partner
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-[10px] gap-1 px-1.5 py-0">
-                          <XCircle className="h-2.5 w-2.5" /> Inactive
-                        </Badge>
-                      )}
+          {filtered.map((c, idx) => {
+            const rowProps = getRowProps(idx);
+            return (
+              <div
+                key={c.id}
+                {...rowProps}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest("button") || target.closest("a")) {
+                    return;
+                  }
+                  setEditCourier(c);
+                }}
+                className={cn(
+                  "rounded-2xl border bg-card p-5 shadow-xs space-y-3 hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col justify-between cursor-pointer group",
+                  selectedIndex === idx && "ring-2 ring-blue-500 bg-blue-50/30 dark:bg-blue-950/20"
+                )}
+                title="Click to edit courier partner (Press Enter to open)"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        {selectedIndex === idx && (
+                          <span className="text-blue-500 font-bold text-xs">▶</span>
+                        )}
+                        <Truck className="h-4 w-4 text-[#2563EB]" /> {c.name}
+                      </h3>
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        {c.active !== false ? (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 text-[10px] gap-1 px-1.5 py-0">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Active Partner
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-[10px] gap-1 px-1.5 py-0">
+                            <XCircle className="h-2.5 w-2.5" /> Inactive
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={() => setEditCourier(c)}
+                        title="Edit Courier"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeleteId(c.id)}
+                        title="Delete Courier"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                      onClick={() => setEditCourier(c)}
-                      title="Edit Courier"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteId(c.id)}
-                      title="Delete Courier"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  {/* Contact Person */}
+                  {c.contactPerson && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                      <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>Contact: <strong className="text-slate-800 dark:text-slate-200">{c.contactPerson}</strong></span>
+                    </div>
+                  )}
+
+                  {/* Phone */}
+                  {c.phone && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-mono">
+                      <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{formatPhoneForDisplay(c.phone)}</span>
+                    </div>
+                  )}
+
+                  {/* Tracking URL */}
+                  {c.trackingUrlTemplate && (
+                    <div className="text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl truncate">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">Tracking: </span>
+                      <span className="font-mono text-[10px]">{c.trackingUrlTemplate}</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Contact Person */}
-                {c.contactPerson && (
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                    <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>Contact: <strong className="text-slate-800 dark:text-slate-200">{c.contactPerson}</strong></span>
-                  </div>
-                )}
-
-                {/* Phone */}
-                {c.phone && (
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-mono">
-                    <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    <span>{formatPhoneForDisplay(c.phone)}</span>
-                  </div>
-                )}
-
-                {/* Tracking URL */}
-                {c.trackingUrlTemplate && (
-                  <div className="text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl truncate">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Tracking: </span>
-                    <span className="font-mono text-[10px]">{c.trackingUrlTemplate}</span>
-                  </div>
-                )}
+                {/* Actions */}
+                <div className="pt-2 border-t flex items-center gap-2">
+                  {c.phone && (
+                    <Button
+                      onClick={() => handleWhatsAppFollowUp(c)}
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Follow-Up (Unified Templates)
+                    </Button>
+                  )}
+                </div>
               </div>
-
-              {/* Actions */}
-              <div className="pt-2 border-t flex items-center gap-2">
-                {c.phone && (
-                  <Button
-                    onClick={() => handleWhatsAppFollowUp(c)}
-                    size="sm"
-                    variant="outline"
-                    className="w-full gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Follow-Up
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -263,6 +282,20 @@ export default function AdminCouriers() {
         onOpenChange={(open) => !open && setEditCourier(null)}
         onUpdated={() => loadData()}
       />
+
+      {/* WhatsApp Template Preview Modal */}
+      {whatsappCourier && (
+        <WhatsAppPreviewModal
+          open={Boolean(whatsappCourier)}
+          onOpenChange={(open) => !open && setWhatsappCourier(null)}
+          title={`WhatsApp Follow-up: ${whatsappCourier.name}`}
+          recipientName={whatsappCourier.contactPerson || whatsappCourier.name}
+          recipientRole="Courier Partner"
+          defaultPhone={whatsappCourier.phone}
+          defaultMessage={`*ZORBA INFOTECH - LOGISTICS INQUIRY*\n\nHello *${whatsappCourier.name}* Team${whatsappCourier.contactPerson ? ` (${whatsappCourier.contactPerson})` : ""},\nWe would like to follow up regarding recent parcel dispatches and pickup scheduling.\n\nThank you,\n*Zorba Infotech Operations*`}
+          targetModule="couriers"
+        />
+      )}
 
       {/* Delete Confirmation Alert */}
       <ConfirmDeleteDialog

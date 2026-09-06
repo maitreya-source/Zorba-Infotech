@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Plus, Pencil, Trash2, Layers, Search, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,8 @@ import {
 } from "@/lib/firestore";
 import { ICON_NAMES, COLOR_OPTIONS, getIcon } from "@/lib/icons";
 import type { Category } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 
 interface CategoryForm {
   name: string;
@@ -145,6 +147,17 @@ export default function AdminCategories() {
     );
   });
 
+  const categorySearchRef = useRef<HTMLInputElement>(null);
+
+  // Tally Keyboard Navigation for Categories Directory (ArrowUp/Down, Enter to edit, / to search, Alt+A / Alt+C to add, Delete to delete)
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: filtered,
+    searchInputRef: categorySearchRef,
+    onOpenItem: (cat) => openEdit(cat),
+    onNewItem: () => openAdd(),
+    onDeleteItem: (cat) => setDeleteId(cat.id),
+  });
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto text-xs">
       {/* Integrated Hero Header */}
@@ -164,18 +177,19 @@ export default function AdminCategories() {
           <Button
             onClick={openAdd}
             size="sm"
-            className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0"
+            className="gap-1.5 font-bold bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl h-9 text-xs shadow-sm shrink-0 cursor-pointer"
           >
-            <Plus className="h-4 w-4" /> Add Category
+            <Plus className="h-4 w-4" /> Add Category (Alt+A / Alt+C)
           </Button>
         </div>
       </div>
 
       {/* Filter / Search Bar */}
       <SearchFilterBar
+        inputRef={categorySearchRef}
         value={search}
         onChange={setSearch}
-        placeholder="Search categories or descriptions…"
+        placeholder="Search categories or descriptions… (Press / to search)"
         count={filtered.length}
         countLabel="Total Categories"
       />
@@ -200,12 +214,25 @@ export default function AdminCategories() {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {filtered.map((cat) => {
+          {filtered.map((cat, idx) => {
+            const rowProps = getRowProps(idx);
             const Icon = getIcon(cat.iconName);
             return (
               <div
                 key={cat.id}
-                className="rounded-2xl border bg-card p-4 flex justify-between items-start hover:border-blue-300 dark:hover:border-blue-700 transition-all shadow-xs group"
+                {...rowProps}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest("button") || target.closest("a")) {
+                    return;
+                  }
+                  openEdit(cat);
+                }}
+                className={cn(
+                  "rounded-2xl border bg-card p-4 flex justify-between items-start hover:border-blue-300 dark:hover:border-blue-700 transition-all shadow-xs group cursor-pointer",
+                  selectedIndex === idx && "ring-2 ring-blue-500 bg-blue-50/30 dark:bg-blue-950/20"
+                )}
+                title="Click to edit category (Press Enter to open)"
               >
                 <div className="flex items-start gap-3 min-w-0 flex-1 pr-2">
                   <div
@@ -214,7 +241,10 @@ export default function AdminCategories() {
                     <Icon className="h-4 w-4 text-[#2563EB]" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-xs font-display text-foreground truncate">
+                    <h3 className="font-bold text-xs font-display text-foreground truncate flex items-center gap-1.5">
+                      {selectedIndex === idx && (
+                        <span className="text-blue-500 font-bold text-xs">▶</span>
+                      )}
                       {cat.name}
                     </h3>
                     <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
@@ -229,6 +259,7 @@ export default function AdminCategories() {
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
                     onClick={() => openEdit(cat)}
+                    title="Edit Category"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -237,6 +268,7 @@ export default function AdminCategories() {
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-destructive"
                     onClick={() => setDeleteId(cat.id)}
+                    title="Delete Category"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>

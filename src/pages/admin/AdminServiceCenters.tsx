@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   Building2,
   Plus,
@@ -31,8 +31,8 @@ import {
 } from "@/components/common";
 import { getServiceCenters, deleteServiceCenter } from "@/lib/firestore";
 import type { ServiceCenter } from "@/lib/types";
-import { toTitleCase } from "@/lib/utils";
-import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import { toTitleCase, cn } from "@/lib/utils";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import EditServiceCenterModal from "@/components/admin/EditServiceCenterModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
@@ -71,11 +71,6 @@ export default function AdminServiceCenters() {
   useEffect(() => {
     loadData();
   }, []);
-
-  useTallyShortcuts({
-    onAltC: () => setShowCreateModal(true),
-    onAltA: () => setShowCreateModal(true),
-  });
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -153,6 +148,17 @@ export default function AdminServiceCenters() {
       return matchesSearch && matchesCity;
     });
   }, [centers, search, cityFilter]);
+
+  const serviceCenterSearchRef = useRef<HTMLInputElement>(null);
+
+  // Tally Keyboard Navigation for Service Centers (ArrowUp/Down, Enter to view/edit, / to search, Alt+A / Alt+C for new, Delete to delete)
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: filtered,
+    searchInputRef: serviceCenterSearchRef,
+    onOpenItem: (sc) => setEditCenter(sc),
+    onNewItem: () => setShowCreateModal(true),
+    onDeleteItem: (sc) => setDeleteId(sc.id),
+  });
 
   const getPhoneNumbers = (sc: ServiceCenter) => {
     const callPhone = sc.phone || sc.whatsappPhone || sc.pocs?.[0]?.phone;
@@ -232,9 +238,10 @@ export default function AdminServiceCenters() {
 
       {/* 3. Search & Filter Bar */}
       <SearchFilterBar
+        inputRef={serviceCenterSearchRef}
         value={search}
         onChange={setSearch}
-        placeholder="Search by center name, city, address, phone…"
+        placeholder="Search by center name, city, address, phone… (Press / to search)"
         count={filtered.length}
         countLabel="Total Centers"
       >
@@ -317,12 +324,14 @@ export default function AdminServiceCenters() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((sc) => {
+                {filtered.map((sc, idx) => {
+                  const rowProps = getRowProps(idx);
                   const { callPhone, waPhone } = getPhoneNumbers(sc);
 
                   return (
                     <tr
                       key={sc.id}
+                      {...rowProps}
                       onClick={(e) => {
                         const target = e.target as HTMLElement;
                         if (
@@ -334,12 +343,18 @@ export default function AdminServiceCenters() {
                         }
                         setEditCenter(sc);
                       }}
-                      className="hover:bg-blue-50/40 dark:hover:bg-slate-900/50 transition-colors group cursor-pointer"
+                      className={cn(
+                        "hover:bg-blue-50/40 dark:hover:bg-slate-900/50 transition-colors group cursor-pointer",
+                        selectedIndex === idx && "bg-blue-500/10 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40"
+                      )}
                       title="Click anywhere on this row to edit service center"
                     >
                       {/* Service Center Name & Email */}
                       <td className="px-4 py-3.5 align-middle">
                         <div className="flex items-center gap-3">
+                          {selectedIndex === idx && (
+                            <span className="text-blue-500 font-bold text-xs">▶</span>
+                          )}
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-[#2563EB] dark:bg-blue-950/60 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800/80 group-hover:scale-105 transition-transform">
                             <Building2 className="h-4 w-4" />
                           </div>
@@ -449,12 +464,14 @@ export default function AdminServiceCenters() {
       ) : (
         /* Card Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((sc) => {
+          {filtered.map((sc, idx) => {
+            const rowProps = getRowProps(idx);
             const { callPhone, waPhone } = getPhoneNumbers(sc);
 
             return (
               <div
                 key={sc.id}
+                {...rowProps}
                 onClick={(e) => {
                   const target = e.target as HTMLElement;
                   if (
@@ -466,7 +483,10 @@ export default function AdminServiceCenters() {
                   }
                   setEditCenter(sc);
                 }}
-                className="rounded-2xl border bg-card p-5 shadow-xs space-y-4 hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col justify-between cursor-pointer group"
+                className={cn(
+                  "rounded-2xl border bg-card p-5 shadow-xs space-y-4 hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col justify-between cursor-pointer group",
+                  selectedIndex === idx && "ring-2 ring-blue-500 bg-blue-50/30 dark:bg-blue-950/20"
+                )}
                 title="Click to edit service center details"
               >
                 <div className="space-y-3">

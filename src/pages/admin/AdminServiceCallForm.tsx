@@ -1242,6 +1242,20 @@ export default function AdminServiceCallForm() {
     },
   });
 
+  // Auto-focus Customer field on initial load so user can immediately start keyboard navigation without clicking
+  useEffect(() => {
+    if (!dataLoading) {
+      const timer = setTimeout(() => {
+        const custInput = document.getElementById("cust-name-typeahead") as HTMLInputElement | null;
+        if (custInput) {
+          custInput.focus();
+          custInput.select();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [dataLoading]);
+
   if (dataLoading) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-8 max-w-5xl mx-auto shadow-xs my-6">

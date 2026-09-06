@@ -542,6 +542,20 @@ export default function AdminQuotationForm() {
     onAddRow: () => handleAddItemRow(),
   });
 
+  // Auto-focus Customer field on initial load for instant keyboard intake
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => {
+        const custInput = document.getElementById("quotation-customer-typeahead") as HTMLInputElement | null;
+        if (custInput) {
+          custInput.focus();
+          custInput.select();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
   // Customer Select Handler
   const handleSelectCustomer = (cust: Customer) => {
     setSelectedCustomerId(cust.id);
