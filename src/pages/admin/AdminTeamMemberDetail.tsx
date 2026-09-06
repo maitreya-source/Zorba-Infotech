@@ -265,35 +265,8 @@ export default function AdminTeamMemberDetail() {
       }),
   });
 
-  // Escape key navigation: dismiss modals or exit to Team directory
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        const hasDialog = Boolean(document.querySelector('[role="dialog"], [role="alertdialog"]'));
-        if (showEditModal || showRecordPayoutModal || hasDialog) {
-          if (showEditModal) setShowEditModal(false);
-          if (showRecordPayoutModal) setShowRecordPayoutModal(false);
-          return;
-        }
-
-        const target = e.target as HTMLElement | null;
-        if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
-          target.blur();
-          return;
-        }
-
-        e.preventDefault();
-        handleBack();
-        return;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleBack, showEditModal, showRecordPayoutModal]);
-
   // Open Edit Modal
-  const handleOpenEditModal = () => {
+  const handleOpenEditModal = useCallback(() => {
     if (!member) return;
     setEditName(member.name);
     setEditRole(member.role);
@@ -304,7 +277,86 @@ export default function AdminTeamMemberDetail() {
     setEditAvatar(member.avatar || "penguin");
     setEditActive(member.active !== false);
     setShowEditModal(true);
-  };
+  }, [member]);
+
+  const isTechRole = member?.role === "technician";
+  const tabsList = useMemo<("completed" | "payment_due" | "pending" | "all" | "payouts")[]>(() => {
+    return isTechRole
+      ? ["completed", "payment_due", "pending", "all", "payouts"]
+      : ["completed", "payment_due", "pending", "all"];
+  }, [isTechRole]);
+
+  // Keyboard navigation: Escape to exit/dismiss, Left/Right or 1-5 to switch tabs, Alt+A to edit
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const hasDialog = Boolean(document.querySelector('[role="dialog"], [role="alertdialog"]'));
+      if (showEditModal || showRecordPayoutModal || hasDialog) {
+        if (e.key === "Escape") {
+          if (showEditModal) setShowEditModal(false);
+          if (showRecordPayoutModal) setShowRecordPayoutModal(false);
+        }
+        return;
+      }
+
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      if (isInput) {
+        if (e.key === "Escape") {
+          target.blur();
+        }
+        return;
+      }
+
+      // 1. Escape -> Back to Team directory
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleBack();
+        return;
+      }
+
+      // 2. Alt+A / Alt+E -> Open Edit Profile
+      if (e.altKey && (e.key.toLowerCase() === "a" || e.code === "KeyA" || e.key.toLowerCase() === "e" || e.code === "KeyE")) {
+        e.preventDefault();
+        handleOpenEditModal();
+        return;
+      }
+
+      // 3. ArrowLeft -> Previous Tab
+      if (e.key === "ArrowLeft" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        setTab((curr) => {
+          const idx = tabsList.indexOf(curr);
+          const prevIdx = (idx - 1 + tabsList.length) % tabsList.length;
+          return tabsList[prevIdx];
+        });
+        return;
+      }
+
+      // 4. ArrowRight -> Next Tab
+      if (e.key === "ArrowRight" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        setTab((curr) => {
+          const idx = tabsList.indexOf(curr);
+          const nextIdx = (idx + 1) % tabsList.length;
+          return tabsList[nextIdx];
+        });
+        return;
+      }
+
+      // 5. 1-5 Keys -> Jump to Tab
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && ["1", "2", "3", "4", "5"].includes(e.key)) {
+        const targetIdx = parseInt(e.key, 10) - 1;
+        if (targetIdx >= 0 && targetIdx < tabsList.length) {
+          e.preventDefault();
+          setTab(tabsList[targetIdx]);
+          return;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleBack, showEditModal, showRecordPayoutModal, tabsList, handleOpenEditModal]);
 
   const handleSaveMemberProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -543,9 +595,10 @@ export default function AdminTeamMemberDetail() {
             size="sm"
             onClick={handleOpenEditModal}
             className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer shadow-2xs"
+            title="Edit Profile (Alt+A)"
           >
             <Pencil className="h-3.5 w-3.5" />
-            <span>Edit Profile</span>
+            <span>Edit Profile (Alt+A)</span>
           </Button>
 
           {isTechnician && (
@@ -673,58 +726,68 @@ export default function AdminTeamMemberDetail() {
               <button
                 type="button"
                 onClick={() => setTab("completed")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 ${
                   tab === "completed"
                     ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                 }`}
+                title="Shortcut: 1 (or Left/Right arrow)"
               >
-                Completed & Paid ({completedPaidCalls.length})
+                <kbd className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">1</kbd>
+                <span>Completed & Paid ({completedPaidCalls.length})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setTab("payment_due")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 ${
                   tab === "payment_due"
                     ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                 }`}
+                title="Shortcut: 2 (or Left/Right arrow)"
               >
-                Cust Payment Due ({completedPaymentDueCalls.length})
+                <kbd className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">2</kbd>
+                <span>Cust Payment Due ({completedPaymentDueCalls.length})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setTab("pending")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 ${
                   tab === "pending"
                     ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                 }`}
+                title="Shortcut: 3 (or Left/Right arrow)"
               >
-                In Progress ({pendingCalls.length})
+                <kbd className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">3</kbd>
+                <span>In Progress ({pendingCalls.length})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setTab("all")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 ${
                   tab === "all"
                     ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                 }`}
+                title="Shortcut: 4 (or Left/Right arrow)"
               >
-                All Month Calls ({monthCalls.length})
+                <kbd className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">4</kbd>
+                <span>All Month Calls ({monthCalls.length})</span>
               </button>
               {isTechnician && (
                 <button
                   type="button"
                   onClick={() => setTab("payouts")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 ${
                     tab === "payouts"
                       ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                   }`}
+                  title="Shortcut: 5 (or Left/Right arrow)"
                 >
-                  Monthly Payouts ({payouts.length})
+                  <kbd className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">5</kbd>
+                  <span>Monthly Payouts ({payouts.length})</span>
                 </button>
               )}
             </div>

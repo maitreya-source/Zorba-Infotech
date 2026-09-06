@@ -245,6 +245,16 @@ export default function AdminCustomers() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [availableGroups]);
 
+  // Auto-focus search input by default on directory load unless returning from a customer detail view
+  useEffect(() => {
+    if (!stateCustomerId && stateSelectedIndex === undefined) {
+      const timer = setTimeout(() => {
+        customerSearchRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [stateCustomerId, stateSelectedIndex]);
+
   // Preserve highlighted customer when returning from customer detail view
   const initialIndex = useMemo(() => {
     if (stateCustomerId && paginatedCustomers.length > 0) {

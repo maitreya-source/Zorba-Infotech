@@ -367,10 +367,10 @@ export function useTallyListNavigation<T>({
         return;
       }
 
-      // 7. 'N' / Alt+N / 'Insert' -> Create New Record
+      // 7. Alt+C / Alt+N / 'Insert' -> Create New Record
+      // Plain 'n' and plain 'a' are strictly banished to prevent accidental modals while typing or navigating
       if (
-        (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key.toLowerCase() === "n" || e.code === "KeyN")) ||
-        (e.altKey && (e.key.toLowerCase() === "n" || e.code === "KeyN" || e.key.toLowerCase() === "a" || e.code === "KeyA" || e.key.toLowerCase() === "c" || e.code === "KeyC")) ||
+        (e.altKey && (e.key.toLowerCase() === "c" || e.code === "KeyC" || e.key.toLowerCase() === "n" || e.code === "KeyN")) ||
         e.key === "Insert"
       ) {
         e.preventDefault();
@@ -429,6 +429,33 @@ export function useTallyListNavigation<T>({
           e.preventDefault();
           onDeleteItem(items[selectedIndex], selectedIndex);
         }
+        return;
+      }
+
+      // 14. Alphanumeric typing while navigating list -> focus search bar and start searching
+      if (
+        effectiveSearchRef?.current &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        e.key.length === 1 &&
+        /^[a-zA-Z0-9]$/.test(e.key)
+      ) {
+        const input = effectiveSearchRef.current;
+        e.preventDefault();
+        input.focus();
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          "value"
+        )?.set;
+        const currentVal = input.value || "";
+        const newVal = currentVal + e.key;
+        if (nativeInputValueSetter) {
+          nativeInputValueSetter.call(input, newVal);
+        } else {
+          input.value = newVal;
+        }
+        input.dispatchEvent(new Event("input", { bubbles: true }));
         return;
       }
     };

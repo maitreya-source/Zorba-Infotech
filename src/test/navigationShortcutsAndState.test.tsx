@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
@@ -19,6 +20,7 @@ function StatefulListTestComponent({
     items,
     initialIndex,
     enabled: true,
+    onOpenItem: vi.fn(),
   });
 
   return (
@@ -158,3 +160,168 @@ describe("Contextual Escape Navigation Flow", () => {
     expect(screen.getByTestId("exit-target").textContent).toBe("/admin/service-calls");
   });
 });
+
+describe("Customer Creation & List Shortcut Safety", () => {
+  function CustomerListTestComponent({ onNewItem }: { onNewItem: () => void }) {
+    const searchRef = { current: null as HTMLInputElement | null };
+    const items = [
+      { id: "cust-1", name: "Naresh Patel" },
+      { id: "cust-2", name: "Anand Sharma" },
+    ];
+    const { selectedIndex } = useTallyListNavigation({
+      items,
+      searchInputRef: searchRef,
+      onOpenItem: vi.fn(),
+      onNewItem,
+    });
+
+    return (
+      <div>
+        <input data-testid="search-input" ref={(el) => (searchRef.current = el)} />
+        <div data-testid="selected-customer">{items[selectedIndex]?.name}</div>
+      </div>
+    );
+  }
+
+  it("does NOT trigger onNewItem when pressing plain 'n' or 'a'", () => {
+    const onNewItem = vi.fn();
+    render(<CustomerListTestComponent onNewItem={onNewItem} />);
+
+    // Press plain 'n' (simulate user typing or pressing 'n')
+    fireEvent.keyDown(window, { key: "n", code: "KeyN" });
+    expect(onNewItem).not.toHaveBeenCalled();
+
+    // Press plain 'a'
+    fireEvent.keyDown(window, { key: "a", code: "KeyA" });
+    expect(onNewItem).not.toHaveBeenCalled();
+  });
+
+  it("triggers onNewItem when pressing Alt+C or Alt+N or Insert", () => {
+    const onNewItem = vi.fn();
+    render(<CustomerListTestComponent onNewItem={onNewItem} />);
+
+    // Press Alt+C
+    fireEvent.keyDown(window, { key: "c", code: "KeyC", altKey: true });
+    expect(onNewItem).toHaveBeenCalledTimes(1);
+
+    // Press Alt+N
+    fireEvent.keyDown(window, { key: "n", code: "KeyN", altKey: true });
+    expect(onNewItem).toHaveBeenCalledTimes(2);
+
+    // Press Insert
+    fireEvent.keyDown(window, { key: "Insert" });
+    expect(onNewItem).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("Team Member Detail Tab Shortcuts & Edit Profile", () => {
+  function TeamMemberDetailShortcutsComponent({
+    onEditProfile,
+  }: {
+    onEditProfile: () => void;
+  }) {
+    const [tab, setTab] = useState<"completed" | "payment_due" | "pending" | "all" | "payouts">("completed");
+    const tabsList: ("completed" | "payment_due" | "pending" | "all" | "payouts")[] = [
+      "completed",
+      "payment_due",
+      "pending",
+      "all",
+      "payouts",
+    ];
+
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Alt+A -> Edit Profile
+        if (e.altKey && (e.key.toLowerCase() === "a" || e.code === "KeyA")) {
+          e.preventDefault();
+          onEditProfile();
+          return;
+        }
+
+        // ArrowLeft -> Previous Tab
+        if (e.key === "ArrowLeft" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+          e.preventDefault();
+          setTab((curr) => {
+            const idx = tabsList.indexOf(curr);
+            const prevIdx = (idx - 1 + tabsList.length) % tabsList.length;
+            return tabsList[prevIdx];
+          });
+          return;
+        }
+
+        // ArrowRight -> Next Tab
+        if (e.key === "ArrowRight" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+          e.preventDefault();
+          setTab((curr) => {
+            const idx = tabsList.indexOf(curr);
+            const nextIdx = (idx + 1) % tabsList.length;
+            return tabsList[nextIdx];
+          });
+          return;
+        }
+
+        // 1-5 Keys -> Jump to Tab
+        if (!e.ctrlKey && !e.altKey && !e.metaKey && ["1", "2", "3", "4", "5"].includes(e.key)) {
+          const targetIdx = parseInt(e.key, 10) - 1;
+          if (targetIdx >= 0 && targetIdx < tabsList.length) {
+            e.preventDefault();
+            setTab(tabsList[targetIdx]);
+            return;
+          }
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onEditProfile]);
+
+    return (
+      <div>
+        <div data-testid="active-tab">{tab}</div>
+      </div>
+    );
+  }
+
+  it("cycles tabs with ArrowRight and ArrowLeft", () => {
+    render(<TeamMemberDetailShortcutsComponent onEditProfile={vi.fn()} />);
+    expect(screen.getByTestId("active-tab").textContent).toBe("completed");
+
+    // ArrowRight -> payment_due
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByTestId("active-tab").textContent).toBe("payment_due");
+
+    // ArrowRight -> pending
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByTestId("active-tab").textContent).toBe("pending");
+
+    // ArrowLeft -> back to payment_due
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(screen.getByTestId("active-tab").textContent).toBe("payment_due");
+  });
+
+  it("jumps to specific tabs using 1-5 numeric keys", () => {
+    render(<TeamMemberDetailShortcutsComponent onEditProfile={vi.fn()} />);
+
+    // Press '4' -> all
+    fireEvent.keyDown(window, { key: "4" });
+    expect(screen.getByTestId("active-tab").textContent).toBe("all");
+
+    // Press '5' -> payouts
+    fireEvent.keyDown(window, { key: "5" });
+    expect(screen.getByTestId("active-tab").textContent).toBe("payouts");
+
+    // Press '1' -> completed
+    fireEvent.keyDown(window, { key: "1" });
+    expect(screen.getByTestId("active-tab").textContent).toBe("completed");
+  });
+
+  it("triggers onEditProfile when Alt+A is pressed", () => {
+    const onEditProfile = vi.fn();
+    render(<TeamMemberDetailShortcutsComponent onEditProfile={onEditProfile} />);
+
+    fireEvent.keyDown(window, { key: "a", code: "KeyA", altKey: true });
+    expect(onEditProfile).toHaveBeenCalledTimes(1);
+  });
+});
+
+
