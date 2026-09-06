@@ -551,6 +551,12 @@ export default function AdminQuotationForm() {
     setCustomerEmail(cust.email || "");
     setCustomerAddress(cust.address || "");
     toast.info(`Selected customer: ${cust.name}`);
+
+    // Seamless keyboard handoff: focus date of issuance next
+    setTimeout(() => {
+      const dateInput = formContainerRef.current?.querySelector('input[type="date"]') as HTMLInputElement | null;
+      dateInput?.focus();
+    }, 60);
   };
 
   const handleClearCustomer = () => {
@@ -613,6 +619,14 @@ export default function AdminQuotationForm() {
       };
       return copy;
     });
+
+    // Seamless keyboard handoff: auto-focus and select quantity field
+    setTimeout(() => {
+      const row = document.querySelector(`[data-quote-row="${index}"]`);
+      const qtyInput = row?.querySelector('input[type="number"]') as HTMLInputElement | null;
+      qtyInput?.focus();
+      qtyInput?.select();
+    }, 60);
   };
 
   const handleUpdateItem = (index: number, field: keyof QuotationItem, value: any) => {

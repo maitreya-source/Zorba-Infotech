@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
+import { cn } from "@/lib/utils";
 import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle, Crown, Code, ChevronRight, Lock, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -320,6 +322,17 @@ export default function AdminTeam() {
     return matchesRole && matchesSearch;
   });
 
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Tally Keyboard Navigation for Team & Personnel Directory (ArrowUp/Down, Enter to open, / for search, Alt+A for new)
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: filtered,
+    searchInputRef: searchRef,
+    onOpenItem: (member) => navigate(`/admin/team/${member.id}`),
+    onNewItem: () => openCreateModal(),
+    onDeleteItem: (member) => setDeleteId(member.id),
+  });
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto text-xs">
       {/* Top Header Card */}
@@ -352,7 +365,8 @@ export default function AdminTeam() {
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search by name, phone, specialization..."
+              ref={searchRef}
+              placeholder="Search by name, phone, specialization... (Press / to search)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-9 text-xs rounded-xl"
@@ -422,18 +436,27 @@ export default function AdminTeam() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((member) => (
-                  <tr
-                    key={member.id}
-                    onClick={() => navigate(`/admin/team/${member.id}`)}
-                    className="hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer group"
-                  >
-                    {/* Name with Avatar */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <AvatarGraphic avatarId={member.avatar || "penguin"} size="sm" />
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1">
+                {filtered.map((member, idx) => {
+                  const rowProps = getRowProps(idx);
+                  return (
+                    <tr
+                      key={member.id}
+                      {...rowProps}
+                      onClick={() => navigate(`/admin/team/${member.id}`)}
+                      className={cn(
+                        "hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer group",
+                        selectedIndex === idx && "bg-blue-500/10 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40"
+                      )}
+                    >
+                      {/* Name with Avatar */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          {selectedIndex === idx && (
+                            <span className="text-blue-500 font-bold text-xs">▶</span>
+                          )}
+                          <AvatarGraphic avatarId={member.avatar || "penguin"} size="sm" />
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1">
                             <span>{member.name}</span>
                           </div>
                           {member.email && (
@@ -541,7 +564,8 @@ export default function AdminTeam() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -15,6 +15,18 @@ export function isEditableElement(el: EventTarget | null): boolean {
   return false;
 }
 
+/** Check if an element is a navigable form control (input, textarea, select, combobox, or tally field) */
+export function isFormNavigableElement(el: EventTarget | null): boolean {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (isEditableElement(el)) return true;
+  const tag = el.tagName.toUpperCase();
+  if (tag === "SELECT") return true;
+  if (el.getAttribute("role") === "combobox") return true;
+  if (el.hasAttribute("data-tally-field")) return true;
+  if (el.closest('[role="combobox"]')) return true;
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // 1. GLOBAL NAVIGATION CHORD HOOK (G -> S, G -> Q, etc.)
 // ---------------------------------------------------------------------------
@@ -102,7 +114,7 @@ export function useTallyGlobalNavigation(options: UseTallyGlobalOptions = {}) {
       }
 
       const target = e.target as HTMLElement | null;
-      const insideInput = isEditableElement(target);
+      const insideInput = isFormNavigableElement(target);
 
       // 2. Alt + G -> Always triggers Go To chord, even from inside input
       if (e.altKey && (e.key.toLowerCase() === "g" || e.code === "KeyG")) {
@@ -169,6 +181,7 @@ export interface UseTallyListOptions<T> {
   onPrevPage?: () => void;
   onNextPage?: () => void;
   searchRef?: RefObject<HTMLInputElement | null>;
+  searchInputRef?: RefObject<HTMLInputElement | null>;
   enabled?: boolean;
 }
 
@@ -183,9 +196,11 @@ export function useTallyListNavigation<T>({
   onPrevPage,
   onNextPage,
   searchRef,
+  searchInputRef,
   enabled = true,
 }: UseTallyListOptions<T>) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const effectiveSearchRef = searchInputRef || searchRef;
 
   // Keep index clamped when items change
   useEffect(() => {
@@ -210,7 +225,7 @@ export function useTallyListNavigation<T>({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const insideSearchInput = searchRef?.current && target === searchRef.current;
+      const insideSearchInput = effectiveSearchRef?.current && target === effectiveSearchRef.current;
       const insideOtherInput = !insideSearchInput && isEditableElement(target);
 
       // If user is inside an input other than search, ignore list shortcuts
@@ -220,13 +235,13 @@ export function useTallyListNavigation<T>({
       if (insideSearchInput) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          searchRef.current?.blur();
+          effectiveSearchRef.current?.blur();
           setSelectedIndex(0);
           return;
         }
         if (e.key === "Escape") {
           e.preventDefault();
-          searchRef.current?.blur();
+          effectiveSearchRef.current?.blur();
           return;
         }
         return;
@@ -391,21 +406,29 @@ export function useTallyFormNavigation({
       'input:not([type="hidden"]):not([disabled]):not([readonly]):not([data-tally-skip])',
       'select:not([disabled]):not([data-tally-skip])',
       'textarea:not([disabled]):not([readonly]):not([data-tally-skip])',
-      '[role="combobox"]:not([disabled])',
+      '[role="combobox"]:not([disabled]):not([data-tally-skip])',
+      'button[role="combobox"]:not([disabled])',
       '[data-tally-field]:not([disabled])',
+      'button[data-tally-field]:not([disabled])',
     ].join(", ");
 
     const elements = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
       (el) => el.offsetParent !== null && !el.closest('[data-tally-ignore="true"]')
     );
 
-    const currentIndex = elements.indexOf(currentEl);
+    const focusableEl = currentEl.closest<HTMLElement>(focusableSelector) || currentEl;
+    const currentIndex = elements.indexOf(focusableEl);
     if (currentIndex === -1) return;
 
     const nextIndex = backwards ? currentIndex - 1 : currentIndex + 1;
     if (nextIndex >= 0 && nextIndex < elements.length) {
       const nextEl = elements[nextIndex];
       nextEl.focus();
+      try {
+        nextEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch {
+        // fallback if scrollIntoView not supported
+      }
       if (nextEl instanceof HTMLInputElement && ["text", "number", "tel", "email"].includes(nextEl.type)) {
         nextEl.select();
       }
@@ -481,9 +504,9 @@ export function useTallyFormNavigation({
         return;
       }
 
-      // 6. Enter-to-advance inside form inputs
+      // 6. Enter-to-advance inside form inputs, selects, and comboboxes
       const target = e.target as HTMLElement | null;
-      if (target && isEditableElement(target)) {
+      if (target && isFormNavigableElement(target)) {
         // In TEXTAREA: Enter is normal newline; Ctrl+Enter or Shift+Enter advances
         if (target.tagName === "TEXTAREA") {
           if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -493,8 +516,11 @@ export function useTallyFormNavigation({
           return;
         }
 
-        // If inside a typeahead dropdown popup, let typeahead handle suggestion pick
-        if (target.getAttribute("aria-expanded") === "true" || document.querySelector('[data-typeahead-open="true"]')) {
+        // If inside an open combobox/typeahead popup (user is picking an option), let user confirm choice
+        if (
+          target.getAttribute("aria-expanded") === "true" ||
+          document.querySelector('[data-typeahead-open="true"]')
+        ) {
           return;
         }
 

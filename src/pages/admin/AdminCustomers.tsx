@@ -15,7 +15,8 @@ import {
 import { getCustomersPaginated, searchCustomers, deleteCustomer } from "@/lib/firestore";
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Customer } from "@/lib/types";
-import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
+import { cn } from "@/lib/utils";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import ImportCustomersModal from "@/components/admin/ImportCustomersModal";
@@ -118,9 +119,17 @@ export default function AdminCustomers() {
     loadData(pageNumber - 1, prevDoc);
   };
 
-  useTallyShortcuts({
-    onAltC: () => setShowCreateModal(true),
-    onAltA: () => setShowCreateModal(true),
+  const customerSearchRef = useRef<HTMLInputElement>(null);
+
+  // Tally Keyboard Navigation for Customer Directory (ArrowUp/Down, Enter to open, / to search, Alt+A / Alt+C for new, Delete, [ / ] for paging)
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: customers,
+    searchInputRef: customerSearchRef,
+    onOpenItem: (cust) => navigate(`/admin/customers/${cust.id}`),
+    onNewItem: () => setShowCreateModal(true),
+    onDeleteItem: (cust) => setDeleteId(cust.id),
+    onPrevPage: handlePrevPage,
+    onNextPage: handleNextPage,
   });
 
   const handleDelete = async () => {
@@ -174,9 +183,10 @@ export default function AdminCustomers() {
 
       {/* Filter / Search bar */}
       <SearchFilterBar
+        inputRef={customerSearchRef}
         value={search}
         onChange={handleSearchChange}
-        placeholder="Search by customer name, phone, company, email…"
+        placeholder="Search by customer name, phone, company, email… (Press / to search)"
         count={customers.length}
         countLabel="Current Page"
       />
@@ -219,28 +229,37 @@ export default function AdminCustomers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {customers.map((cust) => (
-                  <tr
-                    key={cust.id}
-                    onClick={(e) => {
-                      const target = e.target as HTMLElement;
-                      if (
-                        target.closest("button") ||
-                        target.closest("a") ||
-                        target.closest("[role='menuitem']")
-                      ) {
-                        return;
-                      }
-                      navigate(`/admin/customers/${cust.id}`);
-                    }}
-                    className="hover:bg-blue-50/40 dark:hover:bg-slate-900/50 transition-colors group cursor-pointer"
-                  >
-                    {/* Name & Company */}
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
-                        <span>{cust.name}</span>
-                        <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
-                      </div>
+                {customers.map((cust, idx) => {
+                  const rowProps = getRowProps(idx);
+                  return (
+                    <tr
+                      key={cust.id}
+                      {...rowProps}
+                      onClick={(e) => {
+                        const target = e.target as HTMLElement;
+                        if (
+                          target.closest("button") ||
+                          target.closest("a") ||
+                          target.closest("[role='menuitem']")
+                        ) {
+                          return;
+                        }
+                        navigate(`/admin/customers/${cust.id}`);
+                      }}
+                      className={cn(
+                        "hover:bg-blue-50/40 dark:hover:bg-slate-900/50 transition-colors group cursor-pointer",
+                        selectedIndex === idx && "bg-blue-500/10 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40"
+                      )}
+                    >
+                      {/* Name & Company */}
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                          {selectedIndex === idx && (
+                            <span className="text-blue-500 font-bold text-xs">▶</span>
+                          )}
+                          <span>{cust.name}</span>
+                          <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+                        </div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                         {cust.companyName && cust.companyName !== cust.name && (
                           <span className="text-[11px] text-[#2563EB] font-semibold flex items-center gap-1">
@@ -328,7 +347,8 @@ export default function AdminCustomers() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

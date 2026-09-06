@@ -225,15 +225,15 @@ export default function ShortcutsHelpModal({ open, onOpenChange }: ShortcutsHelp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl border bg-card shadow-2xl">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/20">
+      <DialogContent className="w-[95vw] sm:max-w-2xl p-0 overflow-hidden rounded-2xl border bg-card shadow-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b bg-muted/20 pr-12">
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2.5 font-display text-lg">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Keyboard className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2.5 font-display text-base sm:text-lg">
+              <div className="flex h-8 sm:h-9 w-8 sm:w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                <Keyboard className="h-4 sm:h-5 w-4 sm:w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span>Tally ERP Keyboard Shortcuts</span>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     High Speed

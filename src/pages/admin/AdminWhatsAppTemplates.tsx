@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import {
   MessageSquare,
   Plus,
@@ -290,6 +291,17 @@ export default function AdminWhatsAppTemplates() {
     })
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Tally Keyboard Navigation for WhatsApp Templates (ArrowUp/Down, Enter to open, / for search, Alt+A for new)
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: filtered,
+    searchInputRef: searchRef,
+    onOpenItem: (tpl) => openEditModal(tpl),
+    onNewItem: () => openCreateModal(),
+    onDeleteItem: (tpl) => setDeleteId(tpl.id),
+  });
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto text-xs">
       {/* 1. Top Integrated Hero Header */}
@@ -365,7 +377,8 @@ export default function AdminWhatsAppTemplates() {
         <div className="relative min-w-[220px] w-full md:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
-            placeholder="Search service templates…"
+            ref={searchRef}
+            placeholder="Search service templates… (Press / to search)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs w-full"
@@ -393,27 +406,43 @@ export default function AdminWhatsAppTemplates() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-          {filtered.map((tpl) => (
-            <div
-              key={tpl.id}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group"
-            >
-              <div className="space-y-2.5">
-                {/* Top Badges & Meta ID */}
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-extrabold text-slate-900 dark:text-white text-xs leading-snug group-hover:text-emerald-600 transition-colors">
-                      {tpl.displayName}
-                    </h3>
-                    <p className="font-mono text-[10px] text-slate-400 mt-0.5">
-                      ID: <code className="text-slate-600 dark:text-slate-300 font-bold">{tpl.name}</code>
-                    </p>
-                  </div>
+          {filtered.map((tpl, idx) => {
+            const rowProps = getRowProps(idx);
+            return (
+              <div
+                key={tpl.id}
+                {...rowProps}
+                onClick={(e) => {
+                  const t = e.target as HTMLElement;
+                  if (t.closest("button") || t.closest("a")) return;
+                  rowProps.onClick?.();
+                  openEditModal(tpl);
+                }}
+                className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group cursor-pointer ${
+                  rowProps.className
+                }`}
+              >
+                <div className="space-y-2.5">
+                  {/* Top Badges & Meta ID */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-1.5 min-w-0">
+                      {idx === selectedIndex && (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-black text-xs animate-in fade-in duration-100 mt-0.5">▶</span>
+                      )}
+                      <div className="min-w-0">
+                        <h3 className="font-extrabold text-slate-900 dark:text-white text-xs leading-snug group-hover:text-emerald-600 transition-colors truncate">
+                          {tpl.displayName}
+                        </h3>
+                        <p className="font-mono text-[10px] text-slate-400 mt-0.5">
+                          ID: <code className="text-slate-600 dark:text-slate-300 font-bold">{tpl.name}</code>
+                        </p>
+                      </div>
+                    </div>
 
-                  <Badge variant="outline" className="text-[9px] uppercase font-bold shrink-0 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800">
-                    {tpl.targetModule.replace(/_/g, " ")}
-                  </Badge>
-                </div>
+                    <Badge variant="outline" className="text-[9px] uppercase font-bold shrink-0 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                      {tpl.targetModule.replace(/_/g, " ")}
+                    </Badge>
+                  </div>
 
                 {/* Template Message Preview Area */}
                 <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/70 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs shadow-inner space-y-2">
@@ -477,7 +506,8 @@ export default function AdminWhatsAppTemplates() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

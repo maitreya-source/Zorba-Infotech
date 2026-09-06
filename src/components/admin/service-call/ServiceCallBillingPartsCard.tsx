@@ -70,6 +70,7 @@ export default function ServiceCallBillingPartsCard({
           {parts.map((p, idx) => (
             <div
               key={p.id || idx}
+              data-part-row={idx}
               className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-3"
             >
               <div className="flex items-center justify-between gap-2">
@@ -99,6 +100,12 @@ export default function ServiceCallBillingPartsCard({
                     if (prod.price && prod.price > 0) {
                       onUpdatePart(idx, "unitPrice", prod.price);
                     }
+                    setTimeout(() => {
+                      const row = document.querySelector(`[data-part-row="${idx}"]`);
+                      const qtyInput = row?.querySelector('input[type="number"]') as HTMLInputElement | null;
+                      qtyInput?.focus();
+                      qtyInput?.select();
+                    }, 60);
                   }}
                   onAddNewProduct={onOpenProductModal}
                   placeholder="Search products by model, name..."
@@ -135,6 +142,21 @@ export default function ServiceCallBillingPartsCard({
                     placeholder="0"
                     value={p.unitPrice === 0 ? "" : p.unitPrice}
                     onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (idx === parts.length - 1) {
+                          onAddPartRow();
+                          setTimeout(() => {
+                            const nextRowInput = document.querySelector(`[data-part-row="${idx + 1}"] input`) as HTMLElement | null;
+                            nextRowInput?.focus();
+                          }, 60);
+                        } else {
+                          const nextRowInput = document.querySelector(`[data-part-row="${idx + 1}"] input`) as HTMLElement | null;
+                          nextRowInput?.focus();
+                        }
+                      }
+                    }}
                     onChange={(e) => {
                       const raw = e.target.value;
                       const clean = raw === "" ? 0 : Number(raw.replace(/^0+(?=\d)/, ''));
@@ -188,6 +210,12 @@ export default function ServiceCallBillingPartsCard({
                     if (prod.price && prod.price > 0) {
                       onUpdatePart(idx, "unitPrice", prod.price);
                     }
+                    setTimeout(() => {
+                      const row = document.querySelector(`[data-part-row="${idx}"]`);
+                      const qtyInput = row?.querySelector('input[type="number"]') as HTMLInputElement | null;
+                      qtyInput?.focus();
+                      qtyInput?.select();
+                    }, 60);
                   }}
                   onAddNewProduct={onOpenProductModal}
                   placeholder="Search products by model, name, or type custom part..."

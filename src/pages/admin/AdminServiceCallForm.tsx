@@ -650,6 +650,14 @@ export default function AdminServiceCallForm() {
     if (cust.address) {
       setOnsiteAddress(toTitleCase(cust.address));
     }
+
+    // Seamless keyboard handoff: focus device category / model next
+    setTimeout(() => {
+      const nextInput = formContainerRef.current?.querySelector(
+        '[data-section="device"] button[role="combobox"], [data-section="device"] input'
+      ) as HTMLElement | null;
+      nextInput?.focus();
+    }, 60);
   };
 
   // Safe Escape handler: closes modals without exiting, warns on unsaved service call

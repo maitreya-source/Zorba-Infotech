@@ -434,8 +434,8 @@ export default function AdminLayout() {
           <div id="admin-header-center" className="flex items-center justify-center flex-1 min-w-0 overflow-x-auto no-scrollbar" />
 
           {/* Right: Search + Shortcuts + Live Staff On Duty Board + Back Link */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Global Omnisearch Trigger - hidden on squeezed/mobile screens */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 pr-1 sm:pr-3">
+            {/* Global Omnisearch Trigger - 3rd priority: hidden on smaller screens */}
             <button
               type="button"
               onClick={() => setShowSearchModal(true)}
@@ -449,11 +449,13 @@ export default function AdminLayout() {
               </kbd>
             </button>
 
-            {/* Keyboard Shortcuts Trigger - hidden on screens < 2xl */}
+            {/* Keyboard Shortcuts Trigger - 2nd lowest priority: hidden on screens < 2xl when on forms, < xl otherwise */}
             <button
               type="button"
               onClick={() => setShowShortcutsModal(true)}
-              className="h-9 hidden 2xl:inline-flex items-center gap-1.5 px-3 rounded-xl border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs"
+              className={`h-9 items-center gap-1.5 px-3 rounded-xl border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white text-xs font-semibold text-slate-200 transition-all cursor-pointer shadow-xs ${
+                isServiceCallForm || isQuotationForm ? "hidden 2xl:inline-flex" : "hidden xl:inline-flex"
+              }`}
               title="Keyboard Shortcuts (?)"
             >
               <Keyboard className="h-3.5 w-3.5 text-slate-400" />
@@ -463,16 +465,21 @@ export default function AdminLayout() {
               </kbd>
             </button>
 
-            {/* Live Staff On Duty Pill - hidden on screens < xl */}
-            <div className="hidden xl:block">
-              <StaffOnDutyBoard onlineStaff={onlineStaff} />
-            </div>
+            {/* Live Staff On Duty Pill - LEAST priority: completely hidden on forms, only shown on 2xl+ on dashboards */}
+            {!isServiceCallForm && !isQuotationForm && (
+              <div className="hidden 2xl:block">
+                <StaffOnDutyBoard onlineStaff={onlineStaff} />
+              </div>
+            )}
 
-            {/* Prominent Prioritized Back Action */}
+            {/* Visual Divider before Primary Action Button */}
+            <div className="h-6 w-px bg-slate-800/90 mx-1 hidden sm:block" />
+
+            {/* Prominent Prioritized Back Action with generous breathing room */}
             {isServiceCallForm ? (
               <Link
                 to="/admin/service-calls"
-                className="h-9 inline-flex items-center gap-2 rounded-xl border border-blue-500/50 bg-blue-600/20 hover:bg-blue-600/30 text-blue-200 hover:text-white px-3 text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer"
+                className="h-9 inline-flex items-center gap-2 rounded-xl border border-blue-500/60 bg-blue-600/25 hover:bg-blue-600/35 text-blue-200 hover:text-white px-3.5 text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer mr-1 sm:mr-2"
                 title="Return to Service Calls List"
               >
                 <ArrowLeft className="h-4 w-4 shrink-0 text-blue-400" />
@@ -482,7 +489,7 @@ export default function AdminLayout() {
             ) : isQuotationForm ? (
               <Link
                 to="/admin/quotations"
-                className="h-9 inline-flex items-center gap-2 rounded-xl border border-blue-500/50 bg-blue-600/20 hover:bg-blue-600/30 text-blue-200 hover:text-white px-3 text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer"
+                className="h-9 inline-flex items-center gap-2 rounded-xl border border-blue-500/60 bg-blue-600/25 hover:bg-blue-600/35 text-blue-200 hover:text-white px-3.5 text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer mr-1 sm:mr-2"
                 title="Return to Quotations List"
               >
                 <ArrowLeft className="h-4 w-4 shrink-0 text-blue-400" />
@@ -494,7 +501,7 @@ export default function AdminLayout() {
                 href="/"
                 target="_blank"
                 rel="noreferrer"
-                className="h-9 inline-flex items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-3 text-xs font-semibold text-slate-200 shadow-xs transition-all shrink-0"
+                className="h-9 inline-flex items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 hover:border-slate-600 hover:text-white px-3 text-xs font-semibold text-slate-200 shadow-xs transition-all shrink-0 mr-1 sm:mr-2"
                 title="Open Main Website"
               >
                 <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-slate-400" />
@@ -514,7 +521,7 @@ export default function AdminLayout() {
       </div>
 
       {/* Attached Full-Height Right Action Sidebar Portal Target (Extends to Top of Page, h-full on Desktop/Laptop >=1024px) */}
-      <div id="admin-right-rail" className="h-full shrink-0 empty:hidden print:hidden z-20 hidden lg:block" />
+      <div id="admin-right-rail" className="h-full shrink-0 empty:hidden print:hidden z-20 hidden lg:block border-l border-slate-800/90 shadow-xl" />
 
       {/* Tally 'Go To' Sequential Navigation HUD */}
       {isChordActive && (
@@ -522,34 +529,34 @@ export default function AdminLayout() {
           role="status"
           aria-live="polite"
           aria-label="Tally Go To Module Jumper"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-150 print:hidden"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-150 print:hidden max-w-[calc(100vw-1.5rem)] sm:max-w-max"
         >
-          <div className="flex items-center gap-3 bg-slate-900/95 text-white border border-blue-500/70 shadow-2xl px-5 py-2.5 rounded-2xl backdrop-blur-md text-xs font-medium">
+          <div className="flex items-center gap-2 sm:gap-3 bg-slate-900/95 text-white border border-blue-500/70 shadow-2xl px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl backdrop-blur-md text-xs font-medium max-w-full overflow-hidden">
             <span className="flex h-2.5 w-2.5 rounded-full bg-blue-500 animate-ping shrink-0" />
-            <span className="font-extrabold text-blue-400 uppercase tracking-wider font-mono text-[11px] shrink-0">
-              TALLY GO TO:
+            <span className="font-extrabold text-blue-400 uppercase tracking-wider font-mono text-[10px] sm:text-[11px] shrink-0">
+              GO TO:
             </span>
-            <div className="flex items-center gap-2.5 font-mono text-xs overflow-x-auto">
-              <span>
+            <div className="flex items-center gap-1.5 sm:gap-2.5 font-mono text-[11px] sm:text-xs overflow-x-auto no-scrollbar py-0.5">
+              <span className="whitespace-nowrap">
                 <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">S</kbd> Service
               </span>
-              <span>
+              <span className="whitespace-nowrap">
                 <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">Q</kbd> Quotes
               </span>
-              <span>
+              <span className="whitespace-nowrap">
                 <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">P</kbd> Products
               </span>
-              <span>
+              <span className="whitespace-nowrap">
                 <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">C</kbd> Customers
               </span>
-              <span>
+              <span className="whitespace-nowrap">
                 <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-amber-400">R</kbd> Reports
               </span>
             </div>
             <button
               type="button"
               onClick={cancelChord}
-              className="ml-3 text-slate-400 hover:text-white text-[11px] underline underline-offset-2 cursor-pointer shrink-0"
+              className="ml-2 sm:ml-3 text-slate-400 hover:text-white text-[11px] underline underline-offset-2 cursor-pointer shrink-0"
             >
               Esc
             </button>

@@ -127,11 +127,17 @@ export default function CustomerTypeahead({
   };
 
   return (
-    <div ref={wrapperRef} className={`relative ${isOpen ? "z-[60]" : "z-10"} ${className}`}>
+    <div
+      ref={wrapperRef}
+      data-typeahead-open={isOpen && results.length > 0 ? "true" : undefined}
+      className={`relative ${isOpen ? "z-[60]" : "z-10"} ${className}`}
+    >
       <div className="relative">
         <Input
           id={id}
           type="text"
+          role="combobox"
+          aria-expanded={isOpen && results.length > 0}
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={() => {

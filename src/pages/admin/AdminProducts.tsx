@@ -46,7 +46,8 @@ import {
 } from "@/lib/firestore";
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Product, Category } from "@/lib/types";
-import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
+import { cn } from "@/lib/utils";
 
 type SortField = "name" | "category" | "price" | "stock" | "visibility" | "createdAt";
 type SortDirection = "asc" | "desc";
@@ -279,9 +280,17 @@ export default function AdminProducts() {
     );
   };
 
-  useTallyShortcuts({
-    onAltC: () => navigate("/admin/products/new"),
-    onAltA: () => navigate("/admin/products/new"),
+  const productSearchRef = useRef<HTMLInputElement>(null);
+
+  // Tally Keyboard Navigation for Product Catalog (ArrowUp/Down, Enter to edit, / to search, Alt+A / Alt+C for new, Delete, [ / ] for paging)
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: paginatedProducts,
+    searchInputRef: productSearchRef,
+    onOpenItem: (product) => navigate(`/admin/products/${product.id}/edit`),
+    onNewItem: () => navigate("/admin/products/new"),
+    onDeleteItem: (product) => setDeleteId(product.id),
+    onPrevPage: () => setCurrentPage((p) => Math.max(1, p - 1)),
+    onNextPage: () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
   });
 
   const handleToggleVisibility = async (productId: string, currentVal: boolean | undefined) => {
@@ -369,9 +378,10 @@ export default function AdminProducts() {
 
       {/* Filter / Search Bar */}
       <SearchFilterBar
+        inputRef={productSearchRef}
         value={search}
         onChange={(val) => setSearch(val)}
-        placeholder="Search by model, name, brand, code, category…"
+        placeholder="Search by model, name, brand, code, category… (Press / to search)"
         count={filteredProducts.length}
         countLabel="Total Products"
       >
@@ -454,16 +464,25 @@ export default function AdminProducts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {paginatedProducts.map((product) => (
-                  <tr
-                    key={product.id}
-                    onClick={() => navigate(`/admin/products/${product.id}/edit`)}
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors cursor-pointer group"
-                    title={`Click row to edit ${product.name}`}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {product.photoUrl ? (
+                {paginatedProducts.map((product, idx) => {
+                  const rowProps = getRowProps(idx);
+                  return (
+                    <tr
+                      key={product.id}
+                      {...rowProps}
+                      onClick={() => navigate(`/admin/products/${product.id}/edit`)}
+                      className={cn(
+                        "hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors cursor-pointer group",
+                        selectedIndex === idx && "bg-blue-500/10 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40"
+                      )}
+                      title={`Click row to edit ${product.name}`}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {selectedIndex === idx && (
+                            <span className="text-blue-500 font-bold text-xs">▶</span>
+                          )}
+                          {product.photoUrl ? (
                           <img
                             src={product.photoUrl}
                             alt={product.name}
@@ -595,7 +614,8 @@ export default function AdminProducts() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

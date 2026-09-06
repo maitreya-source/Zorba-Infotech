@@ -11,6 +11,7 @@ interface SearchFilterBarProps {
   countLabel?: string;
   children?: ReactNode;
   className?: string;
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
 /**
@@ -25,6 +26,7 @@ export default function SearchFilterBar({
   countLabel = "Items",
   children,
   className = "",
+  inputRef,
 }: SearchFilterBarProps) {
   return (
     <div
@@ -33,6 +35,7 @@ export default function SearchFilterBar({
       <div className="relative flex-1 max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <Input
+          ref={inputRef}
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}

@@ -50,6 +50,7 @@ import {
   type ReportFilters,
 } from "@/lib/reportUtils";
 import ReportWhatsAppShareModal from "@/components/admin/ReportWhatsAppShareModal";
+import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 
 type PeriodPreset = "today" | "yesterday" | "last7" | "this_month" | "last_month" | "custom";
 type LayoutMode = "table" | "daily_grouped";
@@ -309,6 +310,17 @@ export default function AdminReports() {
   }, [sortedLedgerCalls, currentPage, pageSize]);
 
   const totalLedgerPages = pageSize > 0 ? Math.ceil(sortedLedgerCalls.length / pageSize) || 1 : 1;
+
+  const reportSearchRef = useRef<HTMLInputElement>(null);
+
+  // Tally Keyboard Navigation for Daily & Monthly Registers (ArrowUp/Down, Enter to open, / for search, [ / ] for pages)
+  const { selectedIndex, getRowProps } = useTallyListNavigation({
+    items: paginatedLedgerCalls,
+    searchInputRef: reportSearchRef,
+    onOpenItem: (call) => navigate(`/admin/service-calls/${call.id}/edit`),
+    onPrevPage: () => setCurrentPage((p) => Math.max(1, p - 1)),
+    onNextPage: () => setCurrentPage((p) => Math.min(totalLedgerPages, p + 1)),
+  });
 
   // Stepper controls (Previous / Next)
   const handleStepMonth = (direction: -1 | 1) => {
@@ -710,7 +722,8 @@ export default function AdminReports() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search ticket #, customer, phone, device, issue, tech..."
+              ref={reportSearchRef}
+              placeholder="Search ticket #, customer, phone, device, issue, tech... (Press / to search)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-8 h-9 text-xs rounded-xl bg-background"
@@ -941,27 +954,36 @@ export default function AdminReports() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {paginatedLedgerCalls.map((call) => (
-                  <tr
-                    key={call.id}
-                    onClick={(e) => {
-                      const t = e.target as HTMLElement;
-                      if (t.closest("button") || t.closest("a")) return;
-                      navigate(`/admin/service-calls/${call.id}/edit`);
-                    }}
-                    className="hover:bg-blue-50/60 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
-                  >
-                    <td className="p-3 font-mono font-bold text-primary whitespace-nowrap">
-                      <Link
-                        to={`/admin/service-calls/${call.id}/edit`}
-                        className="hover:underline flex items-center gap-1"
-                        title="Open Service Call Ticket"
-                      >
-                        <span>{call.ticketNo}</span>
-                        <ExternalLink className="h-3 w-3 opacity-60" />
-                      </Link>
-                    </td>
-                    <td className="p-3 font-mono text-muted-foreground whitespace-nowrap">
+                {paginatedLedgerCalls.map((call, idx) => {
+                  const rowProps = getRowProps(idx);
+                  return (
+                    <tr
+                      key={call.id}
+                      {...rowProps}
+                      onClick={(e) => {
+                        const t = e.target as HTMLElement;
+                        if (t.closest("button") || t.closest("a")) return;
+                        rowProps.onClick?.();
+                        navigate(`/admin/service-calls/${call.id}/edit`);
+                      }}
+                      className={`hover:bg-blue-50/60 dark:hover:bg-slate-800/60 cursor-pointer transition-colors ${rowProps.className}`}
+                    >
+                      <td className="p-3 font-mono font-bold text-primary whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          {idx === selectedIndex && (
+                            <span className="text-blue-600 dark:text-blue-400 font-black text-xs animate-in fade-in duration-100">▶</span>
+                          )}
+                          <Link
+                            to={`/admin/service-calls/${call.id}/edit`}
+                            className="hover:underline flex items-center gap-1"
+                            title="Open Service Call Ticket"
+                          >
+                            <span>{call.ticketNo}</span>
+                            <ExternalLink className="h-3 w-3 opacity-60" />
+                          </Link>
+                        </div>
+                      </td>
+                      <td className="p-3 font-mono text-muted-foreground whitespace-nowrap">
                       {call.dateTime ? call.dateTime.slice(0, 10) : "N/A"}
                     </td>
                     <td className="p-3 whitespace-nowrap">
@@ -1030,8 +1052,9 @@ export default function AdminReports() {
                       </Badge>
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                );
+              })}
+            </tbody>
             </table>
           </div>
 

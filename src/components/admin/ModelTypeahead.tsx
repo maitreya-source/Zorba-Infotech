@@ -154,10 +154,16 @@ export default function ModelTypeahead({
   ).slice(0, 5);
 
   return (
-    <div ref={wrapperRef} className={`relative w-full ${isOpen ? "z-[60]" : "z-10"} ${className}`}>
+    <div
+      ref={wrapperRef}
+      data-typeahead-open={isOpen && results.length > 0 ? "true" : undefined}
+      className={`relative w-full ${isOpen ? "z-[60]" : "z-10"} ${className}`}
+    >
       <div className="relative w-full">
         <Input
           type="text"
+          role="combobox"
+          aria-expanded={isOpen && results.length > 0}
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}

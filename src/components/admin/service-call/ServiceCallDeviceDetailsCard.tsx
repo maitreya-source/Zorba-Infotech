@@ -108,7 +108,11 @@ export default function ServiceCallDeviceDetailsCard({
   return (
     <>
       {/* Section 2: Device & Warranty Details */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4">
+      <div
+        data-section="device"
+        data-shortcut-section="device"
+        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-4"
+      >
         <div className="flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-xs">
             2
