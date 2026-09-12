@@ -79,7 +79,9 @@ import type {
   PaymentStatus,
   PaymentMode,
   Product,
+  ServiceCallProduct,
 } from "@/lib/types";
+import { getServiceCallProducts } from "@/lib/types";
 import TimelineEventsListModal from "@/components/admin/TimelineEventsListModal";
 import AddTimelineEventModal from "@/components/admin/AddTimelineEventModal";
 import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
@@ -244,6 +246,76 @@ export default function AdminServiceCallForm() {
   const [issueDescription, setIssueDescription] = useState("");
   const [warrantyStatus, setWarrantyStatus] = useState<WarrantyStatus>("not_applicable");
   const [status, setStatus] = useState<ServiceCallStatus>("received");
+
+  // Multi-Device Products State
+  const [products, setProducts] = useState<ServiceCallProduct[]>([
+    {
+      id: "prod-initial-0",
+      deviceCategory: "CCTV & Security",
+      modelNumber: "",
+      serialNumber: "",
+      quantity: 1,
+      warrantyStatus: "not_applicable",
+      issueDescription: "",
+      dateOfPurchase: "",
+      billNumber: "",
+    },
+  ]);
+
+  const handleAddProduct = () => {
+    setProducts((prev) => [
+      ...prev,
+      {
+        id: `prod-${Date.now()}-${prev.length}`,
+        deviceCategory: deviceCategory || "CCTV & Security",
+        modelNumber: "",
+        serialNumber: "",
+        quantity: 1,
+        warrantyStatus: "not_applicable",
+        issueDescription: "",
+        dateOfPurchase: "",
+        billNumber: "",
+      },
+    ]);
+  };
+
+  const handleUpdateProduct = (index: number, field: keyof ServiceCallProduct, value: any) => {
+    setProducts((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+    // Sync index 0 to legacy top-level state
+    if (index === 0) {
+      if (field === "deviceCategory") setDeviceCategory(value);
+      else if (field === "modelNumber") setModelNumber(value);
+      else if (field === "serialNumber") setSerialNumber(value);
+      else if (field === "quantity") setQuantity(value);
+      else if (field === "warrantyStatus") setWarrantyStatus(value);
+      else if (field === "issueDescription") setIssueDescription(value);
+      else if (field === "dateOfPurchase") setDateOfPurchase(value);
+      else if (field === "billNumber") setBillNumber(value);
+    }
+  };
+
+  const handleRemoveProduct = (index: number) => {
+    setProducts((prev) => {
+      if (prev.length <= 1) return prev;
+      const copy = prev.filter((_, i) => i !== index);
+      if (index === 0 && copy.length > 0) {
+        const first = copy[0];
+        setDeviceCategory(first.deviceCategory || "CCTV & Security");
+        setModelNumber(first.modelNumber || "");
+        setSerialNumber(first.serialNumber || "");
+        setQuantity(first.quantity || 1);
+        setWarrantyStatus(first.warrantyStatus || "not_applicable");
+        setIssueDescription(first.issueDescription || "");
+        setDateOfPurchase(first.dateOfPurchase || "");
+        setBillNumber(first.billNumber || "");
+      }
+      return copy;
+    });
+  };
 
   // Purchase Details (Clean optional inputs, excluded from WhatsApp/print)
   const [dateOfPurchase, setDateOfPurchase] = useState("");
@@ -438,6 +510,25 @@ export default function AdminServiceCallForm() {
           setDateOfPurchase(sc.dateOfPurchase || "");
           setBillNumber(sc.billNumber || "");
 
+          const loadedProds = getServiceCallProducts(sc);
+          if (loadedProds && loadedProds.length > 0) {
+            setProducts(loadedProds);
+          } else {
+            setProducts([
+              {
+                id: `prod-${Date.now()}-0`,
+                deviceCategory: sc.deviceCategory || "CCTV & Security",
+                modelNumber: sc.modelNumber || "",
+                serialNumber: sc.serialNumber || "",
+                quantity: Number(sc.quantity) || 1,
+                warrantyStatus: sc.warrantyStatus || "not_applicable",
+                issueDescription: sc.issueDescription || "",
+                dateOfPurchase: sc.dateOfPurchase || "",
+                billNumber: sc.billNumber || "",
+              },
+            ]);
+          }
+
           if (sc.handledByStaffId) {
             setHandledByStaffId(sc.handledByStaffId);
             setHandledByStaffName(sc.handledByStaffName || "");
@@ -526,6 +617,19 @@ export default function AdminServiceCallForm() {
       setIssueDescription("");
       setDateOfPurchase("");
       setBillNumber("");
+      setProducts([
+        {
+          id: `prod-${Date.now()}-0`,
+          deviceCategory: "Laptop",
+          modelNumber: "",
+          serialNumber: "",
+          quantity: 1,
+          warrantyStatus: "not_applicable",
+          issueDescription: "",
+          dateOfPurchase: "",
+          billNumber: "",
+        },
+      ]);
       setSelectedServiceCenterId("");
       setServiceCenterName("");
       setSelectedAddressId("");
@@ -858,6 +962,12 @@ export default function AdminServiceCallForm() {
     const effectiveStaffId = activeProfile?.id || "";
     const effectiveStaffName = activeProfile ? toTitleCase(activeProfile.name) : "";
 
+    const totalQuantity = products && products.length > 0
+      ? products.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0)
+      : (Number(quantity) || 1);
+
+    const firstProduct = products && products.length > 0 ? products[0] : null;
+
     return {
       type,
       dateTime,
@@ -866,17 +976,18 @@ export default function AdminServiceCallForm() {
       customerPhone: formatIndianPhoneNumber(cPhone),
       customerEmail: (customerEmail || "").trim() || undefined,
       customerAddress: (customerAddress || "").trim() || undefined,
-      deviceCategory,
-      modelNumber: (modelNumber || "").trim() || undefined,
-      serialNumber: (serialNumber || "").trim() || undefined,
-      quantity: Number(quantity) || 1,
-      issueDescription: issueDesc,
-      warrantyStatus,
+      products: products && products.length > 0 ? products : undefined,
+      deviceCategory: firstProduct?.deviceCategory || deviceCategory,
+      modelNumber: (firstProduct?.modelNumber ?? modelNumber ?? "").trim() || undefined,
+      serialNumber: (firstProduct?.serialNumber ?? serialNumber ?? "").trim() || undefined,
+      quantity: totalQuantity,
+      issueDescription: issueDesc || firstProduct?.issueDescription || "",
+      warrantyStatus: firstProduct?.warrantyStatus || warrantyStatus,
       status,
 
       // Purchase details
-      dateOfPurchase: (dateOfPurchase || "").trim() || undefined,
-      billNumber: (billNumber || "").trim() || undefined,
+      dateOfPurchase: (firstProduct?.dateOfPurchase ?? dateOfPurchase ?? "").trim() || undefined,
+      billNumber: (firstProduct?.billNumber ?? billNumber ?? "").trim() || undefined,
 
       // Backoffice handled staff (Auto-attributed to active desk profile)
       handledByStaffId: effectiveStaffId,
@@ -939,7 +1050,8 @@ export default function AdminServiceCallForm() {
   const ensureSavedTicket = async (): Promise<ServiceCall | null> => {
     const cName = (customerName || "").trim();
     const cPhone = (customerPhone || "").trim();
-    const issueDesc = (issueDescription || "").trim();
+    const firstProdIssue = products && products.length > 0 ? (products[0].issueDescription || "").trim() : "";
+    const issueDesc = (issueDescription || firstProdIssue || "").trim();
 
     const errors: { customerName?: string; customerPhone?: string; issueDescription?: string } = {};
     if (!cName) errors.customerName = "Customer Name is required";
@@ -999,7 +1111,8 @@ export default function AdminServiceCallForm() {
     if (e) e.preventDefault();
     const cName = (customerName || "").trim();
     const cPhone = (customerPhone || "").trim();
-    const issueDesc = (issueDescription || "").trim();
+    const firstProdIssue = products && products.length > 0 ? (products[0].issueDescription || "").trim() : "";
+    const issueDesc = (issueDescription || firstProdIssue || "").trim();
 
     const errors: { customerName?: string; customerPhone?: string; issueDescription?: string } = {};
     if (!cName) errors.customerName = "Customer Name is required";
@@ -1477,6 +1590,10 @@ export default function AdminServiceCallForm() {
 
         {/* Section 2 & 3: Device Details & Logistics */}
         <ServiceCallDeviceDetailsCard
+          products={products}
+          onAddProduct={handleAddProduct}
+          onUpdateProduct={handleUpdateProduct}
+          onRemoveProduct={handleRemoveProduct}
           deviceCategory={deviceCategory}
           onDeviceCategoryChange={setDeviceCategory}
           categories={categories}
@@ -1730,6 +1847,7 @@ export default function AdminServiceCallForm() {
         onCreated={(cat) => {
           setCategories((prev) => [...prev, cat]);
           setDeviceCategory(cat.name);
+          handleUpdateProduct(0, "deviceCategory", cat.name);
         }}
       />
       <CreateCourierModal
@@ -1800,10 +1918,11 @@ export default function AdminServiceCallForm() {
           customerPhone,
           customerEmail,
           customerAddress,
+          products,
           deviceCategory,
           modelNumber,
           serialNumber,
-          quantity: Number(quantity) || 1,
+          quantity: products.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0),
           issueDescription,
           warrantyStatus,
           status,
@@ -1846,10 +1965,11 @@ export default function AdminServiceCallForm() {
           customerPhone,
           customerEmail,
           customerAddress,
+          products,
           deviceCategory,
           modelNumber,
           serialNumber,
-          quantity: Number(quantity) || 1,
+          quantity: products.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0),
           issueDescription,
           warrantyStatus,
           status,

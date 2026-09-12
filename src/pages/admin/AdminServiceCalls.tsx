@@ -421,6 +421,72 @@ export default function AdminServiceCalls() {
     return sorted.slice(start, start + pageSize);
   }, [sorted, currentPage, pageSize]);
 
+  // Multi-Call Selection for Batch Service Center Dispatch & Consolidated Print
+  const [dispatchPrintCalls, setDispatchPrintCalls] = useState<ServiceCall[] | null>(null);
+  const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
+
+  const toggleSelectCall = (id: string) => {
+    setSelectedCallIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAllCurrentPage = () => {
+    const allSelected = paginatedCalls.length > 0 && paginatedCalls.every((c) => selectedCallIds.has(c.id));
+    if (allSelected) {
+      setSelectedCallIds((prev) => {
+        const next = new Set(prev);
+        paginatedCalls.forEach((c) => next.delete(c.id));
+        return next;
+      });
+    } else {
+      setSelectedCallIds((prev) => {
+        const next = new Set(prev);
+        paginatedCalls.forEach((c) => next.add(c.id));
+        return next;
+      });
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedCallIds(new Set());
+  };
+
+  const selectedCallsList = useMemo(() => {
+    return calls.filter((c) => selectedCallIds.has(c.id));
+  }, [calls, selectedCallIds]);
+
+  const handleBulkDispatchPrint = () => {
+    if (selectedCallsList.length === 0) return;
+    setDispatchPrintCalls(selectedCallsList);
+  };
+
+  const handleBulkMarkSentToServiceCenter = async () => {
+    if (selectedCallsList.length === 0) return;
+    try {
+      const count = selectedCallsList.length;
+      await Promise.all(
+        selectedCallsList.map((c) =>
+          updateServiceCall(c.id, {
+            status: "sent_to_service_center",
+            updatedAt: Date.now(),
+          })
+        )
+      );
+      toast.success(`Marked ${count} tickets as "Sent to Service Center"`);
+      setSelectedCallIds(new Set());
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update tickets");
+    }
+  };
+
   // Smart cross-tab search discovery for elders/counter staff
   const matchingOtherTabCount = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -690,6 +756,50 @@ export default function AdminServiceCalls() {
         />
       ) : (
         <div className="space-y-4">
+          {/* Bulk Selection Bar */}
+          {selectedCallIds.size > 0 && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800/80 p-3.5 sm:px-4 sm:py-3 rounded-2xl shadow-xs animate-in fade-in duration-150">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white font-extrabold text-xs">
+                  {selectedCallIds.size}
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-blue-900 dark:text-blue-100">
+                  {selectedCallIds.size} Ticket{selectedCallIds.size > 1 ? "s" : ""} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleBulkDispatchPrint}
+                  className="h-8 text-xs font-bold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs rounded-xl cursor-pointer"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>Print Consolidated Dispatch Slip</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleBulkMarkSentToServiceCenter}
+                  className="h-8 text-xs font-bold gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-xl cursor-pointer"
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span>Mark as Sent to Service Center</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={clearSelection}
+                  className="h-8 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer ml-auto sm:ml-0"
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Mobile Card View (< md) */}
           <div className="md:hidden space-y-3.5">
             {paginatedCalls.map((item) => {
@@ -720,12 +830,24 @@ export default function AdminServiceCalls() {
                 >
                   {/* Card Header: Customer Name & Ticket Number */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
-                        {item.customerName || "Walk-in Customer"}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                        📅 {displayDate}
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedCallIds.has(item.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          toggleSelectCall(item.id);
+                        }}
+                        className="h-4 w-4 mt-1 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 shrink-0"
+                        aria-label={`Select ticket ${item.ticketNo}`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
+                          {item.customerName || "Walk-in Customer"}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                          📅 {displayDate}
+                        </div>
                       </div>
                     </div>
                     <span className="shrink-0 font-mono font-bold text-xs bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/80 px-2.5 py-1 rounded-xl">
@@ -735,13 +857,24 @@ export default function AdminServiceCalls() {
 
                   {/* Device Category & Problem Box */}
                   <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 text-xs space-y-1 border border-slate-100 dark:border-slate-800">
-                    <div className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-1.5">
+                    <div className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-1.5 flex-wrap">
                       <span>💻</span>
                       <span>{item.deviceCategory}</span>
-                      {item.modelNumber && (
-                        <span className="text-slate-500 dark:text-slate-400 font-normal">({item.modelNumber})</span>
+                      {item.products && item.products.length > 1 ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                          +{item.products.length - 1} more ({item.products.reduce((s, p) => s + (Number(p.quantity) || 1), 0)} items)
+                        </span>
+                      ) : (
+                        item.modelNumber && (
+                          <span className="text-slate-500 dark:text-slate-400 font-normal">({item.modelNumber})</span>
+                        )
                       )}
                     </div>
+                    {item.products && item.products.length > 1 && (
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-medium">
+                        {item.products.map((p) => p.modelNumber || p.deviceCategory).filter(Boolean).join(", ")}
+                      </div>
+                    )}
                     <p className="text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
                       <strong className="text-slate-700 dark:text-slate-200">Issue:</strong>{" "}
                       {item.issueDescription || "General diagnosis & service"}
@@ -830,7 +963,16 @@ export default function AdminServiceCalls() {
               <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-extrabold uppercase tracking-wider bg-slate-100/70 dark:bg-slate-800/40 text-slate-700 dark:text-slate-200">
-                  {renderSortHeader("TICKET & DATE", "ticket", "pl-6 pr-4 py-3.5")}
+                  <th className="pl-4 pr-1 py-3.5 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={paginatedCalls.length > 0 && paginatedCalls.every((c) => selectedCallIds.has(c.id))}
+                      onChange={selectAllCurrentPage}
+                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 align-middle"
+                      aria-label="Select all tickets on current page"
+                    />
+                  </th>
+                  {renderSortHeader("TICKET & DATE", "ticket", "pl-2 pr-4 py-3.5")}
                   {renderSortHeader("CUSTOMER", "customer", "px-4 py-3.5")}
                   {renderSortHeader("DEVICE & CATEGORY", "device", "px-4 py-3.5")}
                   {renderSortHeader("STATUS", "status", "px-4 py-3.5")}
@@ -862,7 +1004,8 @@ export default function AdminServiceCalls() {
                           target.closest("[role='option']") ||
                           target.closest("[data-radix-popper-content-wrapper]") ||
                           target.closest(".action-cell") ||
-                          target.closest(".status-cell")
+                          target.closest(".status-cell") ||
+                          target.closest("input[type='checkbox']")
                         ) {
                           return;
                         }
@@ -871,8 +1014,19 @@ export default function AdminServiceCalls() {
                       }}
                       className={`transition-colors group cursor-pointer ${rowProps.className}`}
                     >
+                      {/* Checkbox */}
+                      <td className="pl-4 pr-1 py-4 align-middle text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedCallIds.has(item.id)}
+                          onChange={() => toggleSelectCall(item.id)}
+                          className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 align-middle"
+                          aria-label={`Select ticket ${item.ticketNo}`}
+                        />
+                      </td>
+
                       {/* Ticket & Date */}
-                      <td className="pl-6 pr-4 py-4 align-middle">
+                      <td className="pl-2 pr-4 py-4 align-middle">
                         <div className="flex items-center gap-1.5">
                           {idx === selectedIndex && (
                             <span className="text-blue-600 dark:text-blue-400 font-black text-xs animate-in fade-in duration-100">▶</span>
@@ -907,11 +1061,20 @@ export default function AdminServiceCalls() {
 
                       {/* Device & Category */}
                       <td className="px-4 py-4 align-middle max-w-xs">
-                        <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                          {item.deviceCategory}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                            {item.deviceCategory}
+                          </span>
+                          {item.products && item.products.length > 1 && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                              +{item.products.length - 1} more ({item.products.reduce((s, p) => s + (Number(p.quantity) || 1), 0)} items)
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 truncate font-medium">
-                          {item.modelNumber ? `Model: ${item.modelNumber}` : item.issueDescription}
+                          {item.products && item.products.length > 1
+                            ? item.products.map((p) => p.modelNumber || p.deviceCategory).filter(Boolean).join(", ")
+                            : (item.modelNumber ? `Model: ${item.modelNumber}` : item.issueDescription)}
                         </div>
                       </td>
 
@@ -1084,11 +1247,18 @@ export default function AdminServiceCalls() {
       />
       <DispatchSlipPrintModal
         serviceCall={dispatchPrintCall}
-        open={!!dispatchPrintCall}
-        onOpenChange={(open) => !open && setDispatchPrintCall(null)}
+        serviceCalls={dispatchPrintCalls || (dispatchPrintCall ? [dispatchPrintCall] : undefined)}
+        open={!!dispatchPrintCall || (!!dispatchPrintCalls && dispatchPrintCalls.length > 0)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDispatchPrintCall(null);
+            setDispatchPrintCalls(null);
+          }
+        }}
         onSwitchToJobCard={() => {
-          const c = dispatchPrintCall;
+          const c = dispatchPrintCall || (dispatchPrintCalls && dispatchPrintCalls[0]) || null;
           setDispatchPrintCall(null);
+          setDispatchPrintCalls(null);
           setPrintCall(c);
         }}
       />

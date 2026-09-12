@@ -80,6 +80,7 @@ export const ServiceCallValidationSchema = z.object({
     "cancelled",
   ]),
   warrantyStatus: z.enum(["in_warranty", "out_of_warranty", "not_applicable"]).optional().default("out_of_warranty"),
+  products: z.array(z.any()).optional(),
   parts: z.array(z.object({ id: z.string(), name: z.string(), quantity: z.number(), unitPrice: z.number(), totalPrice: z.number() })).optional().default([]),
   timeline: z.array(z.object({ id: z.string(), timestamp: z.number(), stage: z.string(), title: z.string(), status: z.string() })).optional().default([]),
 });

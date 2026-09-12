@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Printer, CheckSquare, Tag, FileText, Receipt, Truck } from "lucide-react";
+import { Printer, CheckSquare, Tag, FileText, Receipt, Truck, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,7 +9,9 @@ import {
 } from "@/components/ui/dialog";
 import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
 import type { ServiceCall } from "@/lib/types";
+import { getServiceCallProducts } from "@/lib/types";
 import { formatPhoneForPrint } from "@/lib/utils";
+import { printIsolatedElement, openStandalonePrintWindow } from "@/lib/printUtils";
 
 // Vector Code 39 Barcode SVG Component for crisp single-page A4 printing
 function TicketBarcode({ value }: { value: string }) {
@@ -84,13 +86,21 @@ export default function JobCardPrintModal({
   const [showCustomer, setShowCustomer] = useState(true);
   const [showDevice, setShowDevice] = useState(true);
   const [showIssue, setShowIssue] = useState(true);
+  const [showParts, setShowParts] = useState(true);
   const [showBilling, setShowBilling] = useState(true);
   const [showTerms, setShowTerms] = useState(true);
 
   if (!serviceCall) return null;
 
+  const products = getServiceCallProducts(serviceCall);
+  const isCompact = products.length > 1 || (serviceCall.parts && serviceCall.parts.length > 1);
+
   const handlePrint = () => {
-    window.print();
+    printIsolatedElement("printable-job-card-area", `Job Card - ${serviceCall?.ticketNo || "Zorba"}`);
+  };
+
+  const handleOpenPrintWindow = () => {
+    openStandalonePrintWindow("printable-job-card-area", `Job Card - ${serviceCall?.ticketNo || "Zorba"}`);
   };
 
   // Presets
@@ -98,6 +108,7 @@ export default function JobCardPrintModal({
     setShowCustomer(true);
     setShowDevice(true);
     setShowIssue(true);
+    setShowParts(true);
     setShowBilling(true);
     setShowTerms(true);
   };
@@ -106,6 +117,7 @@ export default function JobCardPrintModal({
     setShowCustomer(true);
     setShowDevice(true);
     setShowIssue(true);
+    setShowParts(true);
     setShowBilling(true);
     setShowTerms(true);
   };
@@ -114,6 +126,7 @@ export default function JobCardPrintModal({
     setShowCustomer(true);
     setShowDevice(true);
     setShowIssue(true);
+    setShowParts(true);
     setShowBilling(false);
     setShowTerms(false);
   };
@@ -134,7 +147,7 @@ export default function JobCardPrintModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-6">
-        {/* Bulletproof 1-Page A4 Print CSS - Strip Radix positioning transforms */}
+        {/* Bulletproof Strict 1-Page A4 Print CSS: Fast, Never Hangs, Zero Background Overhead */}
         <style>{`
           @media print {
             @page {
@@ -147,9 +160,12 @@ export default function JobCardPrintModal({
               color: #000000 !important;
               margin: 0 !important;
               padding: 0 !important;
-              height: 100% !important;
-              max-height: 100% !important;
-              overflow: hidden !important;
+              height: auto !important;
+              max-height: none !important;
+              overflow: visible !important;
+              font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
 
             /* CRITICAL: Completely remove background React app (#root) from print layout */
@@ -163,10 +179,9 @@ export default function JobCardPrintModal({
               visibility: hidden !important;
             }
 
-            /* CRITICAL: Completely hide modal overlay backdrop, action buttons, and non-printable elements */
-            [data-radix-portal] > div[data-state="open"]:not([role="dialog"]),
-            [data-radix-portal] > div:first-child:not([role="dialog"]),
+            /* Completely hide modal overlay backdrop, action buttons, and non-printable elements */
             div[data-radix-dialog-overlay],
+            div[data-radix-portal] > div[data-state="open"]:not([role="dialog"]),
             .fixed.inset-0,
             button,
             .print\\:hidden {
@@ -177,12 +192,7 @@ export default function JobCardPrintModal({
               visibility: hidden !important;
             }
 
-            body * {
-              visibility: hidden !important;
-            }
-
-            /* Strip Radix Dialog centering offsets so content flows naturally on single page */
-            [data-radix-portal],
+            /* Strip Radix Dialog centering offsets so content flows naturally on page */
             div[role="dialog"] {
               position: static !important;
               display: block !important;
@@ -199,35 +209,32 @@ export default function JobCardPrintModal({
               overflow: visible !important;
             }
 
-            /* Make printable card area and all its children visible */
-            #printable-job-card-area,
-            #printable-job-card-area * {
-              visibility: visible !important;
-              color: #000000 !important;
-              border-color: #000000 !important;
-              background-color: transparent !important;
-              box-shadow: none !important;
-              text-shadow: none !important;
-            }
-
             #printable-job-card-area {
+              display: block !important;
               position: relative !important;
               left: 0 !important;
               top: 0 !important;
               width: 100% !important;
-              max-height: 275mm !important;
-              overflow: hidden !important;
+              height: auto !important;
+              max-height: none !important;
+              overflow: visible !important;
               margin: 0 !important;
               padding: 0 !important;
               background-color: #ffffff !important;
-              filter: grayscale(100%) !important;
               box-sizing: border-box !important;
-              page-break-before: avoid !important;
-              page-break-after: avoid !important;
+            }
+
+            .print-avoid-break {
               page-break-inside: avoid !important;
-              break-before: avoid !important;
-              break-after: avoid !important;
               break-inside: avoid !important;
+            }
+
+            .print\\:hidden {
+              display: none !important;
+            }
+
+            .print\\:border-black {
+              border-color: #000000 !important;
             }
           }
         `}</style>
@@ -248,6 +255,15 @@ export default function JobCardPrintModal({
                 <Truck className="h-4 w-4" /> Dispatch Slip
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenPrintWindow}
+              className="gap-1.5 text-xs font-semibold print:hidden"
+              title="Open print layout in a clean standalone window without modal interference"
+            >
+              <ExternalLink className="h-4 w-4" /> Clean Print Window
+            </Button>
             <Button size="sm" onClick={handlePrint} className="gap-1.5 font-bold print:hidden">
               <Printer className="h-4 w-4" /> Print Single Page A4
             </Button>
@@ -322,11 +338,20 @@ export default function JobCardPrintModal({
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
+                checked={showParts}
+                onChange={(e) => setShowParts(e.target.checked)}
+                className="rounded border-gray-300 text-primary"
+              />
+              Spare Parts {serviceCall.parts?.length > 0 ? `(${serviceCall.parts.length})` : ""}
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
                 checked={showBilling}
                 onChange={(e) => setShowBilling(e.target.checked)}
                 className="rounded border-gray-300 text-primary"
               />
-              Parts & Billing
+              Billing & Charges
             </label>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
@@ -341,9 +366,9 @@ export default function JobCardPrintModal({
         </div>
 
         {/* Printable Single Page A4 Voucher Content Container */}
-        <div id="printable-job-card-area" className="py-1 space-y-2 text-xs print:p-0">
+        <div id="printable-job-card-area" className={`font-sans ${isCompact ? "py-0.5 space-y-1.5" : "py-1 space-y-2"} text-xs print:p-0`}>
           {/* Company Header with Barcode at Top Right */}
-          <div className="flex justify-between items-start border-b border-black/20 pb-1.5">
+          <div className="flex justify-between items-start border-b border-black/20 pb-1.5 print-avoid-break">
             <div className="flex items-center gap-2.5">
               <ZorbaLogoIcon className="h-9 w-9 shrink-0" isMonochrome={true} />
               <div>
@@ -376,7 +401,7 @@ export default function JobCardPrintModal({
 
           {/* Customer & Device info grid */}
           {(showCustomer || showDevice) && (
-            <div className="grid grid-cols-2 gap-2.5 rounded-xl border border-black/20 p-2 bg-muted/20 print:bg-transparent print:border-black">
+            <div className={`print-avoid-break grid ${products.length > 1 ? "grid-cols-1 gap-2" : "grid-cols-2 gap-2.5"} rounded-xl border border-black/20 ${isCompact ? "p-1.5" : "p-2"} bg-muted/20 print:bg-transparent print:border-black`}>
               {showCustomer ? (
                 <div>
                   <h3 className="text-[9px] font-bold uppercase tracking-wider text-black mb-0.5">
@@ -396,15 +421,42 @@ export default function JobCardPrintModal({
               {showDevice && (
                 <div>
                   <h3 className="text-[9px] font-bold uppercase tracking-wider text-black mb-0.5">
-                    Device Details
+                    Hardware / Device Details {products.length > 1 ? `(${products.length} Items)` : ""}
                   </h3>
-                  <div className="space-y-0.5 text-[11px] text-black">
-                    <p><span className="font-semibold">Category:</span> {serviceCall.deviceCategory}</p>
-                    {serviceCall.modelNumber && <p><span className="font-semibold">Model:</span> {serviceCall.modelNumber}</p>}
-                    {serviceCall.serialNumber && <p><span className="font-semibold">Serial No:</span> {serviceCall.serialNumber}</p>}
-                    <p><span className="font-semibold">Qty:</span> {serviceCall.quantity}</p>
-                    <p><span className="font-semibold">Warranty:</span> <span className="capitalize">{serviceCall.warrantyStatus.replace(/_/g, " ")}</span></p>
-                  </div>
+                  {products.length === 1 ? (
+                    <div className="space-y-0.5 text-[11px] text-black">
+                      <p><span className="font-semibold">Category:</span> {products[0].deviceCategory}</p>
+                      {products[0].modelNumber && <p><span className="font-semibold">Model:</span> {products[0].modelNumber}</p>}
+                      {products[0].serialNumber && <p><span className="font-semibold">Serial No:</span> {products[0].serialNumber}</p>}
+                      <p><span className="font-semibold">Qty:</span> {products[0].quantity}</p>
+                      <p><span className="font-semibold">Warranty:</span> <span className="capitalize">{(products[0].warrantyStatus || "not_applicable").replace(/_/g, " ")}</span></p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-[10px] border border-black rounded-lg overflow-hidden mt-0.5">
+                      <thead className="border-b border-black font-bold uppercase bg-muted/30 text-black">
+                        <tr>
+                          <th className="px-2 py-0.5 text-center border-r border-black w-6">#</th>
+                          <th className="px-2 py-0.5 text-left border-r border-black">Category</th>
+                          <th className="px-2 py-0.5 text-left border-r border-black">Model</th>
+                          <th className="px-2 py-0.5 text-left border-r border-black">Serial No</th>
+                          <th className="px-2 py-0.5 text-center border-r border-black w-10">Qty</th>
+                          <th className="px-2 py-0.5 text-left">Warranty</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-black/30">
+                        {products.map((p, idx) => (
+                          <tr key={p.id || idx}>
+                            <td className="px-2 py-0.5 text-center font-bold border-r border-black">{idx + 1}</td>
+                            <td className="px-2 py-0.5 font-semibold border-r border-black">{p.deviceCategory}</td>
+                            <td className="px-2 py-0.5 border-r border-black">{p.modelNumber || "—"}</td>
+                            <td className="px-2 py-0.5 font-mono border-r border-black">{p.serialNumber || "—"}</td>
+                            <td className="px-2 py-0.5 text-center font-bold border-r border-black">{p.quantity || 1}</td>
+                            <td className="px-2 py-0.5 capitalize">{(p.warrantyStatus || "not_applicable").replace(/_/g, " ")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               )}
             </div>
@@ -412,100 +464,107 @@ export default function JobCardPrintModal({
 
           {/* Service Center / Onsite Details if applicable */}
           {showDevice && serviceCall.type === "company_service_center" && serviceCall.serviceCenterName && (
-            <div className="rounded-lg border border-black/30 p-1.5 text-[11px] text-black print:border-black">
+            <div className="print-avoid-break rounded-lg border border-black/30 p-1.5 text-[11px] text-black print:border-black">
               <span className="font-bold">Service Center Info:</span> {serviceCall.serviceCenterName}
               {serviceCall.rmaNumber && <span className="ml-3 font-semibold">| RMA / Tracking No: {serviceCall.rmaNumber}</span>}
             </div>
           )}
 
           {showDevice && serviceCall.type === "onsite_visit" && serviceCall.onsiteAddress && (
-            <div className="rounded-lg border border-black/30 p-1.5 text-[11px] text-black print:border-black">
+            <div className="print-avoid-break rounded-lg border border-black/30 p-1.5 text-[11px] text-black print:border-black">
               <span className="font-bold">Onsite Visit Location:</span> {serviceCall.onsiteAddress}
             </div>
           )}
 
           {/* Problem / Task Description */}
           {showIssue && (
-            <div>
+            <div className="print-avoid-break">
               <h3 className="text-[9px] font-bold uppercase tracking-wider text-black mb-0.5">
                 Issue / Service Task
               </h3>
-              <div className="rounded-lg border border-black/20 p-1.5 font-medium text-[11px] text-black print:border-black">
+              <div className={`rounded-lg border border-black/20 ${isCompact ? "p-1 text-[10.5px]" : "p-1.5 text-[11px]"} font-medium text-black print:border-black`}>
                 {serviceCall.issueDescription}
               </div>
             </div>
           )}
 
-          {/* Parts & Billing Section */}
-          {showBilling && (
-            <>
-              {/* Parts Table */}
-              {serviceCall.parts && serviceCall.parts.length > 0 && (
-                <div>
-                  <h3 className="text-[9px] font-bold uppercase tracking-wider text-black mb-0.5">
-                    Parts & Consumables Used
-                  </h3>
-                  <table className="w-full text-[11px] border border-black rounded-lg overflow-hidden">
-                    <thead className="border-b border-black font-bold uppercase bg-muted/30 text-black">
-                      <tr>
-                        <th className="px-2 py-0.5 text-left border-r border-black">Item / Part Name</th>
-                        <th className="px-2 py-0.5 text-center border-r border-black">Qty</th>
-                        <th className="px-2 py-0.5 text-right border-r border-black">Unit Price</th>
-                        <th className="px-2 py-0.5 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-black">
-                      {serviceCall.parts.map((p) => (
-                        <tr key={p.id}>
-                          <td className="px-2 py-0.5 border-r border-black">{p.name}</td>
-                          <td className="px-2 py-0.5 text-center border-r border-black">{p.quantity}</td>
+          {/* Parts Section (Always visible when spare parts exist and showParts is enabled) */}
+          {showParts && serviceCall.parts && serviceCall.parts.length > 0 && (
+            <div className="print-avoid-break">
+              <h3 className="text-[9px] font-bold uppercase tracking-wider text-black mb-0.5">
+                Parts & Consumables Used / Required ({serviceCall.parts.length} Items)
+              </h3>
+              <table className="w-full text-[10.5px] border border-black rounded-lg overflow-hidden">
+                <thead className="border-b border-black font-bold uppercase bg-muted/30 text-black">
+                  <tr>
+                    <th className="px-2 py-0.5 text-center border-r border-black w-8">#</th>
+                    <th className="px-2 py-0.5 text-left border-r border-black">Item / Part Name</th>
+                    <th className="px-2 py-0.5 text-center border-r border-black w-14">Qty</th>
+                    {showBilling && (
+                      <>
+                        <th className="px-2 py-0.5 text-right border-r border-black w-24">Unit Price</th>
+                        <th className="px-2 py-0.5 text-right w-24">Amount</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black">
+                  {serviceCall.parts.map((p, idx) => (
+                    <tr key={p.id || idx}>
+                      <td className="px-2 py-0.5 text-center font-bold border-r border-black text-[10px]">{idx + 1}</td>
+                      <td className="px-2 py-0.5 border-r border-black">{p.name}</td>
+                      <td className="px-2 py-0.5 text-center border-r border-black">{p.quantity}</td>
+                      {showBilling && (
+                        <>
                           <td className="px-2 py-0.5 text-right border-r border-black">₹{p.unitPrice.toLocaleString("en-IN")}</td>
                           <td className="px-2 py-0.5 text-right font-medium">₹{p.totalPrice.toLocaleString("en-IN")}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-              {/* Charges Summary */}
-              <div className="flex justify-end border-t border-black/20 pt-1 print:border-black">
-                <div className="w-52 space-y-0.5 text-[11px] text-black">
-                  <div className="flex justify-between text-black">
-                    <span>Parts Total:</span>
-                    <span>₹{serviceCall.partsTotal.toLocaleString("en-IN")}</span>
+          {/* Charges Summary (Controlled by showBilling) */}
+          {showBilling && (
+            <div className="print-avoid-break flex justify-end border-t border-black/20 pt-1 print:border-black">
+              <div className="w-52 space-y-0.5 text-[11px] text-black">
+                <div className="flex justify-between text-black">
+                  <span>Parts Total:</span>
+                  <span>₹{serviceCall.partsTotal.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-black">
+                  <span>Service Charges:</span>
+                  <span>₹{serviceCall.serviceCharges.toLocaleString("en-IN")}</span>
+                </div>
+                {Boolean(serviceCall.courierCharges && serviceCall.courierCharges > 0) && (
+                  <div className="flex justify-between text-black font-semibold">
+                    <span>Courier / Transport:</span>
+                    <span>₹{serviceCall.courierCharges?.toLocaleString("en-IN")}</span>
                   </div>
-                  <div className="flex justify-between text-black">
-                    <span>Service Charges:</span>
-                    <span>₹{serviceCall.serviceCharges.toLocaleString("en-IN")}</span>
+                )}
+                {Boolean(serviceCall.discount && serviceCall.discount > 0) && (
+                  <div className="flex justify-between text-black font-semibold">
+                    <span>Discount:</span>
+                    <span>-₹{serviceCall.discount?.toLocaleString("en-IN")}</span>
                   </div>
-                  {Boolean(serviceCall.courierCharges && serviceCall.courierCharges > 0) && (
-                    <div className="flex justify-between text-black font-semibold">
-                      <span>Courier / Transport:</span>
-                      <span>₹{serviceCall.courierCharges?.toLocaleString("en-IN")}</span>
-                    </div>
-                  )}
-                  {Boolean(serviceCall.discount && serviceCall.discount > 0) && (
-                    <div className="flex justify-between text-black font-semibold">
-                      <span>Discount:</span>
-                      <span>-₹{serviceCall.discount?.toLocaleString("en-IN")}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between border-t border-black pt-0.5 text-xs font-extrabold text-black">
-                    <span>Grand Total:</span>
-                    <span className="font-mono">₹{serviceCall.grandTotal.toLocaleString("en-IN")}</span>
-                  </div>
+                )}
+                <div className="flex justify-between border-t border-black pt-0.5 text-xs font-extrabold text-black">
+                  <span>Grand Total:</span>
+                  <span className="font-mono">₹{serviceCall.grandTotal.toLocaleString("en-IN")}</span>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* Terms & Signature */}
           {showTerms && (
-            <div className="border-t border-black/30 pt-1.5 grid grid-cols-2 gap-4 text-[10px] text-black print:border-black">
+            <div className={`print-avoid-break border-t border-black/30 ${isCompact ? "pt-1" : "pt-1.5"} grid grid-cols-2 gap-4 text-[10px] text-black print:border-black`}>
               <div>
                 <p className="font-bold text-black mb-0.5 text-[10px]">Terms & Conditions (Zorba Declaration):</p>
-                <ol className="list-decimal pl-3 space-y-0.5 text-[8.5px] text-black leading-tight">
+                <ol className={`list-decimal pl-3 ${isCompact ? "space-y-0 text-[7.5px]" : "space-y-0.5 text-[8.5px]"} text-black leading-tight`}>
                   <li>Goods once sold or serviced will not be taken back or exchanged.</li>
                   <li>For parcels sent to authorized service centers, customer bears all courier/transport charges and any charges quoted by the service center.</li>
                   <li>Overdue credits charged with compound interest @ 2% per month after 15 days of bill date.</li>
@@ -519,7 +578,7 @@ export default function JobCardPrintModal({
                 <div>
                   <p className="font-bold text-black text-[10px]">For ZORBA INFOTECH</p>
                 </div>
-                <div className="border-t border-black w-32 pt-0.5 text-center font-medium mt-3 text-[9px] text-black">
+                <div className={`border-t border-black w-32 pt-0.5 text-center font-medium ${isCompact ? "mt-2" : "mt-3"} text-[9px] text-black`}>
                   Authorized Signature
                 </div>
               </div>

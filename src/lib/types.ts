@@ -218,6 +218,41 @@ export interface Technician {
   createdAt: string | number;
 }
 
+export interface ServiceCallProduct {
+  id: string;
+  deviceCategory: string;
+  modelNumber?: string;
+  serialNumber?: string;
+  quantity: number;
+  issueDescription?: string;
+  warrantyStatus?: WarrantyStatus;
+  dateOfPurchase?: string;
+  billNumber?: string;
+}
+
+export function getServiceCallProducts(serviceCall: Partial<ServiceCall> | null | undefined): ServiceCallProduct[] {
+  if (!serviceCall) return [];
+  if (serviceCall.products && serviceCall.products.length > 0) {
+    return serviceCall.products;
+  }
+  if (serviceCall.deviceCategory || serviceCall.modelNumber || serviceCall.serialNumber) {
+    return [
+      {
+        id: "prod-primary",
+        deviceCategory: serviceCall.deviceCategory || "General Device",
+        modelNumber: serviceCall.modelNumber || "",
+        serialNumber: serviceCall.serialNumber || "",
+        quantity: Number(serviceCall.quantity) || 1,
+        warrantyStatus: serviceCall.warrantyStatus || "not_applicable",
+        issueDescription: serviceCall.issueDescription || "",
+        dateOfPurchase: serviceCall.dateOfPurchase || "",
+        billNumber: serviceCall.billNumber || "",
+      },
+    ];
+  }
+  return [];
+}
+
 export interface ServiceCall {
   id: string;
   ticketNo: string; // Service Call Number
@@ -234,7 +269,10 @@ export interface ServiceCall {
   customerAddress?: string;
   customer?: Customer;
   
-  // Device details
+  // Multiple products support
+  products?: ServiceCallProduct[];
+
+  // Device details (Primary product / backward-compatible summary)
   deviceCategory: string;
   modelNumber?: string;
   serialNumber?: string;

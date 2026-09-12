@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Printer,
   Truck,
@@ -8,6 +8,7 @@ import {
   MapPin,
   Building2,
   Scissors,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,9 +19,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ZorbaLogoIcon } from "@/components/common/ZorbaLogo";
-import type { ServiceCall, ServiceCenter } from "@/lib/types";
+import type { ServiceCall, ServiceCenter, ServiceCallProduct, ServicePart } from "@/lib/types";
+import { getServiceCallProducts } from "@/lib/types";
 import { getServiceCenters } from "@/lib/firestore";
 import { formatPhoneForPrint, formatFullAddress } from "@/lib/utils";
+import { printIsolatedElement, openStandalonePrintWindow } from "@/lib/printUtils";
 
 // Vector Code 39 Barcode SVG Component for crisp single-page A4 printing
 function BarcodeSvg({
@@ -109,7 +112,8 @@ function formatServiceCenterPhone(phone?: string | null): string {
 }
 
 export interface DispatchSlipPrintModalProps {
-  serviceCall: ServiceCall | null;
+  serviceCall?: ServiceCall | null;
+  serviceCalls?: ServiceCall[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serviceCenter?: ServiceCenter | null;
@@ -121,6 +125,7 @@ export type PrintLayoutMode = "dual" | "challan" | "label";
 
 export default function DispatchSlipPrintModal({
   serviceCall,
+  serviceCalls,
   open,
   onOpenChange,
   serviceCenter: passedServiceCenter,
@@ -134,6 +139,7 @@ export default function DispatchSlipPrintModal({
   const [showSender, setShowSender] = useState(true);
   const [showRecipient, setShowRecipient] = useState(true);
   const [showDevice, setShowDevice] = useState(true);
+  const [showParts, setShowParts] = useState(true);
   const [showIssue, setShowIssue] = useState(true);
   const [showCustomerRef, setShowCustomerRef] = useState(true);
   const [showSignatures, setShowSignatures] = useState(true);
@@ -145,6 +151,59 @@ export default function DispatchSlipPrintModal({
     "Return to service center for authorized warranty/repair inspection. Please handle with care."
   );
 
+  // Consolidate calls: either serviceCalls array or single serviceCall
+  const effectiveCalls = useMemo(() => {
+    if (serviceCalls && serviceCalls.length > 0) return serviceCalls;
+    if (serviceCall) return [serviceCall];
+    return [];
+  }, [serviceCall, serviceCalls]);
+
+  const primaryCall = effectiveCalls[0] || null;
+
+  // Aggregate all products across calls (supporting multiple products per call)
+  const allProducts: Array<ServiceCallProduct & { ticketNo?: string }> = useMemo(() => {
+    const list: Array<ServiceCallProduct & { ticketNo?: string }> = [];
+    effectiveCalls.forEach((call, cIdx) => {
+      const prods = getServiceCallProducts(call);
+      prods.forEach((p, pIdx) => {
+        list.push({
+          ...p,
+          id: `${call.id || cIdx}-${p.id || pIdx}`,
+          ticketNo: call.ticketNo,
+        });
+      });
+    });
+    return list;
+  }, [effectiveCalls]);
+
+  const totalProductUnits = useMemo(() => {
+    return allProducts.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0);
+  }, [allProducts]);
+
+  // Aggregate all spare parts across calls
+  const allParts: Array<ServicePart & { ticketNo?: string }> = useMemo(() => {
+    const list: Array<ServicePart & { ticketNo?: string }> = [];
+    effectiveCalls.forEach((call, cIdx) => {
+      (call.parts || []).forEach((part, partIdx) => {
+        list.push({
+          ...part,
+          id: `${call.id || cIdx}-${part.id || partIdx}`,
+          ticketNo: call.ticketNo,
+        });
+      });
+    });
+    return list;
+  }, [effectiveCalls]);
+
+  const totalPartsUnits = useMemo(() => {
+    return allParts.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0);
+  }, [allParts]);
+
+  // Adaptive compact density: in dual mode with 2+ products or parts, automatically compact so it never exceeds single A4
+  const [compactMode, setCompactMode] = useState<boolean | null>(null);
+  const autoCompact = layoutMode === "dual" && (allProducts.length > 1 || allParts.length > 1 || (allProducts.length + allParts.length) > 2);
+  const isCompact = compactMode !== null ? compactMode : autoCompact;
+
   // Resolve Service Center details if needed
   const [resolvedCenter, setResolvedCenter] = useState<ServiceCenter | null>(
     passedServiceCenter || null
@@ -155,27 +214,28 @@ export default function DispatchSlipPrintModal({
       setResolvedCenter(passedServiceCenter);
       return;
     }
-    if (serviceCall?.serviceCenterId && passedServiceCenters && passedServiceCenters.length > 0) {
-      const found = passedServiceCenters.find((sc) => sc.id === serviceCall.serviceCenterId);
+    const centerId = primaryCall?.serviceCenterId;
+    if (centerId && passedServiceCenters && passedServiceCenters.length > 0) {
+      const found = passedServiceCenters.find((sc) => sc.id === centerId);
       if (found) {
         setResolvedCenter(found);
         return;
       }
     }
     // Fetch if needed and open
-    if (open && serviceCall?.serviceCenterId && !resolvedCenter) {
+    if (open && centerId && !resolvedCenter) {
       getServiceCenters()
         .then((centers) => {
           const found = centers.find(
             (sc) =>
-              sc.id === serviceCall.serviceCenterId ||
-              sc.name.toLowerCase() === (serviceCall.serviceCenterName || "").toLowerCase()
+              sc.id === centerId ||
+              sc.name.toLowerCase() === (primaryCall?.serviceCenterName || "").toLowerCase()
           );
           if (found) setResolvedCenter(found);
         })
         .catch(() => {});
     }
-  }, [open, serviceCall, passedServiceCenter, passedServiceCenters]);
+  }, [open, primaryCall, passedServiceCenter, passedServiceCenters]);
 
   // Selected Hub address
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
@@ -183,16 +243,20 @@ export default function DispatchSlipPrintModal({
   useEffect(() => {
     if (resolvedCenter?.addresses && resolvedCenter.addresses.length > 0) {
       const matched = resolvedCenter.addresses.find(
-        (a) => a.address === serviceCall?.serviceCenterAddress
+        (a) => a.address === primaryCall?.serviceCenterAddress
       );
       setSelectedAddressId(matched ? matched.id : resolvedCenter.addresses[0].id);
     }
-  }, [resolvedCenter, serviceCall?.serviceCenterAddress]);
+  }, [resolvedCenter, primaryCall?.serviceCenterAddress]);
 
-  if (!serviceCall) return null;
+  if (!primaryCall) return null;
 
   const handlePrint = () => {
-    window.print();
+    printIsolatedElement("printable-dispatch-slip-area", `Dispatch Slip - ${primaryCall?.ticketNo || "Zorba"}`);
+  };
+
+  const handleOpenPrintWindow = () => {
+    openStandalonePrintWindow("printable-dispatch-slip-area", `Dispatch Slip - ${primaryCall?.ticketNo || "Zorba"}`);
   };
 
   // Active address object
@@ -202,7 +266,7 @@ export default function DispatchSlipPrintModal({
 
   // Resolved Center details
   const destinationCenterName =
-    serviceCall.serviceCenterName || resolvedCenter?.name || "Authorized Service Center";
+    primaryCall.serviceCenterName || resolvedCenter?.name || "Authorized Service Center";
   const destinationAddress = activeAddressObj
     ? formatFullAddress({
         lines: activeAddressObj.lines,
@@ -213,14 +277,14 @@ export default function DispatchSlipPrintModal({
       })
     : formatFullAddress({
         fallbackAddress:
-          serviceCall.serviceCenterAddress || "Authorized Service Center Address",
+          primaryCall.serviceCenterAddress || "Authorized Service Center Address",
       });
   const destinationPhone = resolvedCenter?.phone || resolvedCenter?.whatsappPhone || "";
   const destinationEmail = resolvedCenter?.email || "";
   const primaryPOC = resolvedCenter?.pocs?.[0];
 
-  const formattedDate = serviceCall.dateTime
-    ? new Date(serviceCall.dateTime).toLocaleDateString("en-IN", {
+  const formattedDate = primaryCall.dateTime
+    ? new Date(primaryCall.dateTime).toLocaleDateString("en-IN", {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -233,10 +297,12 @@ export default function DispatchSlipPrintModal({
 
   const formattedDestPhone = formatServiceCenterPhone(destinationPhone);
 
+  const ticketDisplay = effectiveCalls.map((c) => c.ticketNo).join(", ");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[94vh] overflow-y-auto p-5">
-        {/* Bulletproof Strict 1-Page A4 Print CSS: Eliminates 2nd page spillover */}
+        {/* Bulletproof Strict 1-Page A4 Print CSS: Fast, Never Hangs, Zero Background Overhead */}
         <style>{`
           @media print {
             @page {
@@ -249,10 +315,12 @@ export default function DispatchSlipPrintModal({
               color: #000000 !important;
               margin: 0 !important;
               padding: 0 !important;
-              height: 100% !important;
-              max-height: 100% !important;
-              overflow: hidden !important;
+              height: auto !important;
+              max-height: none !important;
+              overflow: visible !important;
               font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
 
             /* CRITICAL: Completely remove background React app (#root) from print layout */
@@ -266,10 +334,9 @@ export default function DispatchSlipPrintModal({
               visibility: hidden !important;
             }
 
-            /* CRITICAL: Completely hide modal overlay backdrop, action buttons, and non-printable elements */
-            [data-radix-portal] > div[data-state="open"]:not([role="dialog"]),
-            [data-radix-portal] > div:first-child:not([role="dialog"]),
+            /* Completely hide modal overlay backdrop, action buttons, and non-printable elements */
             div[data-radix-dialog-overlay],
+            div[data-radix-portal] > div[data-state="open"]:not([role="dialog"]),
             .fixed.inset-0,
             button,
             .print\\:hidden {
@@ -280,12 +347,7 @@ export default function DispatchSlipPrintModal({
               visibility: hidden !important;
             }
 
-            body * {
-              visibility: hidden !important;
-            }
-
-            /* Strip Radix Dialog centering offsets so content flows naturally on single page */
-            [data-radix-portal],
+            /* Strip Radix Dialog centering offsets so content flows naturally on page */
             div[role="dialog"] {
               position: static !important;
               display: block !important;
@@ -302,34 +364,23 @@ export default function DispatchSlipPrintModal({
               overflow: visible !important;
             }
 
-            /* Make printable dispatch area and all its children visible with executive business typography */
-            #printable-dispatch-slip-area,
-            #printable-dispatch-slip-area * {
-              visibility: visible !important;
-              color: #000000 !important;
-              border-color: #000000 !important;
-              box-shadow: none !important;
-              text-shadow: none !important;
-              font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-            }
-
             #printable-dispatch-slip-area {
+              display: block !important;
               position: relative !important;
               left: 0 !important;
               top: 0 !important;
               width: 100% !important;
-              max-height: 282mm !important;
-              overflow: hidden !important;
+              height: auto !important;
+              max-height: none !important;
+              overflow: visible !important;
               margin: 0 !important;
               padding: 0 !important;
               background-color: #ffffff !important;
-              filter: grayscale(100%) !important;
               box-sizing: border-box !important;
-              page-break-before: avoid !important;
-              page-break-after: avoid !important;
+            }
+
+            .print-avoid-break {
               page-break-inside: avoid !important;
-              break-before: avoid !important;
-              break-after: avoid !important;
               break-inside: avoid !important;
             }
 
@@ -380,6 +431,17 @@ export default function DispatchSlipPrintModal({
                 <span>Switch to Job Card</span>
               </Button>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleOpenPrintWindow}
+              className="gap-1.5 text-xs font-semibold cursor-pointer border-slate-300 dark:border-slate-700"
+              title="Open in clean window without browser modal constraints"
+            >
+              <ExternalLink className="h-4 w-4 text-slate-500" />
+              <span>Clean Print Window</span>
+            </Button>
             <Button
               size="sm"
               onClick={handlePrint}
@@ -503,7 +565,16 @@ export default function DispatchSlipPrintModal({
                 onChange={(e) => setShowDevice(e.target.checked)}
                 className="rounded border-gray-300 text-blue-600"
               />
-              Device & Serial Number
+              Hardware / Products {allProducts.length > 0 ? `(${allProducts.length})` : ""}
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showParts}
+                onChange={(e) => setShowParts(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600"
+              />
+              Spare Parts & Consumables {allParts.length > 0 ? `(${allParts.length})` : ""}
             </label>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
@@ -532,57 +603,75 @@ export default function DispatchSlipPrintModal({
               />
               Statutory Declaration
             </label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-blue-700 dark:text-blue-400 font-bold">
+              <input
+                type="checkbox"
+                checked={isCompact}
+                onChange={(e) => setCompactMode(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600"
+              />
+              Single A4 Compact Fit {autoCompact ? "(Auto-fit)" : ""}
+            </label>
           </div>
         </div>
 
-        {/* Printable Single Page A4 Content Container with Executive Typography and Generous Padding */}
-        <div id="printable-dispatch-slip-area" className="font-sans py-1 space-y-3 text-xs print:p-0">
+        {/* Printable Single Page A4 Content Container with Adaptive Density and Zero Clipping */}
+        <div
+          id="printable-dispatch-slip-area"
+          className={`font-sans ${isCompact ? "py-0.5 space-y-1.5" : "py-1 space-y-3"} text-xs print:p-0`}
+        >
           {/* ========================================================================= */}
           {/* TOP SECTION: SERVICE CENTER DISPATCH CHALLAN (Included in "dual" & "challan" modes) */}
           {/* ========================================================================= */}
           {(layoutMode === "dual" || layoutMode === "challan") && (
-            <div className="space-y-2.5 border border-black rounded-xl p-3.5 bg-white print:border-black print:p-3">
+            <div
+              className={`print-avoid-break border border-black rounded-xl ${
+                isCompact ? "p-2 space-y-1.5 print:p-2 print:space-y-1" : "p-3.5 space-y-2.5 print:p-3"
+              } bg-white print:border-black`}
+            >
               {/* Challan Header */}
-              <div className="flex justify-between items-start border-b border-black pb-2">
-                <div className="flex items-center gap-2.5">
-                  <ZorbaLogoIcon className="h-8 w-8 shrink-0" isMonochrome={true} />
+              <div className={`flex justify-between items-start border-b border-black ${isCompact ? "pb-1" : "pb-2"}`}>
+                <div className="flex items-center gap-2">
+                  <ZorbaLogoIcon className={`${isCompact ? "h-6 w-6" : "h-8 w-8"} shrink-0`} isMonochrome={true} />
                   <div>
-                    <h2 className="text-base font-black tracking-tight text-black leading-tight">
+                    <h2 className={`${isCompact ? "text-[13px]" : "text-base"} font-black tracking-tight text-black leading-tight`}>
                       ZORBA INFOTECH — SERVICE DISPATCH CHALLAN
                     </h2>
-                    <p className="text-[9.5px] font-medium text-black leading-tight mt-0.5">
+                    <p className={`${isCompact ? "text-[8.5px]" : "text-[9.5px]"} font-medium text-black leading-tight mt-0.5`}>
                       Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch 458 441 (M.P.) | Phone: {formatPhoneForPrint("9993599730")}, {formatPhoneForPrint("9302199730")}
                     </p>
-                    <p className="text-[8.5px] text-slate-800 leading-tight">
+                    <p className={`${isCompact ? "text-[8px]" : "text-[8.5px]"} text-slate-800 leading-tight`}>
                       Email: zorbainfotech@gmail.com | Official Service Center Delivery Challan
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-end">
-                  <span className="text-xs font-black text-black tabular-nums">Ticket #{serviceCall.ticketNo}</span>
-                  <span className="text-[9px] font-semibold text-black mt-0.5">Date: {formattedDate}</span>
+                  <span className={`${isCompact ? "text-[11px]" : "text-xs"} font-black text-black tabular-nums`}>
+                    {effectiveCalls.length > 1 ? `Tickets: ${ticketDisplay}` : `Ticket #${primaryCall.ticketNo}`}
+                  </span>
+                  <span className={`${isCompact ? "text-[8.5px]" : "text-[9px]"} font-semibold text-black mt-0.5`}>Date: {formattedDate}</span>
                 </div>
               </div>
 
               {/* Service Center & Dispatch Logistics (Asymmetric 65% / 35%) */}
-              <div className="flex gap-2.5 text-xs items-stretch">
+              <div className={`flex ${isCompact ? "gap-1.5" : "gap-2.5"} text-xs items-stretch`}>
                 {/* To: Service Center (65% width) */}
-                <div className="flex-[65] border-2 border-black rounded-lg p-2.5 bg-slate-50/10 print:bg-white flex flex-col justify-between">
+                <div className={`flex-[65] border-2 border-black rounded-lg ${isCompact ? "p-1.5" : "p-2.5"} bg-slate-50/10 print:bg-white flex flex-col justify-between`}>
                   <div>
-                    <span className="text-[8.5px] font-black uppercase tracking-wider text-black block border-b border-black/30 pb-1 mb-1.5">
+                    <span className={`${isCompact ? "text-[8px] mb-1 pb-0.5" : "text-[8.5px] mb-1.5 pb-1"} font-black uppercase tracking-wider text-black block border-b border-black/30`}>
                       DESTINATION SERVICE CENTER (DELIVER TO):
                     </span>
-                    <p className="font-black text-sm text-black leading-tight">{destinationCenterName}</p>
-                    <p className="text-[11px] font-semibold text-black leading-relaxed mt-1 whitespace-pre-line">{destinationAddress}</p>
+                    <p className={`font-black ${isCompact ? "text-xs" : "text-sm"} text-black leading-tight`}>{destinationCenterName}</p>
+                    <p className={`${isCompact ? "text-[9.5px] leading-snug mt-0.5" : "text-[11px] leading-relaxed mt-1"} font-semibold text-black whitespace-pre-line`}>{destinationAddress}</p>
                     {primaryPOC && (
-                      <div className="text-[10px] text-black mt-2 pt-1 border-t border-black/30 font-bold space-y-0.5">
+                      <div className={`${isCompact ? "text-[9px] mt-1 pt-0.5" : "text-[10px] mt-2 pt-1"} text-black border-t border-black/30 font-bold space-y-0.5`}>
                         <p>POC: {primaryPOC.name}</p>
                         <p className="tabular-nums">Phone: {formatPhoneForPrint(primaryPOC.phone)}</p>
                       </div>
                     )}
                     {formattedDestPhone && !primaryPOC && (
-                      <p className="text-[10px] text-black mt-1.5 pt-1 border-t border-black/30 font-bold tabular-nums">
+                      <p className={`${isCompact ? "text-[9px] mt-1 pt-0.5" : "text-[10px] mt-1.5 pt-1"} text-black border-t border-black/30 font-bold tabular-nums`}>
                         Phone: {formattedDestPhone}
                       </p>
                     )}
@@ -590,78 +679,160 @@ export default function DispatchSlipPrintModal({
                 </div>
 
                 {/* Logistics & Dispatch Reference (35% width) */}
-                <div className="flex-[35] border border-black rounded-lg p-2.5 space-y-1 flex flex-col justify-between">
+                <div className={`flex-[35] border border-black rounded-lg ${isCompact ? "p-1.5 space-y-0.5" : "p-2.5 space-y-1"} flex flex-col justify-between`}>
                   <div>
-                    <span className="text-[8.5px] font-bold uppercase tracking-wider text-black block border-b border-black/30 pb-1 mb-1.5">
+                    <span className={`${isCompact ? "text-[8px] mb-1 pb-0.5" : "text-[8.5px] mb-1.5 pb-1"} font-bold uppercase tracking-wider text-black block border-b border-black/30`}>
                       DISPATCH DETAILS
                     </span>
-                    <div className="flex justify-between text-[10px] py-0.5">
+                    <div className={`flex justify-between ${isCompact ? "text-[9px] py-0" : "text-[10px] py-0.5"}`}>
                       <span className="text-black font-medium">Ticket No:</span>
-                      <span className="font-bold text-black tabular-nums">{serviceCall.ticketNo}</span>
+                      <span className="font-bold text-black tabular-nums">{ticketDisplay}</span>
                     </div>
-                    <div className="flex justify-between text-[10px] py-0.5">
+                    <div className={`flex justify-between ${isCompact ? "text-[9px] py-0" : "text-[10px] py-0.5"}`}>
                       <span className="text-black font-medium">Dispatch Date:</span>
                       <span className="font-bold text-black tabular-nums">{formattedDate}</span>
                     </div>
-                    <div className="flex justify-between text-[10px] py-0.5">
+                    <div className={`flex justify-between ${isCompact ? "text-[9px] py-0" : "text-[10px] py-0.5"}`}>
                       <span className="text-black font-medium">Courier:</span>
-                      <span className="font-bold text-black">{serviceCall.courierName || "Direct Handover"}</span>
+                      <span className="font-bold text-black">{primaryCall.courierName || "Direct Handover"}</span>
                     </div>
-                    <div className="flex justify-between text-[10px] py-0.5">
+                    <div className={`flex justify-between ${isCompact ? "text-[9px] py-0" : "text-[10px] py-0.5"}`}>
                       <span className="text-black font-medium">Warranty:</span>
-                      <span className="capitalize font-bold text-black">{serviceCall.warrantyStatus.replace(/_/g, " ")}</span>
+                      <span className="capitalize font-bold text-black">
+                        {allProducts.length > 1
+                          ? (allProducts.every((p) => p.warrantyStatus === allProducts[0].warrantyStatus)
+                              ? (allProducts[0].warrantyStatus || "not_applicable").replace(/_/g, " ")
+                              : "Mixed Warranty")
+                          : (primaryCall.warrantyStatus || "not_applicable").replace(/_/g, " ")}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Hardware / Device Description Table */}
-              {showDevice && (
+              {/* Hardware / Device Description Table (Supports Multiple Products) */}
+              {showDevice && allProducts.length > 0 && (
                 <div>
-                  <h3 className="text-[8.5px] font-bold uppercase tracking-wider text-black mb-1">
-                    CONSIGNMENT ITEM & HARDWARE SPECIFICATIONS
-                  </h3>
+                  <div className={`flex justify-between items-center ${isCompact ? "mb-0.5" : "mb-1"}`}>
+                    <h3 className={`${isCompact ? "text-[8px]" : "text-[8.5px]"} font-bold uppercase tracking-wider text-black`}>
+                      CONSIGNMENT ITEM & HARDWARE SPECIFICATIONS ({allProducts.length} Item{allProducts.length > 1 ? "s" : ""}, {totalProductUnits} Unit{totalProductUnits > 1 ? "s" : ""})
+                    </h3>
+                  </div>
                   <table className="w-full text-xs border border-black rounded-lg overflow-hidden">
                     <thead className="border-b border-black font-bold uppercase bg-slate-100 text-black print:bg-transparent">
                       <tr>
-                        <th className="px-3 py-1.5 text-left border-r border-black text-[9.5px]">Device Category</th>
-                        <th className="px-3 py-1.5 text-left border-r border-black text-[9.5px]">Brand / Model</th>
-                        <th className="px-3 py-1.5 text-left border-r border-black text-[9.5px]">Serial Number / IMEI</th>
-                        <th className="px-3 py-1.5 text-center border-r border-black text-[9.5px]">Qty</th>
-                        <th className="px-3 py-1.5 text-left text-[9.5px]">Warranty</th>
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9px]"} text-center border-r border-black w-8`}>#</th>
+                        {effectiveCalls.length > 1 && (
+                          <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9px]"} text-left border-r border-black w-24`}>Ticket #</th>
+                        )}
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9.5px]"} text-left border-r border-black`}>Device Category</th>
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9.5px]"} text-left border-r border-black`}>Brand / Model</th>
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9.5px]"} text-left border-r border-black`}>Serial Number / IMEI</th>
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9.5px]"} text-center border-r border-black w-12`}>Qty</th>
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9.5px]"} text-left`}>Warranty</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      <tr>
-                        <td className="px-3 py-1.5 font-bold border-r border-black">{serviceCall.deviceCategory}</td>
-                        <td className="px-3 py-1.5 border-r border-black font-semibold">{serviceCall.modelNumber || "Standard Unit"}</td>
-                        <td className="px-3 py-1.5 font-bold border-r border-black tabular-nums tracking-wide">{serviceCall.serialNumber || "N/A"}</td>
-                        <td className="px-3 py-1.5 text-center font-black border-r border-black">{serviceCall.quantity}</td>
-                        <td className="px-3 py-1.5 capitalize font-semibold">{serviceCall.warrantyStatus.replace(/_/g, " ")}</td>
-                      </tr>
+                    <tbody className="divide-y divide-black/40">
+                      {allProducts.map((prod, idx) => (
+                        <tr key={prod.id || idx}>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9px]" : "px-2.5 py-1 text-[10px]"} text-center font-bold border-r border-black`}>{idx + 1}</td>
+                          {effectiveCalls.length > 1 && (
+                            <td className={`${isCompact ? "px-1.5 py-0.5 text-[9px]" : "px-2.5 py-1 text-[10px]"} border-r border-black font-bold tabular-nums`}>{prod.ticketNo}</td>
+                          )}
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9.5px]" : "px-2.5 py-1 text-[10.5px]"} font-bold border-r border-black`}>{prod.deviceCategory}</td>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9.5px]" : "px-2.5 py-1 text-[10.5px]"} border-r border-black font-semibold`}>{prod.modelNumber || "Standard Unit"}</td>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9.5px]" : "px-2.5 py-1 text-[10.5px]"} font-mono font-bold border-r border-black tabular-nums tracking-wide`}>{prod.serialNumber || "N/A"}</td>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9.5px]" : "px-2.5 py-1 text-[10.5px]"} text-center font-black border-r border-black`}>{prod.quantity || 1}</td>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9px]" : "px-2.5 py-1 text-[10px]"} capitalize font-semibold`}>{(prod.warrantyStatus || "not_applicable").replace(/_/g, " ")}</td>
+                        </tr>
+                      ))}
                     </tbody>
+                    {allProducts.length > 1 && (
+                      <tfoot className="border-t-2 border-black font-bold bg-slate-50 print:bg-transparent">
+                        <tr>
+                          <td colSpan={effectiveCalls.length > 1 ? 5 : 4} className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9px]"} text-right uppercase border-r border-black`}>
+                            Total Consignment Units:
+                          </td>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9.5px]" : "px-2.5 py-1 text-[10.5px]"} text-center font-black border-r border-black`}>{totalProductUnits}</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              )}
+
+              {/* Spare Parts & Consumables Dispatched Table */}
+              {showParts && allParts.length > 0 && (
+                <div>
+                  <div className={`flex justify-between items-center ${isCompact ? "mb-0.5" : "mb-1"}`}>
+                    <h3 className={`${isCompact ? "text-[8px]" : "text-[8.5px]"} font-bold uppercase tracking-wider text-black flex items-center gap-1`}>
+                      <Box className="h-3 w-3 inline text-black" />
+                      SPARE PARTS & CONSUMABLES DISPATCHED ({allParts.length} Item{allParts.length > 1 ? "s" : ""}, {totalPartsUnits} Total Qty)
+                    </h3>
+                  </div>
+                  <table className="w-full text-xs border border-black rounded-lg overflow-hidden">
+                    <thead className="border-b border-black font-bold uppercase bg-slate-100 text-black print:bg-transparent">
+                      <tr>
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9px]"} text-center border-r border-black w-8`}>#</th>
+                        {effectiveCalls.length > 1 && (
+                          <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9px]"} text-left border-r border-black w-24`}>Ticket #</th>
+                        )}
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9.5px]"} text-left border-r border-black`}>Spare Part / Item Name</th>
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9.5px]"} text-center border-r border-black w-14`}>Qty</th>
+                        <th className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9.5px]"} text-left`}>Classification / Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-black/40">
+                      {allParts.map((part, idx) => (
+                        <tr key={part.id || idx}>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9px]" : "px-2.5 py-1 text-[10px]"} text-center font-bold border-r border-black`}>{idx + 1}</td>
+                          {effectiveCalls.length > 1 && (
+                            <td className={`${isCompact ? "px-1.5 py-0.5 text-[9px]" : "px-2.5 py-1 text-[10px]"} border-r border-black font-bold tabular-nums`}>{part.ticketNo}</td>
+                          )}
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9.5px]" : "px-2.5 py-1 text-[10.5px]"} font-bold border-r border-black`}>{part.name}</td>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9.5px]" : "px-2.5 py-1 text-[10.5px]"} text-center font-black border-r border-black`}>{part.quantity}</td>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9px]" : "px-2.5 py-1 text-[10px]"}`}>{part.category || "Replacement / Service Consumable"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {allParts.length > 1 && (
+                      <tfoot className="border-t-2 border-black font-bold bg-slate-50 print:bg-transparent">
+                        <tr>
+                          <td colSpan={effectiveCalls.length > 1 ? 3 : 2} className={`${isCompact ? "px-1.5 py-0.5 text-[8.5px]" : "px-2.5 py-1 text-[9px]"} text-right uppercase border-r border-black`}>
+                            Total Spare Parts Qty:
+                          </td>
+                          <td className={`${isCompact ? "px-1.5 py-0.5 text-[9.5px]" : "px-2.5 py-1 text-[10.5px]"} text-center font-black border-r border-black`}>{totalPartsUnits}</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               )}
 
               {/* Secondary Details: Customer Ref & Purchase Details (if enabled) */}
-              {(showCustomerRef || serviceCall.dateOfPurchase || serviceCall.billNumber) && (
-                <div className="grid grid-cols-2 gap-3 text-[10px] border border-black/40 rounded-lg p-2 bg-slate-50/20 print:bg-transparent">
+              {(showCustomerRef || primaryCall.dateOfPurchase || primaryCall.billNumber) && (
+                <div className={`grid grid-cols-2 gap-2 ${isCompact ? "text-[9px] p-1" : "text-[10px] p-2"} border border-black/40 rounded-lg bg-slate-50/20 print:bg-transparent`}>
                   {showCustomerRef && (
                     <div className="space-y-0.5">
                       <div>
                         <span className="font-bold text-black">Customer Reference:</span>{" "}
-                        <span className="font-semibold">{serviceCall.customerName || "Customer"}</span>
+                        <span className="font-semibold">
+                          {effectiveCalls.length > 1
+                            ? Array.from(new Set(effectiveCalls.map((c) => c.customerName).filter(Boolean))).join(", ") || "Multiple Customers"
+                            : primaryCall.customerName || "Customer"}
+                        </span>
                       </div>
                     </div>
                   )}
-                  {(serviceCall.dateOfPurchase || serviceCall.billNumber) && (
+                  {(primaryCall.dateOfPurchase || primaryCall.billNumber) && (
                     <div className="text-right">
-                      {serviceCall.dateOfPurchase && (
-                        <span>Purchase Date: <strong className="tabular-nums">{serviceCall.dateOfPurchase}</strong> </span>
+                      {primaryCall.dateOfPurchase && (
+                        <span>Purchase Date: <strong className="tabular-nums">{primaryCall.dateOfPurchase}</strong> </span>
                       )}
-                      {serviceCall.billNumber && (
-                        <span>| Bill No: <strong className="tabular-nums">{serviceCall.billNumber}</strong></span>
+                      {primaryCall.billNumber && (
+                        <span>| Bill No: <strong className="tabular-nums">{primaryCall.billNumber}</strong></span>
                       )}
                     </div>
                   )}
@@ -670,35 +841,43 @@ export default function DispatchSlipPrintModal({
 
               {/* Reported Fault / RMA Issue */}
               {showIssue && (
-                <div className="border border-black rounded-lg p-2.5 text-xs">
-                  <span className="text-[8.5px] font-bold uppercase tracking-wider text-black block mb-1">
+                <div className={`border border-black rounded-lg ${isCompact ? "p-1.5 text-[10px]" : "p-2.5 text-xs"}`}>
+                  <span className={`${isCompact ? "text-[8px] mb-0.5" : "text-[8.5px] mb-1"} font-bold uppercase tracking-wider text-black block`}>
                     REPORTED ISSUE / FAULT DESCRIPTION (REASON FOR RETURN):
                   </span>
-                  <p className="font-bold text-black leading-relaxed">
-                    {serviceCall.issueDescription || "Diagnostic inspection and warranty service requested."}
-                  </p>
+                  <div className="font-bold text-black leading-snug space-y-0.5">
+                    {effectiveCalls.length > 1 ? (
+                      effectiveCalls.map((c) => (
+                        <div key={c.id}>
+                          <span className="font-mono text-slate-700">[{c.ticketNo}]:</span> {c.issueDescription || "Service inspection requested"}
+                        </div>
+                      ))
+                    ) : (
+                      <p>{primaryCall.issueDescription || "Diagnostic inspection and warranty service requested."}</p>
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* Special Dispatch Remarks */}
               {dispatchRemarks && (
-                <div className="text-[9.5px] text-black italic leading-normal border border-black/30 rounded-lg p-1.5">
+                <div className={`${isCompact ? "text-[8.5px] p-1" : "text-[9.5px] p-1.5"} text-black italic leading-tight border border-black/30 rounded-lg`}>
                   <strong>Special Instructions / Remarks:</strong> {dispatchRemarks}
                 </div>
               )}
 
               {/* Statutory Declaration */}
               {showSignatures && (
-                <div className="border-t border-black pt-2 flex justify-between items-start gap-4 text-[9.5px] text-black">
+                <div className={`border-t border-black ${isCompact ? "pt-1 text-[8px]" : "pt-2 text-[9.5px]"} flex justify-between items-start gap-3 text-black`}>
                   <div className="flex-1">
-                    <p className="font-bold text-black text-[9px] uppercase">NON-COMMERCIAL DISPATCH DECLARATION:</p>
-                    <p className="text-[8.5px] leading-relaxed text-black mt-0.5">
+                    <p className={`font-bold text-black ${isCompact ? "text-[8px]" : "text-[9px]"} uppercase`}>NON-COMMERCIAL DISPATCH DECLARATION:</p>
+                    <p className={`${isCompact ? "text-[7.5px]" : "text-[8.5px]"} leading-tight text-black mt-0.5`}>
                       This consignment contains computer hardware / IT products being dispatched solely for warranty repair, testing, or servicing by the manufacturer / authorized service center. Not for sale. No commercial value involved. Subject to Neemuch Jurisdiction.
                     </p>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="font-black text-black text-[10px]">For ZORBA INFOTECH, NEEMUCH</p>
+                    <p className={`font-black text-black ${isCompact ? "text-[8.5px]" : "text-[10px]"}`}>For ZORBA INFOTECH, NEEMUCH</p>
                   </div>
                 </div>
               )}
@@ -706,17 +885,17 @@ export default function DispatchSlipPrintModal({
           )}
 
           {/* ========================================================================= */}
-          {/* SCISSOR CUT DIVIDER (Clean, spacious, non-overlapping) */}
+          {/* SCISSOR CUT DIVIDER (Clean, compact when needed) */}
           {/* ========================================================================= */}
           {layoutMode === "dual" && (
-            <div className="my-3 py-1 flex items-center justify-between gap-3 select-none">
+            <div className={`print-avoid-break ${isCompact ? "my-1.5 py-0.5" : "my-3 py-1"} flex items-center justify-between gap-2.5 select-none`}>
               <div className="flex-1 border-t-2 border-dashed border-black" />
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 border-2 border-dashed border-black rounded-lg bg-white print:bg-white text-black shrink-0">
-                <Scissors className="h-3.5 w-3.5 shrink-0 text-black" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-black">
+              <div className={`inline-flex items-center gap-2 ${isCompact ? "px-2.5 py-0.5" : "px-3.5 py-1"} border-2 border-dashed border-black rounded-lg bg-white print:bg-white text-black shrink-0`}>
+                <Scissors className={`${isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} shrink-0 text-black`} />
+                <span className={`${isCompact ? "text-[8.5px]" : "text-[10px]"} font-black uppercase tracking-wider text-black`}>
                   CUT ALONG DOTTED LINE — AFFIX BOTTOM SECTION TO PARCEL BOX
                 </span>
-                <Scissors className="h-3.5 w-3.5 shrink-0 text-black -scale-x-100" />
+                <Scissors className={`${isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} shrink-0 text-black -scale-x-100`} />
               </div>
               <div className="flex-1 border-t-2 border-dashed border-black" />
             </div>
@@ -726,54 +905,58 @@ export default function DispatchSlipPrintModal({
           {/* BOTTOM SECTION: OUTER BOX SHIPPING LABEL (Included in "dual" & "label" modes) */}
           {/* ========================================================================= */}
           {(layoutMode === "dual" || layoutMode === "label") && (
-            <div className="border-2 border-black rounded-xl p-3.5 bg-white space-y-2.5 print:border-black print:p-3">
+            <div
+              className={`print-avoid-break border-2 border-black rounded-xl ${
+                isCompact ? "p-2 space-y-1.5 print:p-2" : "p-3.5 space-y-2.5 print:p-3"
+              } bg-white print:border-black`}
+            >
               {/* Box Label Header with Tracking & Barcode */}
-              <div className="flex justify-between items-center border-b-2 border-black pb-2">
-                <div className="flex items-center gap-2.5">
-                  <ZorbaLogoIcon className="h-7 w-7 shrink-0" isMonochrome={true} />
+              <div className={`flex justify-between items-center border-b-2 border-black ${isCompact ? "pb-1" : "pb-2"}`}>
+                <div className="flex items-center gap-2">
+                  <ZorbaLogoIcon className={`${isCompact ? "h-6 w-6" : "h-7 w-7"} shrink-0`} isMonochrome={true} />
                   <div>
-                    <span className="text-[13px] font-black uppercase tracking-wider text-black block leading-tight">
+                    <span className={`${isCompact ? "text-xs" : "text-[13px]"} font-black uppercase tracking-wider text-black block leading-tight`}>
                       PARCEL DISPATCH / SHIPPING LABEL
                     </span>
-                    <span className="text-[9px] font-bold text-black uppercase tracking-tight">
+                    <span className={`${isCompact ? "text-[8px]" : "text-[9px]"} font-bold text-black uppercase tracking-tight`}>
                       AUTHORIZED SERVICE CENTER CONSIGNMENT
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <div className="text-right">
-                    <span className="text-[8px] font-bold uppercase block text-black">DISPATCH DATE</span>
-                    <span className="text-xs font-black text-black tabular-nums">{formattedDate}</span>
+                    <span className="text-[7.5px] font-bold uppercase block text-black">DISPATCH DATE</span>
+                    <span className={`${isCompact ? "text-[11px]" : "text-xs"} font-black text-black tabular-nums`}>{formattedDate}</span>
                   </div>
-                  <BarcodeSvg value={serviceCall.ticketNo} height={26} />
+                  <BarcodeSvg value={primaryCall.ticketNo} height={isCompact ? 20 : 26} />
                 </div>
               </div>
 
-              {/* ASYMMETRIC FROM & TO GRID: TO is 68% wide & bold so couriers NEVER confuse destination! */}
-              <div className="flex gap-2.5 items-stretch">
-                {/* DELIVER TO / DESTINATION BOX (Dominant 68% width, high-visibility black badge) */}
+              {/* ASYMMETRIC FROM & TO GRID */}
+              <div className={`flex ${isCompact ? "gap-1.5" : "gap-2.5"} items-stretch`}>
+                {/* DELIVER TO / DESTINATION BOX (Dominant 68% width) */}
                 {showRecipient && (
-                  <div className="flex-[68] border-2 border-black rounded-lg p-3 bg-slate-50/20 print:bg-white flex flex-col justify-between min-h-[140px]">
+                  <div className={`flex-[68] border-2 border-black rounded-lg ${isCompact ? "p-1.5 min-h-[95px]" : "p-3 min-h-[140px]"} bg-slate-50/20 print:bg-white flex flex-col justify-between`}>
                     <div>
-                      <div className="flex items-center justify-between border-b-2 border-black pb-1 mb-2 bg-black text-white px-2 py-1 rounded -mx-1 -mt-1 print:bg-black print:text-white">
-                        <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-white">
-                          <MapPin className="h-3.5 w-3.5 inline text-white shrink-0" /> SHIP TO / DELIVER TO (DESTINATION):
+                      <div className={`flex items-center justify-between border-b-2 border-black ${isCompact ? "pb-0.5 mb-1 px-1.5 py-0.5 text-[9.5px]" : "pb-1 mb-2 px-2 py-1 text-xs"} bg-black text-white rounded -mx-0.5 -mt-0.5 print:bg-black print:text-white`}>
+                        <span className="font-black uppercase tracking-wider flex items-center gap-1 text-white">
+                          <MapPin className="h-3 w-3 inline text-white shrink-0" /> SHIP TO / DELIVER TO (DESTINATION):
                         </span>
-                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white text-black tracking-wide">
+                        <span className={`${isCompact ? "text-[7.5px] px-1 py-0.2" : "text-[9px] px-2 py-0.5"} font-black uppercase rounded bg-white text-black tracking-wide`}>
                           ★ PARCEL DESTINATION ★
                         </span>
                       </div>
 
-                      <div className="space-y-1">
-                        <h3 className="text-base sm:text-lg font-black uppercase text-black leading-tight tracking-tight">
+                      <div className="space-y-0.5">
+                        <h3 className={`${isCompact ? "text-xs sm:text-sm" : "text-base sm:text-lg"} font-black uppercase text-black leading-tight tracking-tight`}>
                           {destinationCenterName}
                         </h3>
-                        <p className="text-xs sm:text-[12.5px] font-bold text-black leading-relaxed whitespace-pre-wrap mt-0.5">
+                        <p className={`${isCompact ? "text-[9.5px] font-bold leading-snug" : "text-xs sm:text-[12.5px] font-bold leading-relaxed"} text-black whitespace-pre-wrap mt-0.5`}>
                           {destinationAddress}
                         </p>
                         {primaryPOC && (
-                          <div className="mt-2 pt-1.5 border-t border-black/30 text-xs text-black font-bold space-y-0.5">
+                          <div className={`${isCompact ? "mt-1 pt-1 text-[9px]" : "mt-2 pt-1.5 text-xs"} border-t border-black/30 text-black font-bold space-y-0.2`}>
                             <div>
                               <span>Attn: <strong>{primaryPOC.name}</strong></span>
                               {primaryPOC.designation && <span className="text-black/80 font-normal"> ({primaryPOC.designation})</span>}
@@ -784,86 +967,91 @@ export default function DispatchSlipPrintModal({
                           </div>
                         )}
                         {formattedDestPhone && !primaryPOC && (
-                          <div className="mt-2 pt-1.5 border-t border-black/30 text-xs text-black font-bold tabular-nums">
+                          <div className={`${isCompact ? "mt-1 pt-1 text-[9px]" : "mt-2 pt-1.5 text-xs"} border-t border-black/30 text-black font-bold tabular-nums`}>
                             Phone: {formattedDestPhone}
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="mt-2 pt-1 border-t border-black/30 flex justify-between items-center text-[9px] font-bold text-black uppercase">
+                    <div className={`mt-1 pt-0.5 border-t border-black/30 flex justify-between items-center ${isCompact ? "text-[8px]" : "text-[9px]"} font-bold text-black uppercase`}>
                       <span>Delivery Destination: Service Center</span>
-                      <span className="font-bold tabular-nums tracking-wide">TICKET #{serviceCall.ticketNo}</span>
+                      <span className="font-bold tabular-nums tracking-wide">
+                        {effectiveCalls.length > 1 ? `TICKETS: ${ticketDisplay}` : `TICKET #${primaryCall.ticketNo}`}
+                      </span>
                     </div>
                   </div>
                 )}
 
-                {/* DISPATCHED FROM / SENDER BOX (Compact 32% width, explicitly labeled as return address) */}
+                {/* DISPATCHED FROM / SENDER BOX (Compact 32% width) */}
                 {showSender && (
-                  <div className="flex-[32] border border-black/80 rounded-lg p-2.5 bg-white flex flex-col justify-between">
+                  <div className={`flex-[32] border border-black/80 rounded-lg ${isCompact ? "p-1.5" : "p-2.5"} bg-white flex flex-col justify-between`}>
                     <div>
-                      <div className="flex items-center justify-between border-b border-black/40 pb-1 mb-1.5 text-[8.5px] text-black font-bold uppercase">
+                      <div className={`flex items-center justify-between border-b border-black/40 ${isCompact ? "pb-0.5 mb-1 text-[7.5px]" : "pb-1 mb-1.5 text-[8.5px]"} text-black font-bold uppercase`}>
                         <span className="flex items-center gap-1">
-                          <Building2 className="h-3 w-3 inline text-black" /> FROM / SENDER:
+                          <Building2 className="h-2.5 w-2.5 inline text-black" /> FROM / SENDER:
                         </span>
-                        <span className="text-[7.5px] font-black px-1 py-0.2 rounded border border-black/40 text-black">
-                          RETURN ADDRESS
+                        <span className="text-[7px] font-black px-1 py-0.2 rounded border border-black/40 text-black">
+                          RETURN
                         </span>
                       </div>
 
-                      <div className="space-y-0.5">
-                        <h4 className="text-[11px] font-black uppercase text-black leading-tight">
+                      <div className="space-y-0.2">
+                        <h4 className={`${isCompact ? "text-[10px]" : "text-[11px]"} font-black uppercase text-black leading-tight`}>
                           ZORBA INFOTECH
                         </h4>
-                        <p className="text-[9.5px] font-medium text-black leading-snug">
+                        <p className={`${isCompact ? "text-[8.5px]" : "text-[9.5px]"} font-medium text-black leading-tight`}>
                           Shop No. 5 & 6, U-Shape Market,
                         </p>
-                        <p className="text-[9.5px] font-bold text-black leading-snug">
+                        <p className={`${isCompact ? "text-[8.5px]" : "text-[9.5px]"} font-bold text-black leading-tight`}>
                           Tagore Marg, Neemuch 458 441 (M.P.)
                         </p>
-                        <p className="text-[9.5px] text-black mt-1 leading-tight font-bold tabular-nums">
+                        <p className={`${isCompact ? "text-[8.5px] mt-0.5" : "text-[9.5px] mt-1"} text-black leading-tight font-bold tabular-nums`}>
                           Phone: {formatPhoneForPrint("9993599730")}
                         </p>
-                        <p className="text-[8.5px] text-black leading-tight font-semibold tabular-nums">
+                        <p className={`${isCompact ? "text-[7.5px]" : "text-[8.5px]"} text-black leading-tight font-semibold tabular-nums`}>
                           Support: {formatPhoneForPrint("9302199730")}
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-2 pt-1 border-t border-black/20 text-[7.5px] text-black/80 font-semibold">
-                      <span>Note: If undelivered, return to Zorba Neemuch</span>
+                    <div className={`mt-1 pt-0.5 border-t border-black/20 ${isCompact ? "text-[7px]" : "text-[7.5px]"} text-black/80 font-semibold`}>
+                      <span>Note: Return to Zorba Neemuch</span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Parcel Logistics Bar (3 spacious columns) */}
-              <div className="grid grid-cols-3 gap-3 border border-black rounded-lg p-2 text-xs text-black bg-slate-50/20 print:bg-transparent">
+              {/* Parcel Logistics Bar */}
+              <div className={`grid grid-cols-3 gap-2 border border-black rounded-lg ${isCompact ? "p-1.5 text-[10px]" : "p-2 text-xs"} text-black bg-slate-50/20 print:bg-transparent`}>
                 <div>
-                  <span className="text-[8px] uppercase block font-bold text-black">Courier / Transporter:</span>
-                  <span className="font-black text-xs text-black">{serviceCall.courierName || "Direct Handover / By Hand"}</span>
+                  <span className={`${isCompact ? "text-[7.5px]" : "text-[8px]"} uppercase block font-bold text-black`}>Courier / Transporter:</span>
+                  <span className={`font-black ${isCompact ? "text-[10.5px]" : "text-xs"} text-black`}>{primaryCall.courierName || "Direct Handover / By Hand"}</span>
                 </div>
                 <div>
-                  <span className="text-[8px] uppercase block font-bold text-black">Consignment Item:</span>
-                  <span className="font-black text-xs text-black">
-                    {serviceCall.deviceCategory} ({serviceCall.quantity} Unit{serviceCall.quantity > 1 ? "s" : ""})
+                  <span className={`${isCompact ? "text-[7.5px]" : "text-[8px]"} uppercase block font-bold text-black`}>Consignment Item:</span>
+                  <span className={`font-black ${isCompact ? "text-[10.5px]" : "text-xs"} text-black leading-tight block`}>
+                    {allProducts.length === 1
+                      ? `${allProducts[0].deviceCategory} (${totalProductUnits} Unit${totalProductUnits > 1 ? "s" : ""})`
+                      : `${allProducts.length} Products (${totalProductUnits} Units)`}
+                    {allParts.length > 0 ? ` + ${totalPartsUnits} Spare Part${totalPartsUnits > 1 ? "s" : ""}` : ""}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[8px] uppercase block font-bold text-black">Package Units:</span>
-                  <span className="font-black text-xs text-black">
+                  <span className={`${isCompact ? "text-[7.5px]" : "text-[8px]"} uppercase block font-bold text-black`}>Package Units:</span>
+                  <span className={`font-black ${isCompact ? "text-[10.5px]" : "text-xs"} text-black`}>
                     {packageCount} {packageWeight ? `(${packageWeight})` : ""}
                   </span>
                 </div>
               </div>
 
               {/* Fragile & Sensitive IT Hardware Warning Banner */}
-              <div className="border border-black rounded-md px-3 py-1.5 flex items-center justify-between bg-black text-white print:bg-black print:text-white">
-                <span className="text-[9.5px] font-black uppercase tracking-wider flex items-center gap-2 text-white">
-                  <AlertTriangle className="h-3.5 w-3.5 inline shrink-0 text-white" />
+              <div className={`border border-black rounded-md ${isCompact ? "px-2 py-1" : "px-3 py-1.5"} flex items-center justify-between bg-black text-white print:bg-black print:text-white`}>
+                <span className={`${isCompact ? "text-[8.5px]" : "text-[9.5px]"} font-black uppercase tracking-wider flex items-center gap-1.5 text-white`}>
+                  <AlertTriangle className="h-3 w-3 inline shrink-0 text-white" />
                   FRAGILE — HANDLE WITH CARE — SENSITIVE ELECTRONIC HARDWARE
                 </span>
-                <span className="text-[8.5px] font-bold uppercase text-white">
+                <span className={`${isCompact ? "text-[7.5px]" : "text-[8.5px]"} font-bold uppercase text-white`}>
                   WARRANTY SERVICE CONSIGNMENT
                 </span>
               </div>

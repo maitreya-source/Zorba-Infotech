@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import DispatchSlipPrintModal from "@/components/admin/DispatchSlipPrintModal";
 import { formatPhoneForPrint } from "@/lib/utils";
 import type { ServiceCall, ServiceCenter } from "@/lib/types";
@@ -187,7 +187,7 @@ describe("Service Center Parcel Dispatch & Shipping Label Print Modal", () => {
     expect(screen.queryByText(/Sharma Electronics/i)).toBeNull();
   });
 
-  it("allows customizing package weight and triggers window.print when clicking Print", () => {
+  it("allows customizing package weight and triggers window.print when clicking Print", async () => {
     render(
       <DispatchSlipPrintModal
         serviceCall={mockServiceCall}
@@ -206,7 +206,9 @@ describe("Service Center Parcel Dispatch & Shipping Label Print Modal", () => {
     const printBtn = screen.getByRole("button", { name: /Print A4 Dispatch Sheet/i });
     fireEvent.click(printBtn);
 
-    expect(window.print).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(window.print).toHaveBeenCalled();
+    });
   });
 
   it("calls onSwitchToJobCard when user requests switching to Job Card", () => {
@@ -301,6 +303,195 @@ describe("Service Center Parcel Dispatch & Shipping Label Print Modal", () => {
 
     expect(screen.queryByText(/0731-23456789/)).toBeNull();
     expect(screen.getAllByText(/011-23456789/).length).toBeGreaterThan(0);
+  });
+
+  it("renders multiple products in the Hardware Dispatched table and outer box summary", () => {
+    const multiProductCall: ServiceCall = {
+      ...mockServiceCall,
+      products: [
+        {
+          id: "prod-1",
+          deviceCategory: "Laser Printer",
+          modelNumber: "HP LaserJet M126nw",
+          serialNumber: "SN-HP-001",
+          quantity: 2,
+          warrantyStatus: "in_warranty",
+          issueDescription: "Roller jammed",
+        },
+        {
+          id: "prod-2",
+          deviceCategory: "CCTV Camera",
+          modelNumber: "CP Plus 2MP Dome",
+          serialNumber: "SN-CP-002",
+          quantity: 3,
+          warrantyStatus: "out_of_warranty",
+          issueDescription: "No power LED",
+        },
+      ],
+      quantity: 5,
+    };
+
+    render(
+      <DispatchSlipPrintModal
+        serviceCall={multiProductCall}
+        open={true}
+        onOpenChange={vi.fn()}
+        serviceCenter={mockServiceCenter}
+      />
+    );
+
+    // Verify both products appear
+    expect(screen.getAllByText(/HP LaserJet M126nw/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/SN-HP-001/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/CP Plus 2MP Dome/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/SN-CP-002/i).length).toBeGreaterThan(0);
+
+    // Verify total products count badge
+    expect(screen.getAllByText(/2 Products/i).length).toBeGreaterThan(0);
+  });
+
+  it("renders spare parts & consumables in the dedicated table when parts are included", () => {
+    const callWithParts: ServiceCall = {
+      ...mockServiceCall,
+      parts: [
+        {
+          id: "part-1",
+          name: "Pickup Roller Assembly",
+          quantity: 2,
+          unitPrice: 350,
+          totalPrice: 700,
+        },
+        {
+          id: "part-2",
+          name: "Teflon Film Sleeve",
+          quantity: 1,
+          unitPrice: 200,
+          totalPrice: 200,
+        },
+      ],
+      partsTotal: 900,
+    };
+
+    render(
+      <DispatchSlipPrintModal
+        serviceCall={callWithParts}
+        open={true}
+        onOpenChange={vi.fn()}
+        serviceCenter={mockServiceCenter}
+      />
+    );
+
+    // Verify spare parts section heading
+    expect(screen.getAllByText(/Spare Parts & Consumables Dispatched/i).length).toBeGreaterThan(0);
+    // Verify part names appear in the table
+    expect(screen.getAllByText(/Pickup Roller Assembly/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Teflon Film Sleeve/i).length).toBeGreaterThan(0);
+    // Verify outer box label includes spare parts count
+    expect(screen.getAllByText(/\+ 3 Spare Parts/i).length).toBeGreaterThan(0);
+  });
+
+  it("renders consolidated dispatch slip for multiple service calls", () => {
+    const call1: ServiceCall = {
+      ...mockServiceCall,
+      id: "call-1",
+      ticketNo: "SC26-0001",
+      deviceCategory: "Laser Printer",
+      modelNumber: "HP LaserJet 1020 Plus",
+    };
+    const call2: ServiceCall = {
+      ...mockServiceCall,
+      id: "call-2",
+      ticketNo: "SC26-0002",
+      deviceCategory: "Laptop",
+      modelNumber: "Dell Inspiron 3511",
+      serialNumber: "DELL-SN-999",
+    };
+
+    render(
+      <DispatchSlipPrintModal
+        serviceCalls={[call1, call2]}
+        open={true}
+        onOpenChange={vi.fn()}
+        serviceCenter={mockServiceCenter}
+      />
+    );
+
+    // Verify both tickets appear
+    expect(screen.getAllByText(/SC26-0001/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/SC26-0002/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/HP LaserJet 1020 Plus/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Dell Inspiron 3511/i).length).toBeGreaterThan(0);
+  });
+
+  it("handles 2 products and 2 spare parts with compact auto-fit and zero clipping", () => {
+    const multiItemCall: ServiceCall = {
+      ...mockServiceCall,
+      products: [
+        {
+          id: "prod-1",
+          deviceCategory: "Laser Printer",
+          modelNumber: "HP LaserJet 1020",
+          serialNumber: "SN-HP-001",
+          quantity: 1,
+          warrantyStatus: "in_warranty",
+        },
+        {
+          id: "prod-2",
+          deviceCategory: "Barcode Scanner",
+          modelNumber: "Honeywell 1450g",
+          serialNumber: "SN-HONEY-002",
+          quantity: 1,
+          warrantyStatus: "in_warranty",
+        },
+      ],
+      parts: [
+        {
+          id: "part-1",
+          name: "Pickup Roller 1020",
+          quantity: 1,
+          unitPrice: 350,
+          totalPrice: 350,
+          category: "Replacement",
+        },
+        {
+          id: "part-2",
+          name: "USB Interface Cable",
+          quantity: 2,
+          unitPrice: 150,
+          totalPrice: 300,
+          category: "Cable / Accessory",
+        },
+      ],
+    };
+
+    const { container } = render(
+      <DispatchSlipPrintModal
+        serviceCall={multiItemCall}
+        open={true}
+        onOpenChange={vi.fn()}
+        serviceCenter={mockServiceCenter}
+      />
+    );
+
+    // Verify compact fit checkbox is auto-applied
+    expect(screen.getByText(/Single A4 Compact Fit/i)).toBeDefined();
+
+    // Verify both products rendered
+    expect(screen.getByText("HP LaserJet 1020")).toBeDefined();
+    expect(screen.getByText("Honeywell 1450g")).toBeDefined();
+
+    // Verify both spare parts rendered
+    expect(screen.getByText("Pickup Roller 1020")).toBeDefined();
+    expect(screen.getByText("USB Interface Cable")).toBeDefined();
+
+    // Verify printable area has no overflow:hidden or max-height clipping
+    const printArea = document.querySelector("#printable-dispatch-slip-area");
+    expect(printArea).not.toBeNull();
+    // Verify style tag ensures overflow visible and no max-height: 282mm clipping
+    const styleTags = document.querySelectorAll("style");
+    const styleContent = Array.from(styleTags).map((s) => s.textContent).join(" ");
+    expect(styleContent).toContain("overflow: visible !important");
+    expect(styleContent).not.toContain("max-height: 282mm !important");
   });
 });
 
