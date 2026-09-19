@@ -63,6 +63,7 @@ import WhatsAppPreviewModal from "@/components/admin/WhatsAppPreviewModal";
 import ShortcutsHelpModal from "@/components/admin/ShortcutsHelpModal";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
+import { formatPhoneForDisplay } from "@/lib/utils";
 
 type SortField = "status" | "ticket" | "customer" | "device" | "charges";
 type SortDirection = "asc" | "desc";
@@ -1360,7 +1361,7 @@ export default function AdminServiceCalls() {
                           </div>
                         )}
                         <div className="text-xs text-slate-600 dark:text-slate-300 font-mono font-semibold mt-0.5">
-                          📞 {item.customerPhone}
+                          📞 {formatPhoneForDisplay(item.customerPhone)}
                         </div>
                       </td>
 

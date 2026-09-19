@@ -3,6 +3,7 @@ import { MessageSquare, Send, Copy, Check, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -127,11 +128,11 @@ For any questions, feel free to contact us:
             <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
               Customer Mobile Number (WhatsApp)
             </Label>
-            <Input
-              placeholder="e.g. 9589199738"
+            <PhoneInput
+              placeholder="95891 99738"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="h-9 text-xs font-mono rounded-xl"
+              className="h-9 text-xs rounded-xl"
             />
           </div>
 

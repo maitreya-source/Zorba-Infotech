@@ -39,7 +39,7 @@ import {
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Inquiry, InquiryStatus } from "@/lib/types";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
-import { formatIndianPhoneNumber } from "@/lib/utils";
+import { formatPhoneForDisplay } from "@/lib/utils";
 
 export default function AdminInquiries() {
   const { activeProfile } = useStaffProfile();
@@ -344,7 +344,7 @@ export default function AdminInquiries() {
                       <td className="px-4 py-3 font-mono font-semibold">
                         <div className="flex items-center gap-1.5">
                           <Phone className="h-3.5 w-3.5 text-slate-400" />
-                          <span>{formatIndianPhoneNumber(inq.phone)}</span>
+                          <span>{formatPhoneForDisplay(inq.phone)}</span>
                         </div>
                       </td>
 
@@ -446,7 +446,7 @@ export default function AdminInquiries() {
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Phone</span>
                     <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                      {formatIndianPhoneNumber(selectedInquiry.phone)}
+                      {formatPhoneForDisplay(selectedInquiry.phone)}
                     </span>
                   </div>
                   {selectedInquiry.email && (

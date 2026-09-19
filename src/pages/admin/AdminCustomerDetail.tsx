@@ -34,6 +34,7 @@ import {
   getServiceCallsForCustomer,
   getQuotationsForCustomer,
 } from "@/lib/firestore";
+import { formatPhoneForDisplay } from "@/lib/utils";
 import type { Customer, ServiceCall, ServiceCallStatus, Quotation } from "@/lib/types";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
@@ -612,7 +613,7 @@ export default function AdminCustomerDetail() {
               <span className="text-[10px] uppercase font-bold text-slate-400">Primary Phone</span>
               <div className="flex items-center gap-2 font-mono font-bold text-slate-900 dark:text-white">
                 <Phone className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                <span>{customer.phone || "—"}</span>
+                <span>{formatPhoneForDisplay(customer.phone) || "—"}</span>
               </div>
             </div>
 
@@ -662,7 +663,7 @@ export default function AdminCustomerDetail() {
                         variant="secondary"
                         className="font-mono text-xs py-1 px-2.5 rounded-lg group-hover:border-blue-400 transition-colors"
                       >
-                        📞 {p}
+                        📞 {formatPhoneForDisplay(p)}
                       </Badge>
                     </a>
                   ))}

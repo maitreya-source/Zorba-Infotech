@@ -82,9 +82,9 @@ describe("Zorba Infotech Integration & Business Logic Suite", () => {
       expect(formatIndianPhoneNumber("919826122334")).toBe("919826122334");
     });
 
-    it("formats phone number cleanly for user display", () => {
-      expect(formatPhoneForDisplay("919826122334")).toBe("+91 9826122334");
-      expect(formatPhoneForDisplay("9826122334")).toBe("+91 9826122334");
+    it("formats phone number cleanly for user display (+91 XXXXX XXXXX)", () => {
+      expect(formatPhoneForDisplay("919826122334")).toBe("+91 98261 22334");
+      expect(formatPhoneForDisplay("9826122334")).toBe("+91 98261 22334");
     });
 
     it("sanitizes external URLs to prevent XSS / malicious schemes", () => {

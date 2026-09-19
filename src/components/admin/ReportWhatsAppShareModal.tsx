@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -102,10 +103,9 @@ export default function ReportWhatsAppShareModal({
               <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
               Recipient Phone Number (Optional)
             </Label>
-            <Input
+            <PhoneInput
               id="phone-input"
-              type="tel"
-              placeholder="e.g. 98260 12345 (leave empty to pick contact in WhatsApp)"
+              placeholder="98260 12345"
               value={recipientPhone}
               onChange={(e) => setRecipientPhone(e.target.value)}
               className="h-9 text-xs rounded-xl"

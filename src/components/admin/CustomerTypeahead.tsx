@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Search, Phone, Check, Plus, Loader2, User, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { searchCustomers, getCustomer } from "@/lib/firestore";
+import { formatPhoneForDisplay } from "@/lib/utils";
 import { advanceToNextFormField } from "@/hooks/useTallyKeyboard";
 import type { Customer } from "@/lib/types";
 
@@ -214,7 +215,7 @@ export default function CustomerTypeahead({
                     </div>
                     <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
                       <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
-                        <Phone className="h-3 w-3 text-blue-500" /> {c.phone}
+                        <Phone className="h-3 w-3 text-blue-500" /> {formatPhoneForDisplay(c.phone)}
                       </span>
                       {c.email && <span className="truncate text-slate-400">{c.email}</span>}
                     </div>

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { UserPlus, Phone, Plus, Trash2, ChevronDown, ChevronUp, AlertTriangle, ExternalLink, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -12,7 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { createCustomer, findCustomerByPhoneNumber, normalizePhone10 } from "@/lib/firestore";
-import { toTitleCase, formatIndianPhoneNumber } from "@/lib/utils";
+import { toTitleCase, formatIndianPhoneNumber, formatPhoneForDisplay } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 
 interface CreateCustomerModalProps {
@@ -152,22 +153,15 @@ export default function CreateCustomerModal({
           </div>
 
           <div>
-            <Label className="text-xs font-semibold">Contact Phone Number *</Label>
-            <div className="flex items-center gap-2 mt-1">
-              <Input
-                placeholder="+91"
-                value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
-                className="h-8 text-xs w-20 text-center font-bold font-mono"
-                required
-              />
-              <Input
+            <Label htmlFor="cust-phone" className="text-xs font-semibold">Contact Phone Number *</Label>
+            <div className="mt-1">
+              <PhoneInput
                 id="cust-phone"
                 placeholder="98765 43210"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required
-                className={`h-8 text-xs flex-1 font-mono ${
+                className={`h-8 text-xs ${
                   duplicateCustomer ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200" : ""
                 }`}
               />
@@ -193,7 +187,7 @@ export default function CreateCustomerModal({
                         <ExternalLink className="h-3 w-3 inline shrink-0" />
                       </a>{" "}
                       <span className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-                        ({duplicateCustomer.phone})
+                        ({formatPhoneForDisplay(duplicateCustomer.phone)})
                       </span>
                     </div>
                   </div>
@@ -312,11 +306,11 @@ export default function CreateCustomerModal({
 
                 {additionalPhones.map((pVal, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <Input
-                      placeholder="+91 98000 00000"
+                    <PhoneInput
+                      placeholder="98000 00000"
                       value={pVal}
                       onChange={(e) => handleUpdatePhone(i, e.target.value)}
-                      className="h-7 text-xs font-mono bg-card"
+                      className="h-7 text-xs bg-card flex-1"
                     />
                     <Button
                       type="button"

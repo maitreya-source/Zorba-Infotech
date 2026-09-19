@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getServiceCalls, getQuotations, searchCustomers } from "@/lib/firestore";
 import type { ServiceCall, Quotation, Customer } from "@/lib/types";
-import { formatIndianPhoneNumber } from "@/lib/utils";
+import { formatPhoneForDisplay } from "@/lib/utils";
 
 interface GlobalAdminSearchModalProps {
   open: boolean;
@@ -420,7 +420,7 @@ export default function GlobalAdminSearchModal({
                               </span>
                               <span className="font-mono text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1">
                                 <Phone className="h-3 w-3 text-slate-400" />
-                                {formatIndianPhoneNumber(sc.customerPhone || "")}
+                                {formatPhoneForDisplay(sc.customerPhone)}
                               </span>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 truncate">
@@ -491,7 +491,7 @@ export default function GlobalAdminSearchModal({
                             </p>
                             <p className="font-mono text-xs text-slate-600 dark:text-slate-300 mt-0.5 flex items-center gap-1">
                               <Phone className="h-3 w-3 text-purple-500" />
-                              {formatIndianPhoneNumber(cust.phone)}
+                              {formatPhoneForDisplay(cust.phone)}
                             </p>
                             {cust.companyName && (
                               <p className="text-[11px] text-slate-500 truncate mt-0.5 flex items-center gap-1">
@@ -547,7 +547,7 @@ export default function GlobalAdminSearchModal({
                               </span>
                             </div>
                             <span className="font-mono text-xs text-slate-500">
-                              📞 {qt.customerPhone} • {qt.date}
+                              📞 {formatPhoneForDisplay(qt.customerPhone)} • {qt.date}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 shrink-0 ml-3">

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { User, Phone, Plus, Trash2, ChevronDown, ChevronUp, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -12,7 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { updateCustomer, findCustomerByPhoneNumber, normalizePhone10 } from "@/lib/firestore";
-import { toTitleCase, formatIndianPhoneNumber } from "@/lib/utils";
+import { toTitleCase, formatIndianPhoneNumber, formatPhoneForDisplay } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 
 interface EditCustomerModalProps {
@@ -166,13 +167,13 @@ export default function EditCustomerModal({
             <Label htmlFor="edit-cust-phone" className="text-xs font-semibold">
               Primary Phone Number *
             </Label>
-            <Input
+            <PhoneInput
               id="edit-cust-phone"
-              placeholder="+91 98765 43210"
+              placeholder="98765 43210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              className={`mt-1 h-8 text-xs font-mono ${
+              className={`mt-1 h-8 text-xs ${
                 duplicateCustomer ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200" : ""
               }`}
             />
@@ -193,7 +194,7 @@ export default function EditCustomerModal({
                     <ExternalLink className="h-3 w-3 inline shrink-0" />
                   </a>{" "}
                   <span className="text-slate-600 dark:text-slate-400 font-mono text-[10px]">
-                    ({duplicateCustomer.phone})
+                    ({formatPhoneForDisplay(duplicateCustomer.phone)})
                   </span>
                 </div>
               </div>
@@ -296,11 +297,11 @@ export default function EditCustomerModal({
 
                 {additionalPhones.map((pVal, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <Input
-                      placeholder="+91 98000 00000"
+                    <PhoneInput
+                      placeholder="98000 00000"
                       value={pVal}
                       onChange={(e) => handleUpdatePhone(i, e.target.value)}
-                      className="h-7 text-xs font-mono bg-card"
+                      className="h-7 text-xs bg-card flex-1"
                     />
                     <Button
                       type="button"

@@ -9,6 +9,7 @@ import {
 } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -489,14 +490,13 @@ export default function Careers() {
                 <Label htmlFor="app-phone" className="text-xs font-semibold">
                   Mobile / WhatsApp <span className="text-destructive">*</span>
                 </Label>
-                <Input
+                <PhoneInput
                   id="app-phone"
                   required
-                  type="tel"
-                  placeholder="e.g. 99935 99730"
+                  placeholder="99935 99730"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-10 text-xs rounded-xl font-mono"
+                  onValueChange={setPhone}
+                  className="h-10 text-xs rounded-xl"
                 />
               </div>
             </div>

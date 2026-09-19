@@ -4,6 +4,7 @@ import Layout from "@/components/layout/Layout";
 import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
@@ -313,15 +314,14 @@ export default function Dealers() {
                       Mobile / WhatsApp Number <span className="text-destructive">*</span>
                     </Label>
                     <div className="relative">
-                      <Input
+                      <PhoneInput
                         id="dealer-phone"
                         name="phone"
-                        type="tel"
-                        placeholder="e.g. 98260 12345"
+                        placeholder="98260 12345"
                         value={form.phone}
                         onChange={handleChange}
                         required
-                        className={`h-10 text-xs rounded-xl font-mono ${
+                        className={`h-10 text-xs rounded-xl ${
                           phoneError ? "border-destructive focus-visible:ring-destructive" : ""
                         }`}
                       />

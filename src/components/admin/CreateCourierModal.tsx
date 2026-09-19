@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -98,11 +99,10 @@ export default function CreateCourierModal({
             <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
               Follow-Up Phone / WhatsApp Number
             </Label>
-            <Input
-              placeholder="+91 9876543210"
+            <PhoneInput
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-1.5 h-9 text-xs rounded-xl font-mono"
+              onValueChange={setPhone}
+              className="mt-1.5 h-9 text-xs rounded-xl"
             />
             <p className="text-[10px] text-slate-400 mt-1">
               Used by backoffice staff to send one-click shipment tracking follow-up WhatsApp messages

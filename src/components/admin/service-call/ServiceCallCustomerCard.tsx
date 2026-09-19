@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Phone, Mail, MapPin } from "lucide-react";
 import CustomerTypeahead from "@/components/admin/CustomerTypeahead";
-import { formatIndianPhoneNumber } from "@/lib/utils";
+import { formatPhoneForDisplay } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 
 interface ServiceCallCustomerCardProps {
@@ -111,7 +111,7 @@ export default function ServiceCallCustomerCard({
                 Phone:
               </span>
               <span className="font-mono font-bold text-slate-950 dark:text-white">
-                {customerPhone ? formatIndianPhoneNumber(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
+                {customerPhone ? formatPhoneForDisplay(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
               </span>
             </div>
 

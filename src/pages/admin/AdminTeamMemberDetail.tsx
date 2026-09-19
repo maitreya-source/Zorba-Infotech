@@ -73,7 +73,8 @@ import type {
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { AVATAR_CATALOG } from "@/lib/avatars";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
-import { formatIndianPhoneNumber } from "@/lib/utils";
+import { formatIndianPhoneNumber, formatPhoneForDisplay } from "@/lib/utils";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useTechnicianCommissionLedger, isCallPaymentReceived } from "@/hooks/useTechnicianCommissionLedger";
 
 export default function AdminTeamMemberDetail() {
@@ -583,7 +584,7 @@ export default function AdminTeamMemberDetail() {
               <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1 font-mono font-semibold text-slate-800 dark:text-slate-200">
                   <Phone className="h-3.5 w-3.5 text-blue-500" />
-                  {formatIndianPhoneNumber(member.phone)}
+                  {formatPhoneForDisplay(member.phone)}
                 </span>
                 {member.email && (
                   <span className="flex items-center gap-1">
@@ -1038,11 +1039,11 @@ export default function AdminTeamMemberDetail() {
             <div className="grid grid-cols-2 gap-2.5">
               <div>
                 <Label className="text-xs font-semibold">Phone Number *</Label>
-                <Input
+                <PhoneInput
                   required
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
-                  className="h-9 text-xs font-mono rounded-xl mt-1"
+                  className="h-9 text-xs rounded-xl mt-1"
                 />
               </div>
 
@@ -1213,7 +1214,7 @@ export default function AdminTeamMemberDetail() {
           <form onSubmit={handleResetPinSubmit} className="space-y-4 pt-2 text-xs">
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs">
               <span className="font-bold text-slate-900 dark:text-white">{member?.name}</span>
-              <p className="text-slate-500 capitalize">{member?.role} • {member?.phone}</p>
+              <p className="text-slate-500 capitalize">{member?.role} • {formatPhoneForDisplay(member?.phone)}</p>
             </div>
 
             <div className="space-y-1.5">

@@ -41,7 +41,7 @@ import {
   getCustomer,
   getQuotationTemplates,
 } from "@/lib/firestore";
-import { toTitleCase, formatModelNumber, formatIndianPhoneNumber } from "@/lib/utils";
+import { toTitleCase, formatModelNumber, formatIndianPhoneNumber, formatPhoneForDisplay } from "@/lib/utils";
 import type {
   Quotation,
   QuotationItem,
@@ -1025,7 +1025,7 @@ export default function AdminQuotationForm() {
                   </span>
                   <span className="font-mono font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
                     <Phone className="h-4 w-4 text-blue-500" />
-                    {customerPhone ? formatIndianPhoneNumber(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
+                    {customerPhone ? formatPhoneForDisplay(customerPhone) : <span className="text-slate-400 font-normal italic">Not provided</span>}
                   </span>
                 </div>
 

@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneForDisplay, formatIndianPhoneNumber } from "@/lib/utils";
 import { Users, Plus, Trash2, Search, Phone, Mail, Pencil, RefreshCw, ShieldCheck, Wrench, Briefcase, CheckCircle2, XCircle, Crown, Code, ChevronRight, Lock, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -502,7 +503,7 @@ export default function AdminTeam() {
                     {/* Phone */}
                     <td className="px-4 py-3 font-mono font-semibold text-slate-900 dark:text-white">
                       <div className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-slate-400" /> {member.phone}
+                        <Phone className="h-3.5 w-3.5 text-slate-400" /> {formatPhoneForDisplay(member.phone)}
                       </div>
                     </td>
 
@@ -647,12 +648,12 @@ export default function AdminTeam() {
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Phone Number <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  placeholder="e.g. 98230 11223"
+                <PhoneInput
+                  placeholder="98230 11223"
                   value={formPhone}
                   onChange={(e) => setFormPhone(e.target.value)}
                   required
-                  className="mt-1 h-9 text-xs rounded-xl font-mono"
+                  className="mt-1 h-9 text-xs rounded-xl"
                 />
               </div>
             </div>
@@ -828,7 +829,7 @@ export default function AdminTeam() {
           <form onSubmit={handleResetPinSubmit} className="space-y-4 pt-2 text-xs">
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs">
               <span className="font-bold text-slate-900 dark:text-white">{resetPinMember?.name}</span>
-              <p className="text-slate-500 capitalize">{resetPinMember?.role} • {resetPinMember?.phone}</p>
+              <p className="text-slate-500 capitalize">{resetPinMember?.role} • {formatPhoneForDisplay(resetPinMember?.phone)}</p>
             </div>
 
             <div className="space-y-1.5">

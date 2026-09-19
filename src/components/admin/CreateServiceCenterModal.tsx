@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Building2, Trash2, MapPin, User, MessageCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -307,11 +308,10 @@ export default function CreateServiceCenterModal({
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <MessageCircle className="h-3.5 w-3.5 text-emerald-500" /> Default WhatsApp Number (Follow-up)
               </Label>
-              <Input
-                placeholder="+91 9876543210"
+              <PhoneInput
                 value={whatsappPhone}
-                onChange={(e) => setWhatsappPhone(e.target.value)}
-                className="mt-1 h-9 text-xs rounded-xl font-mono"
+                onValueChange={setWhatsappPhone}
+                className="mt-1 h-9 text-xs rounded-xl"
               />
             </div>
           </div>
@@ -558,11 +558,10 @@ export default function CreateServiceCenterModal({
                   />
                 </div>
                 <div className="col-span-3">
-                  <Input
-                    placeholder="Mobile Phone"
+                  <PhoneInput
                     value={poc.phone}
-                    onChange={(e) => handleUpdatePoc(idx, "phone", e.target.value)}
-                    className="h-8 text-xs rounded-lg font-mono"
+                    onValueChange={(val) => handleUpdatePoc(idx, "phone", val)}
+                    className="h-8 text-xs rounded-lg"
                   />
                 </div>
                 <div className="col-span-1 flex justify-end">

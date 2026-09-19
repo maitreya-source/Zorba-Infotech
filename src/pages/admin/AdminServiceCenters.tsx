@@ -31,7 +31,7 @@ import {
 } from "@/components/common";
 import { getServiceCenters, deleteServiceCenter } from "@/lib/firestore";
 import type { ServiceCenter } from "@/lib/types";
-import { toTitleCase, cn } from "@/lib/utils";
+import { toTitleCase, cn, formatPhoneForDisplay } from "@/lib/utils";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
 import CreateServiceCenterModal from "@/components/admin/CreateServiceCenterModal";
 import EditServiceCenterModal from "@/components/admin/EditServiceCenterModal";
@@ -410,7 +410,7 @@ export default function AdminServiceCenters() {
                             <a
                               href={`tel:${callPhone.replace(/\D/g, "")}`}
                               className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/60 border border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-colors"
-                              title={`Call ${toTitleCase(sc.name)} (${callPhone})`}
+                              title={`Call ${toTitleCase(sc.name)} (${formatPhoneForDisplay(callPhone)})`}
                             >
                               <Phone className="h-3.5 w-3.5" />
                             </a>
@@ -421,7 +421,7 @@ export default function AdminServiceCenters() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800 rounded-lg cursor-pointer transition-colors"
-                              title={`Send WhatsApp API message to ${toTitleCase(sc.name)} (${waPhone})`}
+                              title={`Send WhatsApp API message to ${toTitleCase(sc.name)} (${formatPhoneForDisplay(waPhone)})`}
                               onClick={() => {
                                 setWhatsAppTarget({
                                   name: toTitleCase(sc.name),

@@ -3,6 +3,7 @@ import Layout from "@/components/layout/Layout";
 import { SEO, BreadcrumbSchema } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -369,14 +370,13 @@ export default function Contact() {
                         <Label htmlFor="contact-phone" className="text-xs font-semibold">
                           Phone / WhatsApp Number <span className="text-destructive">*</span>
                         </Label>
-                        <Input
+                        <PhoneInput
                           id="contact-phone"
                           required
-                          type="tel"
-                          placeholder="e.g. 99935 99730"
+                          placeholder="99935 99730"
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="h-10 text-xs rounded-xl font-mono"
+                          onValueChange={setPhone}
+                          className="h-10 text-xs rounded-xl"
                         />
                       </div>
                     </div>

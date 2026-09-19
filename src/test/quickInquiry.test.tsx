@@ -33,9 +33,9 @@ describe("Phone Validation & Formatting Standards (Task 2)", () => {
     expect(formatIndianPhoneNumber("09826199730")).toBe("919826199730");
   });
 
-  it("formats numbers cleanly for human display (+91 XXXXXXXXXX)", () => {
-    expect(formatPhoneForDisplay("9826199730")).toBe("+91 9826199730");
-    expect(formatPhoneForDisplay("919826199730")).toBe("+91 9826199730");
+  it("formats numbers cleanly for human display (+91 XXXXX XXXXX)", () => {
+    expect(formatPhoneForDisplay("9826199730")).toBe("+91 98261 99730");
+    expect(formatPhoneForDisplay("919826199730")).toBe("+91 98261 99730");
   });
 });
 

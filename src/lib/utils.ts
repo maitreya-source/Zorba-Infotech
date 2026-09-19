@@ -96,15 +96,87 @@ export function isValidIndianPhoneNumber(phone: string): boolean {
 }
 
 /**
- * Helper to display formatted phone number in UI (+91 XXXXXXXXXX).
+ * Extracts the 10-digit Indian mobile number by stripping any leading +91, 91, or 0 prefix.
+ * Examples:
+ *   "919589199738" -> "9589199738"
+ *   "+91 95891 99738" -> "9589199738"
+ *   "09589199738" -> "9589199738"
+ *   "9589199738" -> "9589199738"
  */
-export function formatPhoneForDisplay(phone: string): string {
+export function extractTenDigitPhone(phone?: string | null): string {
   if (!phone) return "";
-  const normalized = formatIndianPhoneNumber(phone);
-  if (normalized.startsWith("91") && normalized.length === 12) {
-    return `+91 ${normalized.slice(2)}`;
+  const raw = String(phone).trim();
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return digits.slice(2);
   }
-  return phone;
+  if (digits.length === 11 && digits.startsWith("0")) {
+    return digits.slice(1);
+  }
+  if (digits.length > 10 && digits.startsWith("91") && /^[6-9]/.test(digits.slice(2))) {
+    return digits.slice(2, 12);
+  }
+  return digits.slice(0, 10);
+}
+
+/**
+ * Formats a phone number for 10-digit input fields next to a static "+91" prefix
+ * using 5 + 5 spacing ("98765 43210").
+ */
+export function formatTenDigitPhone55(phone?: string | null): string {
+  if (!phone) return "";
+  const ten = extractTenDigitPhone(phone);
+  if (!ten) return "";
+  if (ten.length <= 5) return ten;
+  return `${ten.slice(0, 5)} ${ten.slice(5, 10)}`;
+}
+
+/**
+ * Helper to display formatted phone number in UI (+91 XXXXX XXXXX).
+ * Handles single numbers ("919876543210" -> "+91 98765 43210") as well as
+ * comma/slash separated lists ("919876543210, 919123456789" -> "+91 98765 43210, +91 91234 56789").
+ */
+export function formatPhoneForDisplay(phone?: string | null): string {
+  if (!phone) return "";
+  const raw = String(phone).trim();
+  if (!raw) return "";
+
+  if (raw.includes(",") || raw.includes("/")) {
+    const sep = raw.includes("/") ? " / " : ", ";
+    return raw
+      .split(/[,/]/)
+      .map((p) => formatPhoneForDisplay(p.trim()))
+      .filter(Boolean)
+      .join(sep);
+  }
+
+  // Preserve STD landline format like 011-23456789 or 0731-4000000
+  if (raw.startsWith("0") && raw.includes("-")) {
+    return raw;
+  }
+
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10 && /^[6-9]/.test(digits)) {
+    return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("0")) {
+    const ten = digits.slice(1);
+    if (/^[6-9]/.test(ten)) {
+      return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
+    }
+    return raw;
+  }
+  if (digits.length === 12 && digits.startsWith("91")) {
+    const ten = digits.slice(2);
+    return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
+  }
+  if (digits.length === 10) {
+    return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  }
+
+  return raw;
 }
 
 /**
@@ -117,38 +189,14 @@ export function formatPhoneForPrint(phone?: string | null): string {
   if (!phone) return "";
   const raw = String(phone).trim();
   if (!raw) return "";
-
-  // Support multiple numbers separated by slash or comma
-  if (raw.includes("/") || raw.includes(",")) {
-    const parts = raw
-      .split(/[/,]/)
-      .map((p) => formatPhoneForPrint(p.trim()))
-      .filter(Boolean);
-    return parts.join(" / ");
+  if (raw.includes(",") || raw.includes("/")) {
+    return raw
+      .split(/[,/]/)
+      .map((p) => formatPhoneForDisplay(p.trim()))
+      .filter(Boolean)
+      .join(" / ");
   }
-
-  const digits = raw.replace(/\D/g, "");
-
-  // 10-digit Indian mobile number (starts with 6, 7, 8, 9)
-  if (digits.length === 10 && /^[6-9]/.test(digits)) {
-    return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
-  }
-  // 11 digits starting with 0 followed by Indian mobile digit (6, 7, 8, 9)
-  // e.g. 09993599730 -> +91 99935 99730; but keep STD landlines with hyphen (e.g. 0731-4000000, 011-23456789)
-  if (digits.length === 11 && digits.startsWith("0") && /^[6-9]/.test(digits.slice(1))) {
-    if (raw.includes("-")) {
-      return raw;
-    }
-    const ten = digits.slice(1);
-    return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
-  }
-  // 12 digits starting with 91 followed by Indian mobile digit (6, 7, 8, 9)
-  if (digits.length === 12 && digits.startsWith("91") && /^[6-9]/.test(digits.slice(2))) {
-    const ten = digits.slice(2);
-    return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
-  }
-
-  return raw;
+  return formatPhoneForDisplay(raw);
 }
 
 

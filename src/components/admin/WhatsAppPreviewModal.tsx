@@ -34,6 +34,7 @@ import {
   getTeamMembers,
 } from "@/lib/firestore";
 import { getPublicAppOrigin } from "@/lib/utils";
+import { PhoneInput } from "@/components/ui/phone-input";
 import type {
   WhatsAppTemplateDoc,
   WhatsAppTargetModule,
@@ -575,15 +576,12 @@ export function WhatsAppPreviewModal({
                 </p>
               </div>
               <div className="sm:col-span-7">
-                <div className="relative">
-                  <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                  <Input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 93021 99730"
-                    className="h-8 pl-8 text-xs font-mono bg-white dark:bg-slate-950 rounded-lg border-slate-200 dark:border-slate-800"
-                  />
-                </div>
+                <PhoneInput
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="93021 99730"
+                  className="h-8 text-xs bg-white dark:bg-slate-950 rounded-lg border-slate-200 dark:border-slate-800"
+                />
               </div>
             </div>
 

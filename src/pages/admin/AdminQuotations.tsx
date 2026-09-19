@@ -43,7 +43,7 @@ import {
   getQuotationTemplates,
 } from "@/lib/firestore";
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
-import { formatIndianPhoneNumber } from "@/lib/utils";
+import { formatPhoneForDisplay } from "@/lib/utils";
 import type { Quotation, QuotationTemplate } from "@/lib/types";
 import { useTallyShortcuts } from "@/hooks/useTallyShortcuts";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
@@ -430,7 +430,7 @@ export default function AdminQuotations() {
                         className="text-xs text-blue-600 dark:text-blue-400 font-mono font-bold mt-0.5 flex items-center gap-1 hover:underline"
                       >
                         <Phone className="h-3.5 w-3.5 inline text-blue-600 dark:text-blue-400" />
-                        <span>{formatIndianPhoneNumber(q.customerPhone)}</span>
+                        <span>{formatPhoneForDisplay(q.customerPhone)}</span>
                       </a>
                     ) : (
                       <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
@@ -616,7 +616,7 @@ export default function AdminQuotations() {
                         <div className="font-bold text-sm text-slate-900 dark:text-white">{q.customerName}</div>
                         {q.customerPhone && (
                           <div className="text-xs text-slate-600 dark:text-slate-400 font-mono font-bold mt-0.5">
-                            {formatIndianPhoneNumber(q.customerPhone)}
+                            {formatPhoneForDisplay(q.customerPhone)}
                           </div>
                         )}
                       </td>

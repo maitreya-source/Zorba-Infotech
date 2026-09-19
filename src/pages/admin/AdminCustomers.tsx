@@ -28,7 +28,7 @@ import {
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { Customer } from "@/lib/types";
 import { useTallyListNavigation } from "@/hooks/useTallyKeyboard";
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneForDisplay } from "@/lib/utils";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import EditCustomerModal from "@/components/admin/EditCustomerModal";
 import ImportCustomersModal from "@/components/admin/ImportCustomersModal";
@@ -518,7 +518,7 @@ export default function AdminCustomers() {
                     <td className="px-4 py-3 font-mono font-semibold text-slate-900 dark:text-white">
                       <div className="flex flex-col gap-0.5">
                         <span className="flex items-center gap-1.5">
-                          <Phone className="h-3.5 w-3.5 text-slate-400" /> {cust.phone}
+                          <Phone className="h-3.5 w-3.5 text-slate-400" /> {formatPhoneForDisplay(cust.phone)}
                         </span>
                         {cust.additionalPhones && cust.additionalPhones.length > 0 && (
                           <div className="text-[10px] text-slate-400 font-sans pl-5">

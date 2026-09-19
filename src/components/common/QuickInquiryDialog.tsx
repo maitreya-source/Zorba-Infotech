@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Phone, Send, Loader2, MessageCircle, ArrowRight } from "lucide-react";
@@ -135,21 +136,14 @@ export default function QuickInquiryDialog({
                 <Label htmlFor="inq-phone" className="text-xs font-semibold">
                   10-Digit Mobile / WhatsApp Number <span className="text-destructive">*</span>
                 </Label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-muted-foreground text-xs font-semibold pointer-events-none">
-                    <span>🇮🇳 +91</span>
-                  </div>
-                  <Input
-                    id="inq-phone"
-                    type="tel"
-                    placeholder="99935 99730"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="h-10 rounded-xl pl-16 font-mono text-sm"
-                    maxLength={14}
-                    required
-                  />
-                </div>
+                <PhoneInput
+                  id="inq-phone"
+                  placeholder="99935 99730"
+                  value={phone}
+                  onValueChange={setPhone}
+                  className="h-10 rounded-xl text-sm"
+                  required
+                />
                 <p className="text-[11px] text-muted-foreground">
                   We'll call or WhatsApp you directly on this number.
                 </p>
