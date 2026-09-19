@@ -297,32 +297,63 @@ export default function AdminTallySync() {
           </p>
         </div>
 
-        {/* View Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 self-start sm:self-auto">
-          <button
+        {/* Remote Trigger & View Switcher */}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Button
             type="button"
-            onClick={() => setMainView("logs")}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              mainView === "logs"
-                ? "bg-slate-900 text-white shadow-xs"
-                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/70"
-            }`}
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                const res = await fetch(
+                  "https://zorba-tally-gateway-703650129045.asia-south1.run.app/api/tally/trigger?scope=all&force=true",
+                  {
+                    method: "POST",
+                    headers: {
+                      "X-Zorba-Sync-Key":
+                        "fS2DEpX7qMPvtd7mUEoQ8obRRrPZp4nARXDfkyoXWFN3hzkvtRh27Vs4Xzk6zz5mDWscr3rxteuoJbxb3tGdT1jiKPgyb7mbSrPe8pWVIUofFaSWkPCpfmJmNaaI5TlS",
+                    },
+                  }
+                );
+                if (res.ok) {
+                  alert("Sync queued! If ZorbaTallySync background agent is running on the Tally PC, it will sync within 60 seconds.");
+                }
+              } catch {
+                alert("Could not reach Cloud Gateway.");
+              }
+            }}
+            className="h-8 text-xs font-semibold gap-1.5 border-blue-200 bg-blue-50/70 text-blue-700 hover:bg-blue-100"
           >
-            <Clock className="h-3.5 w-3.5" />
-            Sync Audit Logs
-          </button>
-          <button
-            type="button"
-            onClick={() => setMainView("rules")}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              mainView === "rules"
-                ? "bg-slate-900 text-white shadow-xs"
-                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/70"
-            }`}
-          >
-            <Sliders className="h-3.5 w-3.5" />
-            Classification Rules
-          </button>
+            <Zap className="h-3.5 w-3.5 text-blue-600" />
+            Trigger Live Sync (Tally PC)
+          </Button>
+
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setMainView("logs")}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                mainView === "logs"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/70"
+              }`}
+            >
+              <Clock className="h-3.5 w-3.5" />
+              Sync Audit Logs
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainView("rules")}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                mainView === "rules"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/70"
+              }`}
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              Classification Rules
+            </button>
+          </div>
         </div>
       </div>
 

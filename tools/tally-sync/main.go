@@ -262,63 +262,119 @@ type XMLNode struct {
 XMLName xml.Name
 Attrs   []xml.Attr `xml:",any,attr"`
 Content string     `xml:",chardata"`
-Nodes   []XMLNode  `xml:",any"`
+	Nodes   []XMLNode  `xml:",any"`
+}
+
+func sanitizeTallyXML(xmlBytes []byte) []byte {
+	// Remove invalid XML 1.0 control character references (e.g. &#4;, &#1;..&#31;) that TallyPrime emits
+	s := string(xmlBytes)
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '&' && i+2 < len(s) && s[i+1] == '#' {
+			end := strings.IndexByte(s[i:], ';')
+			if end > 2 && end <= 6 {
+				numStr := s[i+2 : i+end]
+				if code, err := strconv.Atoi(numStr); err == nil && code < 32 && code != 9 && code != 10 && code != 13 {
+					i += end
+					continue
+				}
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return []byte(b.String())
 }
 
 func parseGenericMasters(xmlBytes []byte, masterTag string) []GenericTallyMaster {
-var root XMLNode
-if err := xml.Unmarshal(xmlBytes, &root); err != nil {
-return nil
-}
+	var root XMLNode
+	if err := xml.Unmarshal(sanitizeTallyXML(xmlBytes), &root); err != nil {
+		return nil
+	}
 
-var results []GenericTallyMaster
-var traverse func(node XMLNode)
+	var results []GenericTallyMaster
+	var traverse func(node XMLNode)
 
-traverse = func(node XMLNode) {
-if strings.EqualFold(node.XMLName.Local, masterTag) || strings.EqualFold(node.XMLName.Local, "ROW") || strings.EqualFold(node.XMLName.Local, "LINE") {
-var m GenericTallyMaster
-m.Type = masterTag
-for _, child := range node.Nodes {
-tag := strings.ToLower(child.XMLName.Local)
-val := strings.TrimSpace(child.Content)
-if val == "" {
-continue
-}
-switch tag {
-case "name", "fldname":
-if m.Name == "" {
-m.Name = val
-}
-case "parent", "fldparent":
-m.Parent = val
-case "guid":
-m.GUID = val
-case "gstin", "partygstin":
-if m.ExtraDetail != "" {
-m.ExtraDetail += " " + val
-} else {
-m.ExtraDetail = val
-}
-case "ledgerphone", "ledgermobile", "ledgercontact", "phone", "mobile", "address", "email", "narration", "pincode", "statename":
-if m.ExtraDetail != "" {
-m.ExtraDetail += " " + val
-} else {
-m.ExtraDetail = val
-}
-}
-}
-if m.Name != "" {
-results = append(results, m)
-}
-}
+	appendDetail := func(m *GenericTallyMaster, val string) {
+		val = strings.TrimSpace(val)
+		if val == "" || strings.EqualFold(val, m.Name) {
+			return
+		}
+		if m.ExtraDetail != "" {
+			m.ExtraDetail += " | " + val
+		} else {
+			m.ExtraDetail = val
+		}
+	}
 
-for _, child := range node.Nodes {
-traverse(child)
-}
-}
+	var extractFieldsRecursive func(n XMLNode, m *GenericTallyMaster)
+	extractFieldsRecursive = func(n XMLNode, m *GenericTallyMaster) {
+		for _, child := range n.Nodes {
+			tag := strings.ToLower(child.XMLName.Local)
+			val := strings.TrimSpace(child.Content)
 
-traverse(root)
-return results
+			switch tag {
+			case "name", "fldname":
+				if val != "" {
+					if m.Name == "" {
+						m.Name = val
+					} else {
+						// Secondary <NAME> inside <LANGUAGENAME.LIST><NAME.LIST> is the Tally Alias
+						// where Zorba stores customer mobile numbers and contact names!
+						appendDetail(m, val)
+					}
+				}
+			case "parent", "fldparent":
+				if val != "" && m.Parent == "" {
+					m.Parent = val
+				}
+			case "guid":
+				if val != "" && m.GUID == "" {
+					m.GUID = val
+				}
+			case "gstin", "partygstin":
+				if val != "" {
+					appendDetail(m, "GSTIN:"+val)
+				}
+			case "ledgerphone", "ledgermobile", "ledgercontact", "phone", "mobile", "address", "email", "narration", "pincode", "statename":
+				if val != "" {
+					appendDetail(m, val)
+				}
+			}
+
+			// Recurse into nested lists such as <LANGUAGENAME.LIST>, <NAME.LIST>, <ADDRESS.LIST>
+			if len(child.Nodes) > 0 {
+				extractFieldsRecursive(child, m)
+			}
+		}
+	}
+
+	traverse = func(node XMLNode) {
+		if strings.EqualFold(node.XMLName.Local, masterTag) || strings.EqualFold(node.XMLName.Local, "ROW") || strings.EqualFold(node.XMLName.Local, "LINE") {
+			var m GenericTallyMaster
+			m.Type = masterTag
+			// 1. Check XML attributes on <LEDGER NAME="...">
+			for _, attr := range node.Attrs {
+				if strings.EqualFold(attr.Name.Local, "NAME") && m.Name == "" {
+					m.Name = strings.TrimSpace(attr.Value)
+				}
+			}
+			// 2. Recursively extract all fields & nested <LANGUAGENAME.LIST><NAME.LIST><NAME> aliases
+			extractFieldsRecursive(node, &m)
+
+			if m.Name != "" {
+				results = append(results, m)
+			}
+			return
+		}
+
+		for _, child := range node.Nodes {
+			traverse(child)
+		}
+	}
+
+	traverse(root)
+	return results
 }
 
 func parseCompanies(xmlBytes []byte) []TallyCompanyInfo {
@@ -789,7 +845,60 @@ func PushDeltasToCloud(cfg Config, payload *DeltaSyncPayload) (*SyncResponse, er
 	return &syncResp, nil
 }
 
-func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) {
+func computeLedgerHash(l GenericTallyMaster) string {
+	raw := fmt.Sprintf("L|%s|%s|%s|%s", l.GUID, l.Name, l.Parent, l.ExtraDetail)
+	h := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(h[:])
+}
+
+func FilterLedgerDeltas(ledgers []GenericTallyMaster, oldCache ItemHashCache, mergedCache ItemHashCache) ([]GenericTallyMaster, int) {
+	var changed []GenericTallyMaster
+	unchangedCount := 0
+	for _, l := range ledgers {
+		key := "ledger:" + l.GUID
+		if l.GUID == "" {
+			key = "ledger:" + l.Name
+		}
+		currentHash := computeLedgerHash(l)
+		mergedCache[key] = currentHash
+
+		oldHash, exists := oldCache[key]
+		if !exists || oldHash != currentHash {
+			changed = append(changed, l)
+		} else {
+			unchangedCount++
+		}
+	}
+	return changed, unchangedCount
+}
+
+func checkRemoteSyncTrigger(cfg Config) (bool, bool, string) {
+	url := strings.TrimRight(cfg.CloudSyncURL, "/") + "/health?agent=1"
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return false, false, ""
+	}
+	req.Header.Set("X-Zorba-Sync-Key", cfg.CloudSyncKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, false, ""
+	}
+	defer resp.Body.Close()
+	var data map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return false, false, ""
+	}
+	reqSync, _ := data["syncRequested"].(bool)
+	forceFull, _ := data["forceFull"].(bool)
+	scope, _ := data["syncScope"].(string)
+	if scope == "" {
+		scope = "all"
+	}
+	return reqSync, forceFull, scope
+}
+
+func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) bool {
 	if targetScope == "" {
 		targetScope = "all"
 	}
@@ -813,11 +922,14 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 
 	var items []TallyStockItem
 	var changedItems []TallyStockItem
-	var newCache ItemHashCache
 	var totalItems int
 	var unchangedCount int
 	cachePath := getCacheFilePath(cfg)
 	oldCache := loadHashCache(cachePath)
+	newCache := make(ItemHashCache, len(oldCache)+1000)
+	for k, v := range oldCache {
+		newCache[k] = v
+	}
 	var stockQueryErr error
 	var ledgerQueryErr error
 
@@ -830,8 +942,7 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 			fmt.Printf("      ❌ FAILED querying Tally Stock Items: %v\n", err)
 			if targetScope == "stock" {
 				fmt.Println("      💡 Fix: Ensure Tally is open on screen, company is loaded, and Port 9000 is enabled.")
-				fmt.Println("      💡 Run Test_Connection.bat to verify local Tally connectivity.")
-				return
+				return false
 			}
 		} else {
 			items = parseStockItems(xmlBytes)
@@ -839,9 +950,8 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 			fmt.Printf("      Live Tally returned %d total stock items.\n", totalItems)
 
 			if forceFull || len(oldCache) == 0 {
-				fmt.Println("      Performing FULL database snapshot inspection (--force mode or initial sync)...")
+				fmt.Println("      Performing FULL stock snapshot inspection (--force mode or initial sync)...")
 				changedItems = items
-				newCache = make(ItemHashCache, len(items))
 				for _, it := range items {
 					k := it.GUID
 					if k == "" {
@@ -851,28 +961,46 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 				}
 				unchangedCount = 0
 			} else {
-				changedItems, newCache, unchangedCount = FilterStockDeltas(items, oldCache)
-				fmt.Printf("      Delta Hash Inspection: %d changed / new items, %d items unchanged.\n", len(changedItems), unchangedCount)
+				var stockCache ItemHashCache
+				changedItems, stockCache, unchangedCount = FilterStockDeltas(items, oldCache)
+				for k, v := range stockCache {
+					newCache[k] = v
+				}
+				fmt.Printf("      Stock Delta Inspection: %d changed / new items, %d items unchanged.\n", len(changedItems), unchangedCount)
 			}
 		}
 	}
 
 	// 2. Export Ledgers (Customers / Sundry Debtors) (if target is customers or all)
 	var ledgers []GenericTallyMaster
+	var changedLedgers []GenericTallyMaster
 	if targetScope != "stock" {
-		ledgerReq := buildTallyCollectionRequest("ZorbaLedgers", "Ledger", "NAME, PARENT, GSTIN, INCOMETAXNUMBER, LEDGERPHONE, LEDGERMOBILE, LEDGERCONTACT, EMAIL, ADDRESS, STATENAME, PINCODE, GUID, NARRATION", cfg.TallyUsername, cfg.TallyPassword, cfg.TallyCompany)
+		ledgerReq := buildTallyCollectionRequest("ZorbaLedgers", "Ledger", "NAME, PARENT, GSTIN, PARTYGSTIN, INCOMETAXNUMBER, LEDGERPHONE, LEDGERMOBILE, LEDGERCONTACT, EMAIL, ADDRESS, STATENAME, PINCODE, GUID, NARRATION", cfg.TallyUsername, cfg.TallyPassword, cfg.TallyCompany)
 		ledgerBytes, err := executeTallyQuery(cfg, ledgerReq)
 		if err != nil {
 			ledgerQueryErr = err
 			fmt.Printf("      ❌ FAILED querying Tally Ledgers: %v\n", err)
 			if targetScope == "customers" {
 				fmt.Println("      💡 Fix: Ensure Tally is open on screen, company is loaded, and Port 9000 is enabled.")
-				fmt.Println("      💡 Run Test_Connection.bat to verify local Tally connectivity.")
-				return
+				return false
 			}
 		} else {
 			ledgers = parseGenericMasters(ledgerBytes, "Ledger")
 			fmt.Printf("      Live Tally returned %d total Ledgers/Accounts.\n", len(ledgers))
+			if forceFull {
+				changedLedgers = ledgers
+				for _, l := range ledgers {
+					key := "ledger:" + l.GUID
+					if l.GUID == "" {
+						key = "ledger:" + l.Name
+					}
+					newCache[key] = computeLedgerHash(l)
+				}
+			} else {
+				var ledgerUnchanged int
+				changedLedgers, ledgerUnchanged = FilterLedgerDeltas(ledgers, oldCache, newCache)
+				fmt.Printf("      Customer/Ledger Delta Inspection: %d changed / new ledgers (including phone aliases), %d unchanged.\n", len(changedLedgers), ledgerUnchanged)
+			}
 		}
 	}
 
@@ -880,25 +1008,24 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 	if stockQueryErr != nil && ledgerQueryErr != nil {
 		fmt.Println()
 		fmt.Println("❌ SYNC ABORTED: Could not connect to local Tally.")
-		fmt.Println("💡 Please run Test_Connection.bat to verify local Tally status on port 9000.")
+		fmt.Println("💡 Waiting for TallyPrime to open on port 9000...")
 		fmt.Println("================================================================")
-		return
+		return false
 	}
 
 	if targetScope == "customers" && len(ledgers) == 0 {
 		fmt.Println()
 		fmt.Println("⚠️ NOTICE: 0 ledgers/customers were returned by Tally.")
-		fmt.Println("💡 Make sure your active company contains Customer / Sundry Debtors accounts.")
 		fmt.Println("================================================================")
-		return
+		return false
 	}
 
-	if len(changedItems) == 0 && len(ledgers) == 0 {
+	if len(changedItems) == 0 && len(changedLedgers) == 0 {
 		fmt.Println()
-		fmt.Println("ZERO CHANGES DETECTED: All selected items match Cloud state.")
+		fmt.Println("ZERO CHANGES DETECTED: All Stock Items & Customer Ledgers match Cloud state.")
 		fmt.Println("Zero Firestore writes consumed ($0.00 cloud cost). Exiting cleanly.")
 		fmt.Println("================================================================")
-		return
+		return true
 	}
 
 	payload := &DeltaSyncPayload{
@@ -913,22 +1040,22 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 		ChangedCount:   len(changedItems),
 		UnchangedCount: unchangedCount,
 		Items:          changedItems,
-		Ledgers:        ledgers,
+		Ledgers:        changedLedgers,
 	}
 
 	if isDryRun {
-		fmt.Printf("SIMULATING: Sending %d items / ledgers to Cloud for Dry-Run analysis (0 DB writes)...\n", len(changedItems)+len(ledgers))
+		fmt.Printf("SIMULATING: Sending %d items / %d ledgers to Cloud for Dry-Run analysis (0 DB writes)...\n", len(changedItems), len(changedLedgers))
 	} else {
-		fmt.Printf("Uploading %d updated inventory items & %d customers to Zorba Cloud...\n", len(changedItems), len(ledgers))
+		fmt.Printf("Uploading %d updated inventory items & %d updated customer ledgers to Zorba Cloud...\n", len(changedItems), len(changedLedgers))
 	}
 
 	resp, err := PushDeltasToCloud(cfg, payload)
 	if err != nil {
 		log.Printf("Cloud sync failed: %v\n", err)
-		return
+		return false
 	}
 
-	// In live mode, save new cache upon successful cloud receipt if stock was updated
+	// In live mode, save new cache upon successful cloud receipt
 	if !isDryRun && len(newCache) > 0 {
 		if err := saveHashCache(cachePath, newCache); err != nil {
 			log.Printf("Warning saving hash cache: %v\n", err)
@@ -941,6 +1068,7 @@ func PerformSync(cfg Config, forceFull bool, isDryRun bool, targetScope string) 
 		fmt.Println("No changes were written to your live database.")
 	}
 	fmt.Println("================================================================")
+	return true
 }
 
 func main() {
@@ -951,10 +1079,10 @@ func main() {
 	customerFlag := flag.Bool("customers", false, "Sync customers / Sundry Debtors ledgers only")
 	allFlag := flag.Bool("all", false, "Sync both stock items and customers (Default)")
 	targetFlag := flag.String("target", "", "Explicit target scope: 'stock', 'customers', or 'all'")
-	daemonFlag := flag.Bool("daemon", false, "Run continuously in background daemon mode (Default: Every 4 Hours)")
-	hoursFlag := flag.Int("hours", 0, "Custom interval in hours (Default: 4 hours)")
+	daemonFlag := flag.Bool("daemon", false, "Run continuously in background daemon mode")
+	hoursFlag := flag.Int("hours", 0, "Custom interval in hours")
 	intervalFlag := flag.Int("interval", 0, "Custom interval in hours (alias for -hours)")
-	minutesFlag := flag.Int("minutes", 0, "Custom interval in minutes (e.g. -minutes 30)")
+	minutesFlag := flag.Int("minutes", 0, "Custom interval in minutes (e.g. -minutes 15)")
 	secondsFlag := flag.Int("seconds", 0, "Custom interval in seconds for rapid testing (e.g. -seconds 30)")
 	exportFlag := flag.String("export-json", "", "Export full dump to local JSON file")
 	flag.Parse()
@@ -1012,22 +1140,37 @@ func main() {
 		var syncDuration time.Duration
 		if *secondsFlag > 0 {
 			syncDuration = time.Duration(*secondsFlag) * time.Second
-			fmt.Printf("Zorba Tally Smart Sync Agent v%s started in background daemon mode.\n   Frequency: Every %d seconds (Target: %s)\n\n", AppVersion, *secondsFlag, targetScope)
 		} else if *minutesFlag > 0 {
 			syncDuration = time.Duration(*minutesFlag) * time.Minute
-			fmt.Printf("Zorba Tally Smart Sync Agent v%s started in background daemon mode.\n   Frequency: Every %d minutes (Target: %s)\n\n", AppVersion, *minutesFlag, targetScope)
 		} else {
-			syncDuration = time.Duration(cfg.IntervalHours) * time.Hour
-			fmt.Printf("Zorba Tally Smart Sync Agent v%s started in background daemon mode.\n   Frequency: Every %d hours (Target: %s)\n\n", AppVersion, cfg.IntervalHours, targetScope)
+			// Default smart delta check interval: 15 minutes (0 cloud writes if nothing changed)
+			syncDuration = 15 * time.Minute
+		}
+		fmt.Printf("Zorba Tally Smart Sync Agent v%s started in background daemon mode.\n   Auto-Watch: Polls Tally readiness & Admin Dashboard remote triggers every 60s.\n   Delta Sync Interval: %v (Target: %s)\n\n", AppVersion, syncDuration, targetScope)
+
+		var lastSuccessTime time.Time
+		if PerformSync(cfg, *forceFlag, *dryRunFlag, targetScope) {
+			lastSuccessTime = time.Now()
 		}
 
-		// Initial sync on launch
-		PerformSync(cfg, *forceFlag, *dryRunFlag, targetScope)
-
-		ticker := time.NewTicker(syncDuration)
-		defer ticker.Stop()
-		for range ticker.C {
-			PerformSync(cfg, false, false, targetScope)
+		// Poll every 60 seconds:
+		// 1. Check if Admin Dashboard requested an immediate sync ("Sync Now" button)
+		// 2. If initial sync hasn't succeeded yet (e.g. TallyPrime was opened after Windows boot) or interval elapsed, run PerformSync
+		watchTicker := time.NewTicker(60 * time.Second)
+		defer watchTicker.Stop()
+		for range watchTicker.C {
+			if reqSync, reqForce, reqScope := checkRemoteSyncTrigger(cfg); reqSync {
+				fmt.Printf("[Remote Trigger] Admin Dashboard requested immediate sync (force=%v, scope=%s)!\n", reqForce, reqScope)
+				if PerformSync(cfg, reqForce, false, reqScope) {
+					lastSuccessTime = time.Now()
+				}
+				continue
+			}
+			if lastSuccessTime.IsZero() || time.Since(lastSuccessTime) >= syncDuration {
+				if PerformSync(cfg, false, false, targetScope) {
+					lastSuccessTime = time.Now()
+				}
+			}
 		}
 		return
 	}

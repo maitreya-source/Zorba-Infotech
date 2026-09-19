@@ -12,7 +12,7 @@ echo Creating silent background launcher...
 (
 echo Set WshShell = CreateObject("WScript.Shell"^)
 echo WshShell.CurrentDirectory = "%~dp0"
-echo WshShell.Run Chr(34^) ^& "%~dp0ZorbaTallySync.exe" ^& Chr(34^) ^& " -daemon -hours 4", 0, False
+echo WshShell.Run Chr(34^) ^& "%~dp0ZorbaTallySync.exe" ^& Chr(34^) ^& " -daemon -minutes 15", 0, False
 ) > "%~dp0SilentRunner.vbs"
 
 :: Place shortcut/script in Windows Startup folder
@@ -22,7 +22,7 @@ copy /y "%~dp0SilentRunner.vbs" "%STARTUP_FOLDER%\ZorbaTallySync.vbs" >nul
 echo.
 echo [SUCCESS] Automatic Startup configured!
 echo Zorba Tally Sync will now run automatically in the background 
-echo whenever Windows boots up (Every 4 Hours, Zero Console Popups).
+echo whenever Windows boots up (60s Tally Auto-Watch + 15-Min Smart Delta Sync, Zero Console Popups).
 echo.
 echo Starting background sync right now...
 start "" wscript.exe "%~dp0SilentRunner.vbs"

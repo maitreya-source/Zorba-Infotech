@@ -499,7 +499,8 @@ func inferBrandAndCategory(ctx context.Context, name, parent string) (brand stri
 }
 
 var (
-	phoneRegex          = regexp.MustCompile(`(?:(?:\+?91[\-\s]?)|(?:\b0))?([6-9]\d{9})\b`)
+	phoneRegex          = regexp.MustCompile(`(?:(?:\+?91[\-\s]?)|(?:\b0))?([6-9]\d{4}[\s\-]*\d{5})\b`)
+	nonDigitRegex       = regexp.MustCompile(`\D+`)
 	leadingCodeRegex    = regexp.MustCompile(`^\d+\s+`)
 	mobilePrefixRegex   = regexp.MustCompile(`(?i)\b(mo|mob|mobile|ph|phone|contact)[\s\:\-\.]*`)
 	trailingPunctRegex  = regexp.MustCompile(`[\-,\s/]+$`)
@@ -542,7 +543,7 @@ func extractIndianPhoneNumbers(text string) []string {
 	var phones []string
 	for _, m := range matches {
 		if len(m) >= 2 {
-			digits := m[1]
+			digits := nonDigitRegex.ReplaceAllString(m[1], "")
 			if len(digits) == 10 {
 				formatted := "91" + digits
 				if !seen[formatted] {
@@ -961,9 +962,35 @@ func processStockAndCustomerSync(ctx context.Context, parsedData any, timestamp 
 				}
 				normalizedGroup, address := normalizeTallyGroupAndAddress(parent)
 				city := extractCityFromCustomer(name, parent)
+				if rawGSTIN == "" && strings.Contains(extraDetail, "GSTIN:") {
+					for _, part := range strings.Split(extraDetail, "|") {
+						part = strings.TrimSpace(part)
+						if strings.HasPrefix(part, "GSTIN:") {
+							rawGSTIN = strings.TrimSpace(strings.TrimPrefix(part, "GSTIN:"))
+							break
+						}
+					}
+				}
 				gstin := cleanGSTINNumber(rawGSTIN)
 
 				var noteParts []string
+				if extraDetail != "" {
+					// Preserve non-phone, non-GSTIN aliases (e.g., contact person names like "Prahlad Patidar")
+					var cleanAliases []string
+					for _, part := range strings.Split(extraDetail, "|") {
+						part = strings.TrimSpace(part)
+						if part == "" || strings.HasPrefix(part, "GSTIN:") {
+							continue
+						}
+						stripped := strings.TrimSpace(cleanTallyCustomerName(part))
+						if stripped != "" && !strings.EqualFold(stripped, cleanName) {
+							cleanAliases = append(cleanAliases, stripped)
+						}
+					}
+					if len(cleanAliases) > 0 {
+						noteParts = append(noteParts, fmt.Sprintf("Alias/Contact: %s", strings.Join(cleanAliases, ", ")))
+					}
+				}
 				if parent != "" {
 					noteParts = append(noteParts, fmt.Sprintf("Tally Group: %s", parent))
 				}
@@ -1306,102 +1333,164 @@ responseObj["totalLedgersCount"] = len(ledgers)
 json.NewEncoder(w).Encode(responseObj)
 }
 
+var (
+	triggerMutex       sync.Mutex
+	syncRequested      bool
+	syncForceFull      bool
+	syncRequestedScope string
+	lastAgentPollAt    int64
+)
+
+func handleTriggerSync(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	scope := r.URL.Query().Get("scope")
+	if scope == "" {
+		scope = "all"
+	}
+	force := r.URL.Query().Get("force") == "true"
+
+	triggerMutex.Lock()
+	syncRequested = true
+	syncForceFull = force
+	syncRequestedScope = scope
+	triggerMutex.Unlock()
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{
+		"success":       true,
+		"syncRequested": true,
+		"forceFull":     force,
+		"syncScope":     scope,
+		"message":       "Sync request queued. The local Tally agent will pick this up on its next 60s heartbeat.",
+	})
+}
+
 func handleHealth(w http.ResponseWriter, r *http.Request) {
-w.Header().Set("Content-Type", "application/json")
-w.WriteHeader(http.StatusOK)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
-snapshotMutex.RLock()
-count := len(snapshots)
-snapshotMutex.RUnlock()
+	snapshotMutex.RLock()
+	count := len(snapshots)
+	snapshotMutex.RUnlock()
 
-json.NewEncoder(w).Encode(map[string]any{
-"status":    "healthy",
-"service":   ServiceName,
-"version":   Version,
-"timestamp": time.Now().UTC().Format(time.RFC3339),
-"snapshots": count,
-"mode":      "INSPECTION_GATEWAY (Live DB untouched)",
-})
+	isAgent := r.URL.Query().Get("agent") == "1"
+
+	triggerMutex.Lock()
+	reqSync := syncRequested
+	reqForce := syncForceFull
+	reqScope := syncRequestedScope
+	if isAgent {
+		lastAgentPollAt = time.Now().UnixMilli()
+		if syncRequested {
+			// Consume trigger once delivered to local Tally agent
+			syncRequested = false
+			syncForceFull = false
+		}
+	}
+	agentLastSeen := lastAgentPollAt
+	triggerMutex.Unlock()
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"status":          "healthy",
+		"service":         ServiceName,
+		"version":         Version,
+		"timestamp":       time.Now().UTC().Format(time.RFC3339),
+		"snapshots":       count,
+		"syncRequested":   reqSync,
+		"forceFull":       reqForce,
+		"syncScope":       reqScope,
+		"lastAgentPollAt": agentLastSeen,
+	})
 }
 
 func loadRecentSnapshotsFromFirestore() {
-if firestoreClient == nil {
-return
-}
-ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-defer cancel()
+	if firestoreClient == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-iter := firestoreClient.Collection("tally_inspection_snapshots").
-OrderBy("timestamp", firestore.Desc).
-Limit(10).
-Documents(ctx)
+	iter := firestoreClient.Collection("tally_inspection_snapshots").
+		OrderBy("timestamp", firestore.Desc).
+		Limit(10).
+		Documents(ctx)
 
-var loaded []InspectionSnapshot
-for {
-doc, err := iter.Next()
-if err == iterator.Done {
-break
-}
-if err != nil {
-log.Printf("[Firestore] Notice on reading docs: %v", err)
-break
-}
-data := doc.Data()
-snap := InspectionSnapshot{
-ID:           doc.Ref.ID,
-ReceivedAt:   fmt.Sprintf("%v", data["receivedAt"]),
-ParsedFormat: fmt.Sprintf("%v", data["parsedFormat"]),
-}
-if cl, ok := data["contentLength"].(int64); ok {
-snap.ContentLength = int(cl)
-}
-loaded = append(loaded, snap)
-}
+	var loaded []InspectionSnapshot
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("[Firestore] Notice on reading docs: %v", err)
+			break
+		}
+		data := doc.Data()
+		snap := InspectionSnapshot{
+			ID:           doc.Ref.ID,
+			ReceivedAt:   fmt.Sprintf("%v", data["receivedAt"]),
+			ParsedFormat: fmt.Sprintf("%v", data["parsedFormat"]),
+		}
+		if cl, ok := data["contentLength"].(int64); ok {
+			snap.ContentLength = int(cl)
+		}
+		loaded = append(loaded, snap)
+	}
 
-if len(loaded) > 0 {
-snapshotMutex.Lock()
-snapshots = append(snapshots, loaded...)
-snapshotMutex.Unlock()
-log.Printf("[Firestore] Pre-loaded %d historical inspection snapshots into memory.", len(loaded))
-}
+	if len(loaded) > 0 {
+		snapshotMutex.Lock()
+		snapshots = append(snapshots, loaded...)
+		snapshotMutex.Unlock()
+		log.Printf("[Firestore] Pre-loaded %d historical inspection snapshots into memory.", len(loaded))
+	}
 }
 
 func main() {
-port := os.Getenv("PORT")
-if port == "" {
-port = "8080"
-}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-go loadRecentSnapshotsFromFirestore()
+	go loadRecentSnapshotsFromFirestore()
 
-mux := http.NewServeMux()
-mux.HandleFunc("/health", handleHealth)
-mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-if r.URL.Path == "/" || r.URL.Path == "" {
-handleHealth(w, r)
-return
-}
-if r.URL.Path == "/api/tally/inspect" || r.URL.Path == "/api/tally/ingest" || r.URL.Path == "/api/tally/sync" || r.URL.Path == "/syncTallyStock" {
-AuthMiddleware(handleInspect)(w, r)
-return
-}
-if strings.HasPrefix(r.URL.Path, "/api/tally/runs") {
-AuthMiddleware(handleGetSyncRuns)(w, r)
-return
-}
-if strings.HasPrefix(r.URL.Path, "/api/tally/snapshots") {
-AuthMiddleware(handleGetSnapshots)(w, r)
-return
-}
-if r.URL.Path == "/api/tally/preview-latest" {
-AuthMiddleware(handlePreviewLatest)(w, r)
-return
-}
-http.NotFound(w, r)
-})
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", handleHealth)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || r.URL.Path == "" {
+			handleHealth(w, r)
+			return
+		}
+		if r.URL.Path == "/api/tally/trigger" {
+			AuthMiddleware(handleTriggerSync)(w, r)
+			return
+		}
+		if r.URL.Path == "/api/tally/inspect" || r.URL.Path == "/api/tally/ingest" || r.URL.Path == "/api/tally/sync" || r.URL.Path == "/syncTallyStock" {
+			AuthMiddleware(handleInspect)(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/tally/runs") {
+			AuthMiddleware(handleGetSyncRuns)(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/tally/snapshots") {
+			AuthMiddleware(handleGetSnapshots)(w, r)
+			return
+		}
+		if r.URL.Path == "/api/tally/preview-latest" {
+			AuthMiddleware(handlePreviewLatest)(w, r)
+			return
+		}
+		http.NotFound(w, r)
+	})
 
-log.Printf("[%s v%s] Starting Cloud Run Tally Gateway on port :%s", ServiceName, Version, port)
-if err := http.ListenAndServe(":"+port, mux); err != nil {
-log.Fatalf("Server failed to start: %v", err)
-}
+	log.Printf("[%s v%s] Starting Cloud Run Tally Gateway on port :%s", ServiceName, Version, port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
 }
