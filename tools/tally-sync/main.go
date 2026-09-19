@@ -229,33 +229,46 @@ return fmt.Sprintf(`<ENVELOPE>
 }
 
 func executeTallyQuery(cfg Config, reqXML string) ([]byte, error) {
-client := &http.Client{
-Timeout: time.Duration(cfg.TallyTimeoutSec) * time.Second,
-}
+	// CRITICAL: Disable HTTP Keep-Alive so Go never holds a persistent TCP socket open
+	// on Tally's single-threaded port 9000 (which otherwise blocks Tally Print & WhatsApp plugins).
+	transport := &http.Transport{
+		DisableKeepAlives:   true,
+		MaxIdleConns:        1,
+		MaxIdleConnsPerHost: 1,
+		IdleConnTimeout:     1 * time.Second,
+	}
+	defer transport.CloseIdleConnections()
 
-req, err := http.NewRequest("POST", cfg.TallyHost, bytes.NewBufferString(reqXML))
-if err != nil {
-return nil, fmt.Errorf("failed to build request: %w", err)
-}
+	client := &http.Client{
+		Timeout:   time.Duration(cfg.TallyTimeoutSec) * time.Second,
+		Transport: transport,
+	}
 
-req.Header.Set("Content-Type", "text/xml;charset=utf-8")
+	req, err := http.NewRequest("POST", cfg.TallyHost, bytes.NewBufferString(reqXML))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
 
-resp, err := client.Do(req)
-if err != nil {
-return nil, fmt.Errorf("connection to Tally failed (%s): %w", cfg.TallyHost, err)
-}
-defer resp.Body.Close()
+	req.Close = true
+	req.Header.Set("Connection", "close")
+	req.Header.Set("Content-Type", "text/xml;charset=utf-8")
 
-body, err := io.ReadAll(resp.Body)
-if err != nil {
-return nil, fmt.Errorf("failed to read response: %w", err)
-}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("connection to Tally failed (%s): %w", cfg.TallyHost, err)
+	}
+	defer resp.Body.Close()
 
-if resp.StatusCode != http.StatusOK {
-return body, fmt.Errorf("Tally returned status %d: %s", resp.StatusCode, string(body))
-}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
 
-return body, nil
+	if resp.StatusCode != http.StatusOK {
+		return body, fmt.Errorf("Tally returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return body, nil
 }
 
 type XMLNode struct {
@@ -1135,42 +1148,45 @@ func main() {
 		return
 	}
 
-	// If daemon mode is requested
+	// If daemon mode is requested: enforce STRICT After-Hours Once-Per-Day policy
+	// so Port 9000 is NEVER polled during business hours (09:00 - 22:00), preserving Tally Print & WhatsApp.
 	if *daemonFlag || *hoursFlag > 0 || *intervalFlag > 0 || *minutesFlag > 0 || *secondsFlag > 0 {
-		var syncDuration time.Duration
-		if *secondsFlag > 0 {
-			syncDuration = time.Duration(*secondsFlag) * time.Second
-		} else if *minutesFlag > 0 {
-			syncDuration = time.Duration(*minutesFlag) * time.Minute
-		} else {
-			// Default smart delta check interval: 15 minutes (0 cloud writes if nothing changed)
-			syncDuration = 15 * time.Minute
-		}
-		fmt.Printf("Zorba Tally Smart Sync Agent v%s started in background daemon mode.\n   Auto-Watch: Polls Tally readiness & Admin Dashboard remote triggers every 60s.\n   Delta Sync Interval: %v (Target: %s)\n\n", AppVersion, syncDuration, targetScope)
+		fmt.Printf("Zorba Tally Sync Agent v%s (After-Hours Once-Daily Mode).\n   Business Hours Guard ACTIVE (09:00 - 22:00): Zero port 9000 connections during working hours.\n   Will sync once daily after 22:00 (10:00 PM) or when manually triggered from Admin Dashboard.\n\n", AppVersion)
 
-		var lastSuccessTime time.Time
-		if PerformSync(cfg, *forceFlag, *dryRunFlag, targetScope) {
-			lastSuccessTime = time.Now()
-		}
-
-		// Poll every 60 seconds:
-		// 1. Check if Admin Dashboard requested an immediate sync ("Sync Now" button)
-		// 2. If initial sync hasn't succeeded yet (e.g. TallyPrime was opened after Windows boot) or interval elapsed, run PerformSync
+		var lastSyncedDate string
 		watchTicker := time.NewTicker(60 * time.Second)
 		defer watchTicker.Stop()
-		for range watchTicker.C {
+
+		checkAndRun := func() {
+			now := time.Now()
+			// 1. Check if Admin explicitly clicked "Trigger Live Sync" in Admin Dashboard (this only checks Cloud Run, NOT Tally port 9000!)
 			if reqSync, reqForce, reqScope := checkRemoteSyncTrigger(cfg); reqSync {
 				fmt.Printf("[Remote Trigger] Admin Dashboard requested immediate sync (force=%v, scope=%s)!\n", reqForce, reqScope)
 				if PerformSync(cfg, reqForce, false, reqScope) {
-					lastSuccessTime = time.Now()
+					lastSyncedDate = now.Format("2006-01-02")
 				}
-				continue
+				return
 			}
-			if lastSuccessTime.IsZero() || time.Since(lastSuccessTime) >= syncDuration {
-				if PerformSync(cfg, false, false, targetScope) {
-					lastSuccessTime = time.Now()
+
+			// 2. Business Hours Protection: Do NOT touch localhost:9000 between 9:00 AM and 10:00 PM!
+			hour := now.Hour()
+			isBusinessHours := hour >= 9 && hour < 22
+			if isBusinessHours {
+				return
+			}
+
+			// 3. Outside business hours (after 10:00 PM or before 9:00 AM): Run ONCE per calendar day
+			todayStr := now.Format("2006-01-02")
+			if lastSyncedDate != todayStr {
+				if PerformSync(cfg, *forceFlag, *dryRunFlag, targetScope) {
+					lastSyncedDate = todayStr
 				}
 			}
+		}
+
+		checkAndRun()
+		for range watchTicker.C {
+			checkAndRun()
 		}
 		return
 	}

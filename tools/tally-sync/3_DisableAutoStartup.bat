@@ -21,9 +21,10 @@ if exist "%~dp0SilentRunner.vbs" (
 
 echo Stopping any running ZorbaTallySync background instances...
 taskkill /f /im ZorbaTallySync.exe >nul 2>&1
+schtasks /delete /tn "ZorbaTallyAfterHoursSync" /f >nul 2>&1
 
 echo.
-echo [SUCCESS] Automatic Startup disabled and background process stopped.
+echo [SUCCESS] Automatic Startup / Scheduled Task disabled and background process stopped.
 echo ================================================================
 echo.
 pause
