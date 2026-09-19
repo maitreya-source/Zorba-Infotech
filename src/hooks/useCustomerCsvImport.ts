@@ -22,9 +22,7 @@ export function useCustomerCsvImport(onImportSuccess?: () => void) {
   const handleDownloadSample = useCallback(() => {
     const sampleCSV =
       "Name,Phone,Email,CompanyName,Address\n" +
-      "Sharma Rajesh,+91 9823011111,rajesh@sharma.com,Acme Traders,Shop 12 Station Road Pune\n" +
-      "Patel Amit,+91 9823022222,amit.patel@gmail.com,Patel Enterprises,Plot 45 Industrial Area Gurugram\n" +
-      "Verma Sunita,+91 9823033333,,Verma Solutions,MG Road Commercial Hub";
+      "Customer Full Name,+91 9826000000,customer@domain.com,Firm / Business Name,Tagore Marg Neemuch MP";
     const blob = new Blob([sampleCSV], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

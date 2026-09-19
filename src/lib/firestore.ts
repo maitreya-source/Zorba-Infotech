@@ -3214,24 +3214,15 @@ export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" |
 export async function getWhatsAppTemplates(moduleFilter?: string): Promise<WhatsAppTemplateDoc[]> {
   try {
     const snap = await fetchWithTimeout(getDocs(collection(db, "whatsapp_templates")));
-    let templates = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WhatsAppTemplateDoc);
-
-    if (templates.length === 0) {
-      await seedDefaultWhatsAppTemplates();
-      const refetch = await fetchWithTimeout(getDocs(collection(db, "whatsapp_templates")));
-      templates = refetch.docs.map((d) => ({ id: d.id, ...d.data() }) as WhatsAppTemplateDoc);
-    }
+    const templates = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WhatsAppTemplateDoc);
 
     if (moduleFilter && moduleFilter !== "all") {
       return templates.filter((t) => t.targetModule === moduleFilter);
     }
     return templates;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("getWhatsAppTemplates error:", err);
-    return DEFAULT_WHATSAPP_TEMPLATES.map((t) => ({
-      ...t,
-      createdAt: Date.now(),
-    }));
+    return [];
   }
 }
 
@@ -3266,11 +3257,8 @@ export async function deleteWhatsAppTemplate(id: string): Promise<void> {
 export async function seedDefaultWhatsAppTemplates(force: boolean = false): Promise<void> {
   try {
     const existing = await getDocs(collection(db, "whatsapp_templates"));
-    
-    // If not forced and already has the correct number of updated templates with terms, return
     if (!force && !existing.empty) {
-      const hasTerms = existing.docs.some((d) => d.data().bodyText?.includes("Terms & Conditions"));
-      if (hasTerms) return;
+      return;
     }
 
     for (const tpl of DEFAULT_WHATSAPP_TEMPLATES) {
