@@ -1388,13 +1388,39 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	if isAgent {
 		lastAgentPollAt = time.Now().UnixMilli()
 		if syncRequested {
-			// Consume trigger once delivered to local Tally agent
+			// Consume in-memory trigger once delivered to local Tally agent
 			syncRequested = false
 			syncForceFull = false
 		}
 	}
 	agentLastSeen := lastAgentPollAt
 	triggerMutex.Unlock()
+
+	// Also check Firestore `settings/tally_rules` for Admin UI sync requests
+	if isAgent && !reqSync && firestoreClient != nil {
+		ctx, cancel := context.WithTimeout(r.Context(), 4*time.Second)
+		defer cancel()
+		docRef := firestoreClient.Collection("settings").Doc("tally_rules")
+		if snap, err := docRef.Get(ctx); err == nil && snap.Exists() {
+			data := snap.Data()
+			if sr, ok := data["syncRequested"].(bool); ok && sr {
+				reqSync = true
+				if ff, ok := data["forceFull"].(bool); ok {
+					reqForce = ff
+				}
+				if sc, ok := data["syncScope"].(string); ok && sc != "" {
+					reqScope = sc
+				} else {
+					reqScope = "all"
+				}
+				// Consume the Firestore trigger flag and record agent heartbeat
+				_, _ = docRef.Set(ctx, map[string]any{
+					"syncRequested":   false,
+					"lastAgentPollAt": agentLastSeen,
+				}, firestore.MergeAll)
+			}
+		}
+	}
 
 	json.NewEncoder(w).Encode(map[string]any{
 		"status":          "healthy",

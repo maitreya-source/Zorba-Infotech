@@ -38,7 +38,9 @@ import {
   DEFAULT_TALLY_RULES,
   fetchTallySyncRules,
   saveTallySyncRules,
+  requestRemoteTallySync,
 } from "@/lib/tallyRules";
+import { toast } from "sonner";
 
 function formatSyncDate(timestamp?: number): string {
   if (!timestamp) return "—";
@@ -140,9 +142,12 @@ export default function AdminTallySync() {
   useEffect(() => {
     // Check Cloud Gateway health
     const checkGateway = async () => {
+      const gatewayBaseUrl =
+        import.meta.env.VITE_TALLY_GATEWAY_URL ||
+        "https://zorba-tally-gateway-703650129045.asia-south1.run.app";
       const start = Date.now();
       try {
-        const res = await fetch("https://zorba-tally-gateway-703650129045.asia-south1.run.app/health");
+        const res = await fetch(`${gatewayBaseUrl.replace(/\/$/, "")}/health`);
         if (res.ok) {
           setGatewayStatus("online");
           setGatewayLatency(Date.now() - start);
@@ -305,21 +310,13 @@ export default function AdminTallySync() {
             variant="outline"
             onClick={async () => {
               try {
-                const res = await fetch(
-                  "https://zorba-tally-gateway-703650129045.asia-south1.run.app/api/tally/trigger?scope=all&force=true",
-                  {
-                    method: "POST",
-                    headers: {
-                      "X-Zorba-Sync-Key":
-                        "fS2DEpX7qMPvtd7mUEoQ8obRRrPZp4nARXDfkyoXWFN3hzkvtRh27Vs4Xzk6zz5mDWscr3rxteuoJbxb3tGdT1jiKPgyb7mbSrPe8pWVIUofFaSWkPCpfmJmNaaI5TlS",
-                    },
-                  }
+                await requestRemoteTallySync({ scope: "all", forceFull: true });
+                toast.success(
+                  "Sync queued in Firestore! The Tally PC background agent will pick it up on its next 60s heartbeat."
                 );
-                if (res.ok) {
-                  alert("Sync queued! If ZorbaTallySync background agent is running on the Tally PC, it will sync within 60 seconds.");
-                }
-              } catch {
-                alert("Could not reach Cloud Gateway.");
+              } catch (err) {
+                console.error("Failed to queue remote Tally sync:", err);
+                toast.error("Failed to queue remote Tally sync.");
               }
             }}
             className="h-8 text-xs font-semibold gap-1.5 border-blue-200 bg-blue-50/70 text-blue-700 hover:bg-blue-100"

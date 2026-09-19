@@ -215,4 +215,22 @@ export async function saveTallySyncRules(rules: Partial<TallySyncRules>): Promis
   cachedRules = merged;
 }
 
+export async function requestRemoteTallySync(options?: {
+  scope?: "all" | "stock" | "customers";
+  forceFull?: boolean;
+}): Promise<void> {
+  const docRef = doc(db, "settings", "tally_rules");
+  await setDoc(
+    docRef,
+    {
+      syncRequested: true,
+      forceFull: options?.forceFull ?? false,
+      syncScope: options?.scope ?? "all",
+      syncRequestedAt: Date.now(),
+    },
+    { merge: true }
+  );
+}
+
+
 
