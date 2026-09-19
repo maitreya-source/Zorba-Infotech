@@ -69,6 +69,18 @@ service cloud.firestore {
 
     match /team_members/{memberId} {
       allow read, write: if isAdmin();
+      // Allow Staff Task Portal (/t/:taskId) to fetch assigned member's active/PIN state and set initial PIN when active
+      allow get: if true;
+      allow update: if resource.data.active != false &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pin']);
+    }
+
+    // Staff Tasks & PIN-Protected WhatsApp Task Portal (/t/:taskId?k=:token)
+    match /staff_tasks/{taskId} {
+      allow read, write: if isAdmin();
+      allow read: if true;
+      allow update: if resource.data.assignedEmployeeActive != false &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'staffRemarks', 'history', 'updatedAt']);
     }
 
     // Legacy staff and technicians collections (backward-compatibility)

@@ -411,9 +411,11 @@ export type WhatsAppTargetModule =
   | "service_calls"
   | "service_centers"
   | "couriers"
+  | "staff_tasks"
   | "quotations"
   | "marketing"
-  | "amc_reminders";
+  | "amc_reminders"
+  | "archived";
 
 export interface WhatsAppTemplateVariable {
   index: number;
@@ -433,6 +435,7 @@ export interface WhatsAppTemplateDoc {
   name: string;
   displayName: string;
   category: WhatsAppCategory;
+  previousCategory?: string;
   targetModule: WhatsAppTargetModule;
   language: string;
   headerType: WhatsAppHeaderType;
@@ -509,6 +512,37 @@ export interface PaginatedResult<T> {
   totalCount?: number;
 }
 
+export type TaskPriority = "p0" | "p1" | "p2" | "p3" | "p4";
+export type TaskStatus = "pending" | "in_progress" | "completed" | "blocked";
 
+export interface StaffTaskHistoryEntry {
+  id: string;
+  status: TaskStatus;
+  remarks?: string;
+  updatedBy: string;
+  updatedAt: number;
+}
 
-
+export interface StaffTask {
+  id: string;
+  title: string;
+  description?: string;
+  priority?: TaskPriority; // Always optional, defaults to "p2"
+  status: TaskStatus;
+  dueDate?: string; // YYYY-MM-DD
+  assignedToId: string;
+  assignedToName: string;
+  assignedToPhone?: string;
+  assignedEmployeeActive?: boolean; // Set to false immediately if employee is deactivated
+  createdByStaffId?: string;
+  createdByStaffName?: string;
+  linkedServiceCallId?: string;
+  linkedTicketNo?: string;
+  linkedCustomerId?: string;
+  linkedCustomerName?: string;
+  accessToken: string; // Secret token for /t/:taskId?k=:token
+  staffRemarks?: string;
+  history?: StaffTaskHistoryEntry[];
+  createdAt: number;
+  updatedAt: number;
+}

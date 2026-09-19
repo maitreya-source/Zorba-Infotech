@@ -19,7 +19,8 @@ export type SyncTopic =
   | "service_calls"
   | "inquiries"
   | "job_applications"
-  | "team";
+  | "team"
+  | "staff_tasks";
 
 export interface SyncMessage {
   topic: SyncTopic;
@@ -463,86 +464,171 @@ export function useStaffDutyPresence(activeProfile?: {
           remove(ref(rtdb, `staff_presence/${safeStaffKey}`)).catch(() => {});
         }
 
-        // Register online presence only for non-exempt staff members
+        // Register online presence only for non-exempt staff members with automatic inactivity expiry
+        const IDLE_PRESENCE_TIMEOUT_MS = 3 * 60 * 1000; // Expire online status after 3 minutes of no mouse/keyboard activity
+        const HIDDEN_TAB_TIMEOUT_MS = 60 * 1000; // Expire after 60s if tab is minimized/backgrounded
+        const STALE_HEARTBEAT_THRESHOLD_MS = 60000; // 60s RTDB TTL
+
+        let lastUserActivityAt = Date.now();
+        let hiddenSince: number | null =
+          typeof document !== "undefined" && document.visibilityState === "hidden"
+            ? Date.now()
+            : null;
+        let isMarkedOnline = false;
+        let latestPresenceData: Record<string, any> | null = null;
+        let localPruneTimer: any = null;
+
+        const writeOnlineHeartbeat = () => {
+          if (!myDutyRef || !staffId || isExempt) return;
+          isMarkedOnline = true;
+          set(myDutyRef, {
+            staffId,
+            name: staffName,
+            lastSeen: Date.now(),
+          }).catch(() => {});
+        };
+
+        const markAwayAndRemovePresence = () => {
+          if (!myDutyRef) return;
+          if (isMarkedOnline) {
+            isMarkedOnline = false;
+            remove(myDutyRef).catch(() => {});
+          }
+        };
+
+        const handleUserActivity = () => {
+          const now = Date.now();
+          lastUserActivityAt = now;
+          if (typeof document !== "undefined" && document.visibilityState !== "hidden") {
+            hiddenSince = null;
+          }
+          // If the user was previously marked away due to inactivity, immediately bring them back online
+          if (!isMarkedOnline && myDutyRef && staffId && !isExempt) {
+            writeOnlineHeartbeat();
+          }
+        };
+
+        const handleVisibilityChange = () => {
+          if (typeof document === "undefined") return;
+          if (document.visibilityState === "hidden") {
+            hiddenSince = Date.now();
+          } else {
+            hiddenSince = null;
+            handleUserActivity();
+          }
+        };
+
+        const activityEvents = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "focus"];
+
         if (staffId && !isExempt) {
           const safeStaffKey = staffId.replace(/[.#$[\]]/g, "_");
           const safeDevKey = deviceSessionId.replace(/[.#$[\]]/g, "_");
           myDutyRef = ref(rtdb, `staff_presence/${safeStaffKey}/${safeDevKey}`);
 
-          const updateHeartbeat = () => {
-            set(myDutyRef, {
-              staffId,
-              name: staffName,
-              lastSeen: Date.now(),
-            }).catch(() => {});
+          const checkIdleAndHeartbeat = () => {
+            const now = Date.now();
+            const idleDuration = now - lastUserActivityAt;
+            const hiddenDuration = hiddenSince ? now - hiddenSince : 0;
+
+            if (
+              idleDuration >= IDLE_PRESENCE_TIMEOUT_MS ||
+              hiddenDuration >= HIDDEN_TAB_TIMEOUT_MS
+            ) {
+              markAwayAndRemovePresence();
+              return;
+            }
+            writeOnlineHeartbeat();
           };
 
-          updateHeartbeat();
+          writeOnlineHeartbeat();
           try {
             onDisconnect(myDutyRef).remove();
           } catch {}
 
-          heartbeatTimer = setInterval(updateHeartbeat, 15000);
+          if (typeof window !== "undefined") {
+            activityEvents.forEach((evt) =>
+              window.addEventListener(evt, handleUserActivity, { passive: true })
+            );
+            document.addEventListener("visibilitychange", handleVisibilityChange);
+          }
+
+          heartbeatTimer = setInterval(checkIdleAndHeartbeat, 15000);
         }
+
+        const recomputeOnlineStaff = (data: Record<string, any> | null) => {
+          if (!data) {
+            setOnlineStaff([]);
+            return;
+          }
+          const staffMap = new Map<string, OnlineStaffDutyMember>();
+          const now = Date.now();
+
+          Object.keys(data).forEach((sKey) => {
+            const userDevices = data[sKey];
+            if (userDevices && typeof userDevices === "object") {
+              Object.keys(userDevices).forEach((dKey) => {
+                const item = userDevices[dKey];
+                if (item && item.staffId) {
+                  // Strictly purge and exempt developers from online board
+                  if (developerStaffIds.has(item.staffId) || (staffId === item.staffId && isExempt)) {
+                    remove(ref(rtdb!, `staff_presence/${sKey}`)).catch(() => {});
+                    return;
+                  }
+
+                  // Stale / idle session check:
+                  // If device hasn't sent an active heartbeat within 60s, auto-prune from RTDB and hide from online board
+                  const isFresh =
+                    typeof item.lastSeen === "number" &&
+                    now - item.lastSeen < STALE_HEARTBEAT_THRESHOLD_MS;
+
+                  if (!isFresh) {
+                    remove(ref(rtdb!, `staff_presence/${sKey}/${dKey}`)).catch(() => {});
+                    return;
+                  }
+
+                  staffMap.set(item.staffId, {
+                    staffId: item.staffId,
+                    name: item.name || "Staff Member",
+                    lastSeen: item.lastSeen,
+                  });
+                }
+              });
+            }
+          });
+
+          setOnlineStaff(Array.from(staffMap.values()));
+        };
 
         // Listen for all online staff in RTDB
         const rootPresenceRef = ref(rtdb, "staff_presence");
         dutyListenerUnsub = onValue(
           rootPresenceRef,
           (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
-              setOnlineStaff([]);
-              return;
-            }
-            const staffMap = new Map<string, OnlineStaffDutyMember>();
-            const now = Date.now();
-            const STALE_HEARTBEAT_THRESHOLD_MS = 60000; // 60s TTL
-
-            Object.keys(data).forEach((sKey) => {
-              const userDevices = data[sKey];
-              if (userDevices && typeof userDevices === "object") {
-                Object.keys(userDevices).forEach((dKey) => {
-                  const item = userDevices[dKey];
-                  if (item && item.staffId) {
-                    // Strictly purge and exempt developers from online board
-                    if (developerStaffIds.has(item.staffId) || (staffId === item.staffId && isExempt)) {
-                      remove(ref(rtdb!, `staff_presence/${sKey}`)).catch(() => {});
-                      return;
-                    }
-
-                    // Stale ghost session check:
-                    // If device hasn't reported within 60s (or lacks lastSeen from an old dead session),
-                    // auto-prune this dead device node from RTDB and do not show as online
-                    const isFresh =
-                      typeof item.lastSeen === "number" &&
-                      now - item.lastSeen < STALE_HEARTBEAT_THRESHOLD_MS;
-
-                    if (!isFresh) {
-                      remove(ref(rtdb!, `staff_presence/${sKey}/${dKey}`)).catch(() => {});
-                      return;
-                    }
-
-                    staffMap.set(item.staffId, {
-                      staffId: item.staffId,
-                      name: item.name || "Staff Member",
-                      lastSeen: item.lastSeen,
-                    });
-                  }
-                });
-              }
-            });
-
-            setOnlineStaff(Array.from(staffMap.values()));
+            latestPresenceData = snapshot.val();
+            recomputeOnlineStaff(latestPresenceData);
           },
           (err) => {
             console.debug("Staff presence listener standby:", err.message);
           }
         );
 
+        // Local 15s sweep to immediately expire stale/away staff even when no RTDB writes occur
+        localPruneTimer = setInterval(() => {
+          if (latestPresenceData) {
+            recomputeOnlineStaff(latestPresenceData);
+          }
+        }, 15000);
+
         return () => {
           if (heartbeatTimer) clearInterval(heartbeatTimer);
+          if (localPruneTimer) clearInterval(localPruneTimer);
           if (dutyListenerUnsub) dutyListenerUnsub();
+          if (typeof window !== "undefined") {
+            activityEvents.forEach((evt) =>
+              window.removeEventListener(evt, handleUserActivity)
+            );
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+          }
           if (myDutyRef) {
             remove(myDutyRef).catch(() => {});
           }

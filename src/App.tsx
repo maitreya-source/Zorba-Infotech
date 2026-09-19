@@ -49,6 +49,8 @@ const AdminQuotationForm = lazy(() => import("./pages/admin/AdminQuotationForm")
 const AdminInquiries = lazy(() => import("./pages/admin/AdminInquiries"));
 const AdminJobApplications = lazy(() => import("./pages/admin/AdminJobApplications"));
 const AdminTallySync = lazy(() => import("./pages/admin/AdminTallySync"));
+const AdminTasks = lazy(() => import("./pages/admin/AdminTasks"));
+const StaffTaskPortal = lazy(() => import("./pages/StaffTaskPortal"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +79,7 @@ const App = () => (
                 <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
+                  <Route path="/t/:taskId" element={<StaffTaskPortal />} />
                   <Route path="/products" element={<Navigate to="/catalog" replace />} />
                   <Route path="/catalog" element={<Catalog />} />
                   <Route path="/catalog/:id" element={<CatalogProduct />} />
@@ -93,6 +96,7 @@ const App = () => (
                   {/* Protected admin routes */}
                   <Route element={<AdminRoute />}>
                     <Route element={<AdminLayout />}>
+                      <Route path="/admin/tasks" element={<AdminTasks />} />
                       <Route path="/admin/products" element={<AdminProducts />} />
                       <Route path="/admin/products/new" element={<AdminProductForm />} />
                       <Route path="/admin/products/:id/edit" element={<AdminProductForm />} />

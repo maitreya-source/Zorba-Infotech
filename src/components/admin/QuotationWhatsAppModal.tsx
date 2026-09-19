@@ -42,10 +42,11 @@ export default function QuotationWhatsAppModal({
         )
         .join("\n\n");
 
-      const draft = `*PRICE ESTIMATE QUOTATION - ZORBA INFOTECH*
+      const draft = `Hi *${quotation.customerName || "Valued Customer"}*,
+
+*PRICE ESTIMATE QUOTATION - ZORBA INFOTECH*
 Quotation No: *#${quotation.quotationNo}*
 Date: ${quotation.date || new Date().toISOString().split("T")[0]}
-Customer: *${quotation.customerName || "Valued Customer"}*
 
 *Estimated Items:*
 ${itemsText}
@@ -61,7 +62,7 @@ ${(quotation.discount || 0) > 0 ? `*Discount:* -₹${(quotation.discount || 0).t
 3. Final tax invoice and warranty terms will be provided upon confirmation and fulfillment of order.
 
 For any questions, feel free to contact us:
-📞 +91 95891 99738 / +91 91798 90150
+📞 +91 99935 99730 / +91 93021 99730
 *Zorba Infotech, Neemuch*`;
 
       setMessage(draft);

@@ -51,13 +51,12 @@ export function StaffProfileProvider({ children }: { children: React.ReactNode }
   const [showSelectorModal, setShowSelectorModal] = useState<boolean>(false);
   const [now, setNow] = useState(Date.now());
 
-  // Periodically check expiry every 1 hour (3600000 ms)
+  // Periodically check 10-hour daily shift expiry
   useEffect(() => {
     const interval = setInterval(() => {
       const current = Date.now();
       setNow(current);
       if (activeProfile && current > activeProfile.expiresAt) {
-        // 10 hour session expired on this computer
         localStorage.removeItem(STORAGE_KEY);
         setActiveProfileState(null);
         setShowSelectorModal(true);

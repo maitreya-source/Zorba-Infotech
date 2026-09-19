@@ -183,7 +183,7 @@ export function generateWhatsAppMessage(options: {
 
   const message =
     `*ZORBA INFOTECH - ${headerNotice}*\n\n` +
-    `Dear *${options.customerName}*,\n` +
+    `Hi *${options.customerName}*,\n` +
     `Your service request has been updated. Here are the ticket details:\n\n` +
     `🎫 *Ticket No:* ${options.ticketNo || "New Ticket"}\n` +
     `📅 *Date:* ${options.dateTime}\n` +
@@ -203,6 +203,23 @@ export function generateWhatsAppMessage(options: {
 }
 
 /**
+ * Returns the public production origin (https://zorbainfotech.in) whenever the app
+ * is accessed from localhost/LAN so external WhatsApp links are always clickable on phones.
+ */
+export function getPublicAppOrigin(): string {
+  const configured = (import.meta.env.VITE_PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "");
+  if (configured) return configured;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.")) {
+      return "https://zorbainfotech.in";
+    }
+    return window.location.origin;
+  }
+  return "https://zorbainfotech.in";
+}
+
+/**
  * WhatsApp message generator: Ask Courier for Parcel Pickup.
  */
 export function generateCourierPickupRequestMessage(options: {
@@ -215,7 +232,7 @@ export function generateCourierPickupRequestMessage(options: {
 }): string {
   return (
     `*ZORBA INFOTECH - PARCEL PICKUP REQUEST*\n\n` +
-    `Hello *${options.courierName}* Team,\n` +
+    `Hi *${options.courierName}* Team,\n` +
     `Kindly arrange a parcel pickup from our shop/office for the following shipment:\n\n` +
     `🎫 *Ticket / Ref No:* ${options.ticketNo || "Zorba Shipment"}\n` +
     (options.serviceCenterName ? `🏢 *Consignee / Service Center:* ${options.serviceCenterName}\n` : "") +
@@ -241,7 +258,7 @@ export function generateCourierDeliveryInquiryMessage(options: {
 }): string {
   return (
     `*ZORBA INFOTECH - SHIPMENT DELIVERY INQUIRY*\n\n` +
-    `Hello *${options.courierName}* Team,\n` +
+    `Hi *${options.courierName}* Team,\n` +
     `We would like to check the delivery status for our dispatched shipment:\n\n` +
     `📦 *Docket / AWB No:* ${options.courierDocketNumber || "Pending Docket"}\n` +
     `🎫 *Internal Ticket Ref:* ${options.ticketNo || "N/A"}\n` +
@@ -266,7 +283,7 @@ export function generateCourierFollowUpMessage(options: {
 }): string {
   return (
     `*ZORBA INFOTECH - COURIER SHIPMENT TRACKING INQUIRY*\n\n` +
-    `Hello *${options.courierName}* Team,\n` +
+    `Hi *${options.courierName}* Team,\n` +
     `We would like to check the real-time delivery status for our dispatched parcel:\n\n` +
     `📦 *Docket / AWB Number:* ${options.courierDocketNumber}\n` +
     `🎫 *Internal Ticket Ref:* ${options.ticketNo}\n` +
@@ -292,7 +309,7 @@ export function generateServiceCenterFollowUpMessage(options: {
 }): string {
   return (
     `*ZORBA INFOTECH - SERVICE CENTER RMA / REPAIR STATUS INQUIRY*\n\n` +
-    `Dear *${options.serviceCenterName}* Support Team,\n` +
+    `Hi *${options.serviceCenterName}* Support Team,\n` +
     `We would like to request an update on the repair/replacement status for the following unit sent to your center:\n\n` +
     `🎫 *Our Job Card / Ticket:* ${options.ticketNo}\n` +
     (options.rmaNumber ? `🏷️ *Service Center RMA / Ref No:* ${options.rmaNumber}\n` : "") +

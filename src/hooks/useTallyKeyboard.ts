@@ -393,7 +393,11 @@ export function useTallyListNavigation<T>({
       }
 
       // 10. Space -> Toggle Row Selection / Status
-      if (e.key === " " && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if ((e.key === " " || e.code === "Space") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // If focus is inside a combobox/select button, allow Space to open the dropdown
+        if (target && (target.getAttribute("role") === "combobox" || target.closest('[role="combobox"]'))) {
+          return;
+        }
         if (items.length > 0 && items[selectedIndex] && onToggleSelect) {
           e.preventDefault();
           onToggleSelect(items[selectedIndex], selectedIndex);
@@ -472,6 +476,7 @@ export function useTallyListNavigation<T>({
     getRowProps: (idx: number) => ({
       "data-tally-row": idx,
       tabIndex: idx === selectedIndex ? 0 : -1,
+      onMouseEnter: () => setSelectedIndex(idx),
       onClick: () => setSelectedIndex(idx),
       onDoubleClick: () => items[idx] && onOpenItem(items[idx], idx),
       className: idx === selectedIndex

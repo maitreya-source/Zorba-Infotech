@@ -87,7 +87,7 @@ export default function QuotationEmailModal({
     <!-- Main Content -->
     <div style="padding: 28px 32px;">
       <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-top: 0;">
-        Dear <strong>${quotation.customerName || "Valued Customer"}</strong>,
+        Hi <strong>${quotation.customerName || "Valued Customer"}</strong>,
       </p>
       <p style="font-size: 13px; line-height: 1.6; color: #475569;">
         Thank you for contacting Zorba Infotech. Please find below the estimated pricing and configuration summary for your requested products:
@@ -194,7 +194,7 @@ export default function QuotationEmailModal({
       )
       .join("\n");
 
-    return `Dear ${quotation.customerName || "Customer"},
+    return `Hi ${quotation.customerName || "Customer"},
 
 Thank you for contacting Zorba Infotech. Please find below the estimated quotation for your requested items:
 

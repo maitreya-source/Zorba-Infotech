@@ -145,7 +145,7 @@ export function buildEmailHtml(params: GenerateEmailContentParams): string {
           </div>
           <!-- Body Content -->
           <div style="padding: 32px;">
-            <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-top: 0;">Dear <strong>${customer}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-top: 0;">Hi <strong>${customer}</strong>,</p>
             <div style="font-size: 13px; line-height: 1.7; color: #334155; white-space: pre-wrap; margin: 20px 0; background: #f8fafc; padding: 18px; border-radius: 8px; border: 1px solid #e2e8f0;">${params.customBody}</div>
             <p style="font-size: 13px; line-height: 1.6; color: #64748b; margin-bottom: 0;">If you have any questions, feel free to reply to this email or contact our support team at <strong>+91 99935 99730</strong>.</p>
           </div>
@@ -187,7 +187,7 @@ export function buildEmailHtml(params: GenerateEmailContentParams): string {
         <!-- Main Content -->
         <div style="padding: 28px 32px;">
           <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-top: 0;">
-            Dear <strong>${customer}</strong>,
+            Hi <strong>${customer}</strong>,
           </p>
           <p style="font-size: 13px; line-height: 1.6; color: #475569;">
             Here is the official service update regarding your job card with Zorba Infotech:
@@ -271,14 +271,14 @@ export function buildEmailText(params: GenerateEmailContentParams): string {
   const total = params.grandTotal !== undefined ? `₹${params.grandTotal.toLocaleString("en-IN")}` : "Under Diagnosis";
 
   if (params.templateType === "freeform" && params.customBody) {
-    return `Dear ${customer},\n\n${params.customBody}\n\nWarm regards,\nZorba Infotech Service Center\nShop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch (M.P.) - 458441\nMain: +91 99935 99730 | Support: +91 93021 99730 | Sales: +91 94248 99730\nEmail: zorbainfotech@gmail.com / zorba99730@gmail.com\nWeb: www.zorbainfotech.in`;
+    return `Hi ${customer},\n\n${params.customBody}\n\nWarm regards,\nZorba Infotech Service Center\nShop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch (M.P.) - 458441\nMain: +91 99935 99730 | Support: +91 93021 99730 | Sales: +91 94248 99730\nEmail: zorbainfotech@gmail.com / zorba99730@gmail.com\nWeb: www.zorbainfotech.in`;
   }
 
   return `========================================
 ZORBA INFOTECH - ${tpl.noticeHeader}
 ========================================
 
-Dear ${customer},
+Hi ${customer},
 
 Here is the update regarding your service request:
 

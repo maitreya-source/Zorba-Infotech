@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Search,
   Keyboard,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
@@ -41,6 +42,7 @@ import { useTallyGlobalNavigation } from "@/hooks/useTallyKeyboard";
 
 const navItems = [
   { label: "Service Calls", to: "/admin/service-calls", icon: Activity },
+  { label: "Staff Tasks", to: "/admin/tasks", icon: ClipboardCheck },
   { label: "Quotations", to: "/admin/quotations", icon: FileText },
   { label: "Website Inquiries", to: "/admin/inquiries", icon: Inbox },
   { label: "Job Applications", to: "/admin/job-applications", icon: Briefcase },

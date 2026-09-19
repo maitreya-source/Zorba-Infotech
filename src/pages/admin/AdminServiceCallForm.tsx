@@ -57,10 +57,6 @@ import { LoadingScreen } from "@/components/common";
 import {
   toTitleCase,
   formatIndianPhoneNumber,
-  generateWhatsAppMessage,
-  generateServiceCenterFollowUpMessage,
-  generateCourierPickupRequestMessage,
-  generateCourierDeliveryInquiryMessage,
 } from "@/lib/utils";
 import type {
   Customer,
@@ -1106,10 +1102,10 @@ export default function AdminServiceCallForm() {
       return null;
     }
 
-    // If already saved/editing, update ticket in background and return updated object
+    // If already saved/editing, fire update in background and return immediately so WhatsApp / Print modal opens instantly
     if (isEditing && effectiveId) {
       const payload = buildPayload(cName, cPhone, issueDesc);
-      await updateServiceCall(effectiveId, payload).catch((err) => console.warn("Background update:", err));
+      updateServiceCall(effectiveId, payload).catch((err) => console.warn("Background update:", err));
       return {
         id: effectiveId,
         ticketNo: ticketNo || "SC-ACTIVE",
@@ -1222,22 +1218,10 @@ export default function AdminServiceCallForm() {
     setShowDispatchPrintModal(true);
   };
 
-  // WhatsApp Message Preview Triggers (Opens editable preview modal with pre-compiled text)
+  // WhatsApp Message Preview Triggers (Hydrated dynamically from Firestore / Meta WABA templates)
   const handleOpenCustomerWhatsApp = async () => {
     const saved = await ensureSavedTicket();
     if (!saved) return;
-
-    const compiled = generateWhatsAppMessage({
-      ticketNo: saved.ticketNo || ticketNo || "New Ticket",
-      dateTime: saved.dateTime || dateTime,
-      customerName: toTitleCase(saved.customerName || customerName || "Customer"),
-      customerPhone: saved.customerPhone || customerPhone || "",
-      deviceCategory: saved.deviceCategory || deviceCategory,
-      modelNumber: saved.modelNumber || modelNumber,
-      issueDescription: saved.issueDescription || issueDescription,
-      status: saved.status || status,
-      grandTotal: saved.grandTotal || grandTotal,
-    });
 
     setWhatsAppModal({
       open: true,
@@ -1245,9 +1229,9 @@ export default function AdminServiceCallForm() {
       recipientName: saved.customerName ? toTitleCase(saved.customerName) : "Customer",
       recipientRole: "Customer",
       defaultPhone: saved.customerPhone || customerPhone || "",
-      defaultMessage: compiled,
+      defaultMessage: "",
       targetModule: "service_calls",
-      templateName: "11",
+      templateName: "zorba_service_call_update",
     });
   };
 
@@ -1263,76 +1247,66 @@ export default function AdminServiceCallForm() {
   };
 
   const handleOpenServiceCenterWhatsApp = () => {
+    const cleanScName = (serviceCenterName || "").trim().toLowerCase();
     const selectedSC = serviceCenters.find(
-      (sc) => sc.id === selectedServiceCenterId || sc.name.toLowerCase() === serviceCenterName.toLowerCase()
+      (sc) =>
+        (selectedServiceCenterId && sc.id === selectedServiceCenterId) ||
+        (cleanScName && sc.name.trim().toLowerCase() === cleanScName) ||
+        (cleanScName && sc.name.toLowerCase().includes(cleanScName))
     );
-    const phone = selectedSC?.whatsappPhone || selectedSC?.phone || "+91 95891 99738";
-    const compiled = generateServiceCenterFollowUpMessage({
-      serviceCenterName: serviceCenterName || "Authorized Service Center",
-      rmaNumber: rmaNumber || undefined,
-      ticketNo: ticketNo || "SC-INTAKE",
-      deviceCategory,
-      modelNumber,
-      serialNumber,
-      issueDescription,
-      dateSent: dateTime,
-    });
+    const phone = selectedSC?.whatsappPhone || selectedSC?.phone || "";
 
     setWhatsAppModal({
       open: true,
       title: "WhatsApp Inquiry: Service Center Follow-up",
-      recipientName: serviceCenterName || "Authorized Service Center",
+      recipientName: serviceCenterName || selectedSC?.name || "Authorized Service Center",
       recipientRole: "Service Center",
       defaultPhone: phone,
-      defaultMessage: compiled,
+      defaultMessage: "",
       targetModule: "service_centers",
       templateName: "zorba_service_center_followup",
     });
   };
 
   const handleOpenCourierPickupWhatsApp = () => {
-    const selectedCourier = couriers.find((c) => c.name.toLowerCase() === courierName.toLowerCase());
-    const phone = selectedCourier?.phone || "+91 98230 44441";
-    const compiled = generateCourierPickupRequestMessage({
-      courierName: courierName || "Courier Partner",
-      ticketNo: ticketNo || "SC-INTAKE",
-      serviceCenterName: serviceCenterName || undefined,
-      destinationAddress: serviceCenterAddress || undefined,
-      dateTime,
-      rmaNumber: rmaNumber || undefined,
-    });
+    const cleanCName = (courierName || "").trim().toLowerCase();
+    const selectedCourier = couriers.find(
+      (c) =>
+        (selectedCourierId && c.id === selectedCourierId) ||
+        (cleanCName && c.name.trim().toLowerCase() === cleanCName) ||
+        (cleanCName && c.name.toLowerCase().includes(cleanCName))
+    );
+    const phone = selectedCourier?.phone || "";
 
     setWhatsAppModal({
       open: true,
       title: "WhatsApp Request: Ask Courier for Pickup",
-      recipientName: courierName || "Courier Partner",
+      recipientName: courierName || selectedCourier?.name || "Courier Partner",
       recipientRole: "Courier Partner",
       defaultPhone: phone,
-      defaultMessage: compiled,
+      defaultMessage: "",
       targetModule: "couriers",
       templateName: "zorba_courier_pickup_request",
     });
   };
 
   const handleOpenCourierDeliveryWhatsApp = () => {
-    const selectedCourier = couriers.find((c) => c.name.toLowerCase() === courierName.toLowerCase());
-    const phone = selectedCourier?.phone || "+91 98230 44441";
-    const compiled = generateCourierDeliveryInquiryMessage({
-      courierName: courierName || "Courier Partner",
-      courierDocketNumber: rmaNumber || undefined,
-      ticketNo: ticketNo || "SC-INTAKE",
-      serviceCenterName: serviceCenterName || undefined,
-      destinationAddress: serviceCenterAddress || undefined,
-      dateTime,
-    });
+    const cleanCName = (courierName || "").trim().toLowerCase();
+    const selectedCourier = couriers.find(
+      (c) =>
+        (selectedCourierId && c.id === selectedCourierId) ||
+        (cleanCName && c.name.trim().toLowerCase() === cleanCName) ||
+        (cleanCName && c.name.toLowerCase().includes(cleanCName))
+    );
+    const phone = selectedCourier?.phone || "";
 
     setWhatsAppModal({
       open: true,
       title: "WhatsApp Inquiry: Ask Courier for Delivery",
-      recipientName: courierName || "Courier Partner",
+      recipientName: courierName || selectedCourier?.name || "Courier Partner",
       recipientRole: "Courier Partner",
       defaultPhone: phone,
-      defaultMessage: compiled,
+      defaultMessage: "",
       targetModule: "couriers",
       templateName: "zorba_courier_delivery_inquiry",
     });
@@ -1697,7 +1671,11 @@ export default function AdminServiceCallForm() {
           onsiteAddress={onsiteAddress}
           onOnsiteAddressChange={setOnsiteAddress}
           quickTags={QUICK_TAGS}
-          onOpenDispatchPrint={type === "company_service_center" ? handleOpenDispatchPrintModal : undefined}
+          onOpenDispatchPrint={
+            type === "company_service_center" || Boolean((serviceCenterName || selectedServiceCenterId || "").trim())
+              ? handleOpenDispatchPrintModal
+              : undefined
+          }
         />
 
         {/* Section 4: Spare Parts & Service Charges */}
@@ -1741,7 +1719,11 @@ export default function AdminServiceCallForm() {
         onOpenCourierPickupWhatsApp={handleOpenCourierPickupWhatsApp}
         onOpenCourierDeliveryWhatsApp={handleOpenCourierDeliveryWhatsApp}
         onOpenPrintModal={handleOpenPrintModal}
-        onOpenDispatchPrintModal={type === "company_service_center" ? handleOpenDispatchPrintModal : undefined}
+        onOpenDispatchPrintModal={
+          type === "company_service_center" || Boolean((serviceCenterName || selectedServiceCenterId || "").trim())
+            ? handleOpenDispatchPrintModal
+            : undefined
+        }
         onOpenDeleteModal={() => setShowDeleteModal(true)}
         onOpenCustomerModal={() => setShowCustomerModal(true)}
         onOpenCenterModal={() => setShowCenterModal(true)}
@@ -1765,6 +1747,7 @@ export default function AdminServiceCallForm() {
         serviceCall={{
           id: effectiveId || "NEW",
           ticketNo: ticketNo || "SC-INTAKE",
+          customerId: selectedCustomerId,
           customerName,
           customerPhone,
           customerEmail,
@@ -1778,6 +1761,7 @@ export default function AdminServiceCallForm() {
           dateTime,
           warrantyStatus,
           type,
+          serviceCenterId: selectedServiceCenterId,
           serviceCenterName,
           serviceCenterAddress,
           courierName,

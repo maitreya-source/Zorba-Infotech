@@ -39,6 +39,7 @@ import type {
   Courier,
   Technician,
   TeamMember,
+  FinancialYearDoc,
   WhatsAppTemplateDoc,
   Quotation,
   QuotationTemplate,
@@ -50,6 +51,10 @@ import type {
   JobApplication,
   JobApplicationStatus,
   PaginatedResult,
+  StaffTask,
+  TaskPriority,
+  TaskStatus,
+  StaffTaskHistoryEntry,
 } from "./types";
 
 const FIREBASE_TIMEOUT_MS = 10000;
@@ -1930,7 +1935,14 @@ export async function deleteCourier(id: string): Promise<void> {
 export async function getTeamMembers(): Promise<TeamMember[]> {
   try {
     const snap = await fetchWithTimeout(getDocs(collection(db, "team_members")));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TeamMember);
+    return snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        ...data,
+        id: d.id,
+        active: data.active !== false,
+      } as TeamMember;
+    });
   } catch (err: any) {
     console.warn("getTeamMembers warning:", err);
     return [];
@@ -1941,7 +1953,12 @@ export async function getTeamMember(id: string): Promise<TeamMember | null> {
   try {
     const snap = await fetchWithTimeout(getDoc(doc(db, "team_members", id)));
     if (snap.exists()) {
-      return { id: snap.id, ...snap.data() } as TeamMember;
+      const data = snap.data();
+      return {
+        ...data,
+        id: snap.id,
+        active: data.active !== false,
+      } as TeamMember;
     }
     const all = await getTeamMembers();
     return all.find((m) => m.id === id || m.name.toLowerCase() === id.toLowerCase()) || null;
@@ -1994,15 +2011,67 @@ export async function updateTeamMember(
   } catch {
     await setDoc(doc(db, "team_members", id), cleanPayload, { merge: true });
   }
+
+  // If the employee's active status changed, immediately sync/invalidate their assigned task links
+  if (typeof data.active === "boolean") {
+    try {
+      const q = query(collection(db, "staff_tasks"), where("assignedToId", "==", id));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        snap.docs.forEach((taskDoc) => {
+          const updateTaskPayload: Record<string, any> = {
+            assignedEmployeeActive: data.active,
+            updatedAt: Date.now(),
+          };
+          if (!data.active) {
+            // Immediately invalidate the WhatsApp task link token when employee becomes inactive
+            updateTaskPayload.accessToken = `revoked_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+          } else {
+            const existingToken = String(taskDoc.data()?.accessToken || "");
+            if (!existingToken || existingToken.startsWith("revoked_")) {
+              updateTaskPayload.accessToken = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+            }
+          }
+          batch.update(taskDoc.ref, updateTaskPayload);
+        });
+        await batch.commit();
+        publishSyncSignal("staff_tasks", { action: "update", resourceId: id });
+      }
+    } catch (err) {
+      console.error("Failed to sync employee active status to staff_tasks:", err);
+    }
+  }
+
   publishSyncSignal("team", { action: "update", resourceId: id });
 }
 
 export async function deleteTeamMember(id: string): Promise<void> {
+  try {
+    const q = query(collection(db, "staff_tasks"), where("assignedToId", "==", id));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const batch = writeBatch(db);
+      snap.docs.forEach((taskDoc) => {
+        batch.update(taskDoc.ref, {
+          assignedEmployeeActive: false,
+          accessToken: `revoked_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+          updatedAt: Date.now(),
+        });
+      });
+      await batch.commit();
+      publishSyncSignal("staff_tasks", { action: "update", resourceId: id });
+    }
+  } catch (err) {
+    console.error("Failed to invalidate tasks on deleteTeamMember:", err);
+  }
   await deleteDoc(doc(db, "team_members", id));
   publishSyncSignal("team", { action: "delete", resourceId: id });
 }
 
 // ─── Backward-Compatibility Aliases ──────────────────────────────────────────
+
+export const getTeamMemberById = getTeamMember;
 
 export async function getTechnicians(): Promise<Technician[]> {
   const team = await getTeamMembers();
@@ -2017,6 +2086,11 @@ export async function getTechnicians(): Promise<Technician[]> {
       active: m.active,
       createdAt: m.createdAt,
     }));
+}
+
+export async function getStaffMembers(): Promise<TeamMember[]> {
+  const team = await getTeamMembers();
+  return team.filter((m) => m.role !== "technician");
 }
 
 // ─── Financial Years & Months (Hierarchy) ────────────────────────────────────
@@ -2118,6 +2192,18 @@ async function ensureFinancialYearDoc(fyId: string, monthKey: string): Promise<v
     );
   } catch (err) {
     console.warn("ensureFinancialYearDoc warning:", err);
+  }
+}
+
+export async function getFinancialYears(): Promise<FinancialYearDoc[]> {
+  try {
+    const snap = await fetchWithTimeout(getDocs(collection(db, "financial_years")));
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as FinancialYearDoc)
+      .sort((a, b) => (b.startYear || 0) - (a.startYear || 0));
+  } catch (err: unknown) {
+    console.error("getFinancialYears error:", err);
+    return [];
   }
 }
 
@@ -2717,621 +2803,11 @@ export async function saveDeviceModel(categoryName: string, modelName: string): 
   return newModel;
 }
 
-// ─── WhatsApp Message Templates ──────────────────────────────────────────────
-
-export const DEFAULT_WHATSAPP_TEMPLATES: Omit<WhatsAppTemplateDoc, "createdAt" | "updatedAt">[] = [
-  {
-    id: "11",
-    name: "11",
-    displayName: "Customer Service Confirmation & Ticket Update",
-    category: "utility",
-    targetModule: "service_calls",
-    language: "en",
-    headerType: "image",
-    headerImageUrl: "https://zorbainfotech.in/zorba-logo.png",
-    bodyText:
-      "Hello Sir/Ma'am\n\n" +
-      "{{1}}\n\n" +
-      "{{2}}\n\n" +
-      "{{3}}\n\n" +
-      "{{4}}\n\n" +
-      "{{5}}\n\n" +
-      "You can check the details above for your convenience.\n\n" +
-      "🙂 Thanks for taking a moment to read this message.",
-    variables: [
-      { index: 1, label: "Ticket Number & Date", fallbackValue: "Ticket Details", erpKey: "ticketNo" },
-      { index: 2, label: "Customer Name", fallbackValue: "Valued Customer", erpKey: "customer.name" },
-      { index: 3, label: "Device & Reported Fault", fallbackValue: "Hardware Fault", erpKey: "deviceCategory" },
-      { index: 4, label: "Current Status & Est Charges", fallbackValue: "In Progress", erpKey: "status" },
-      { index: 5, label: "Zorba Support Desk Contact", fallbackValue: "Zorba Helpdesk: +91 94248 99730", erpKey: "handledByStaffName" },
-    ],
-    buttons: [
-      { type: "quick_reply", text: "View Details" },
-    ],
-    active: true,
-    metaStatus: "approved",
-  },
-  {
-    id: "zorba_payment_received",
-    name: "zorba_payment_received",
-    displayName: "Customer Payment Received Receipt",
-    category: "utility",
-    targetModule: "service_calls",
-    language: "en_US",
-    headerType: "none",
-    bodyText:
-      "*ZORBA INFOTECH - PAYMENT RECEIVED RECEIPT*\n\n" +
-      "Dear *{{1}}*,\n" +
-      "We have received your payment of *₹{{2}}* for ticket *{{3}}*.\n\n" +
-      "🎫 *Ticket No:* {{3}}\n" +
-      "💰 *Amount Received:* ₹{{2}}\n" +
-      "💳 *Payment Mode:* {{4}}\n" +
-      "📅 *Date:* {{5}}\n" +
-      "💻 *Device:* {{6}}\n\n" +
-      "Thank you for choosing Zorba Infotech!\n" +
-      "📞 Support: +91 95891 99738 | Main: +91 91798 90150 | 🌐 www.zorbainfotech.in",
-    variables: [
-      { index: 1, label: "Customer Name", fallbackValue: "Customer", erpKey: "customer.name" },
-      { index: 2, label: "Amount Received", fallbackValue: "0", erpKey: "paidAmount" },
-      { index: 3, label: "Ticket No", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
-      { index: 4, label: "Payment Mode", fallbackValue: "UPI / Cash", erpKey: "paymentMode" },
-      { index: 5, label: "Payment Date", fallbackValue: "Today", erpKey: "paymentDate" },
-      { index: 6, label: "Device Details", fallbackValue: "Device Unit", erpKey: "deviceCategory" },
-    ],
-    buttons: [
-      { type: "phone_number", text: "Call Support", urlOrPhone: "+919589199738" },
-    ],
-    active: true,
-    metaStatus: "draft",
-  },
-  {
-    id: "zorba_customer_service_update",
-    name: "zorba_customer_service_update",
-    displayName: "Customer Service Call Update & Job Card Summary",
-    category: "utility",
-    targetModule: "service_calls",
-    language: "en_US",
-    headerType: "none",
-    bodyText:
-      "*ZORBA INFOTECH - {{1}}*\n\n" +
-      "Dear *{{2}}*,\n" +
-      "Your service request has been updated. Here are the ticket details:\n\n" +
-      "🎫 *Ticket No:* {{3}}\n" +
-      "📅 *Date:* {{4}}\n" +
-      "💻 *Device:* {{5}}\n" +
-      "🔍 *Reported Issue:* {{6}}\n" +
-      "⚡ *Current Status:* {{7}}\n" +
-      "💰 *Estimated Total:* ₹{{8}}\n\n" +
-      "*Terms & Conditions:*\n" +
-      "1. *Courier & Service Charges:* Courier charges will be borne by the customer along with any charges levied by the authorized service center.\n" +
-      "2. *Collection Policy:* Please collect your device within 30 days of completion notification.\n" +
-      "3. *Data Responsibility:* Zorba Infotech is not liable for data loss. Customers are advised to maintain prior backups.\n" +
-      "4. *Warranty & Inspection:* Physical/liquid damage is not covered under warranty. Diagnostic charges apply if estimate is declined.\n\n" +
-      "*Thank you for choosing Zorba Infotech!*\n" +
-      "📞 Support: +91 93021 99730 | Main: +91 99935 99730 | 🌐 www.zorbainfotech.in",
-    variables: [
-      { index: 1, label: "Notice Header", fallbackValue: "SERVICE INTAKE CONFIRMATION", erpKey: "noticeHeader" },
-      { index: 2, label: "Customer Name", fallbackValue: "Customer", erpKey: "customer.name" },
-      { index: 3, label: "Ticket No", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
-      { index: 4, label: "Date & Time", fallbackValue: "Today", erpKey: "dateTime" },
-      { index: 5, label: "Device & Model", fallbackValue: "Device Unit", erpKey: "deviceCategory" },
-      { index: 6, label: "Reported Issue", fallbackValue: "Service Intake", erpKey: "issueDescription" },
-      { index: 7, label: "Status Stage", fallbackValue: "RECEIVED", erpKey: "status" },
-      { index: 8, label: "Estimated Total", fallbackValue: "0", erpKey: "grandTotal" },
-    ],
-    buttons: [
-      { type: "url", text: "Visit Website", urlOrPhone: "https://www.zorbainfotech.in" },
-      { type: "phone_number", text: "Call Support", urlOrPhone: "+919302199730" },
-    ],
-    active: true,
-    metaStatus: "draft",
-  },
-  {
-    id: "zorba_service_center_followup",
-    name: "zorba_service_center_followup",
-    displayName: "OEM Service Center RMA & Repair Inquiry",
-    category: "utility",
-    targetModule: "service_centers",
-    language: "en_US",
-    headerType: "none",
-    bodyText:
-      "*ZORBA INFOTECH - SERVICE CENTER RMA / REPAIR STATUS INQUIRY*\n\n" +
-      "Dear *{{1}}* Support Team,\n" +
-      "We would like to request an update on the repair/replacement status for the following unit sent to your center:\n\n" +
-      "🎫 *Our Job Card / Ticket:* {{2}}\n" +
-      "🏷️ *Service Center RMA / Ref No:* {{3}}\n" +
-      "📅 *Dispatched On:* {{4}}\n" +
-      "💻 *Device:* {{5}}\n" +
-      "🔢 *Serial / IMEI:* {{6}}\n" +
-      "🔍 *Reported Defect:* {{7}}\n\n" +
-      "Kindly let us know if the unit is diagnosed / under repair / replaced / ready for dispatch.\n\n" +
-      "Thank you,\n" +
-      "*Zorba Infotech Service Desk*\n" +
-      "📞 Support: +91 93021 99730 / +91 99935 99730",
-    variables: [
-      { index: 1, label: "Service Center Name", fallbackValue: "Authorized Service Center", erpKey: "serviceCenterName" },
-      { index: 2, label: "Ticket Number", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
-      { index: 3, label: "RMA / Ref No", fallbackValue: "N/A", erpKey: "rmaNumber" },
-      { index: 4, label: "Dispatched Date", fallbackValue: "Recent", erpKey: "dateTime" },
-      { index: 5, label: "Device & Model", fallbackValue: "IT Hardware", erpKey: "deviceCategory" },
-      { index: 6, label: "Serial Number", fallbackValue: "N/A", erpKey: "serialNumber" },
-      { index: 7, label: "Reported Defect", fallbackValue: "Hardware Fault", erpKey: "issueDescription" },
-    ],
-    buttons: [
-      { type: "phone_number", text: "Call Service Desk", urlOrPhone: "+919302199730" },
-    ],
-    active: true,
-    metaStatus: "draft",
-  },
-  {
-    id: "zorba_courier_pickup_request",
-    name: "zorba_courier_pickup_request",
-    displayName: "Courier Parcel Pickup Request",
-    category: "utility",
-    targetModule: "couriers",
-    language: "en_US",
-    headerType: "none",
-    bodyText:
-      "*ZORBA INFOTECH - PARCEL PICKUP REQUEST*\n\n" +
-      "Hello *{{1}}* Team,\n" +
-      "Kindly arrange a parcel pickup from our shop/office for the following shipment:\n\n" +
-      "🎫 *Ticket / Ref No:* {{2}}\n" +
-      "🏢 *Consignee / Service Center:* {{3}}\n" +
-      "📍 *Delivery Address:* {{4}}\n" +
-      "🏷️ *RMA / Ref Number:* {{5}}\n" +
-      "📅 *Request Date:* {{6}}\n" +
-      "📦 *Shop Pickup Location:* Zorba Infotech, Shop No. 5 & 6, U-Shape Market, Tagore Marg, Neemuch - 458441 (M.P.)\n\n" +
-      "Please assign a pickup executive at the earliest.\n\n" +
-      "Thank you,\n" +
-      "*Zorba Infotech Logistics Desk*\n" +
-      "📞 Support: +91 93021 99730 / +91 99935 99730",
-    variables: [
-      { index: 1, label: "Courier Partner Name", fallbackValue: "Courier", erpKey: "courierName" },
-      { index: 2, label: "Ticket / Ref No", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
-      { index: 3, label: "Consignee Center", fallbackValue: "OEM Service Center", erpKey: "serviceCenterName" },
-      { index: 4, label: "Delivery Address", fallbackValue: "Destination City", erpKey: "destinationAddress" },
-      { index: 5, label: "RMA / Ref Number", fallbackValue: "N/A", erpKey: "rmaNumber" },
-      { index: 6, label: "Request Date", fallbackValue: "Today", erpKey: "dateTime" },
-    ],
-    buttons: [
-      { type: "phone_number", text: "Call Logistics Desk", urlOrPhone: "+919302199730" },
-    ],
-    active: true,
-    metaStatus: "draft",
-  },
-  {
-    id: "zorba_courier_delivery_inquiry",
-    name: "zorba_courier_delivery_inquiry",
-    displayName: "Courier Shipment Delivery Inquiry",
-    category: "utility",
-    targetModule: "couriers",
-    language: "en_US",
-    headerType: "none",
-    bodyText:
-      "*ZORBA INFOTECH - SHIPMENT DELIVERY INQUIRY*\n\n" +
-      "Hello *{{1}}* Team,\n" +
-      "We would like to check the delivery status for our dispatched shipment:\n\n" +
-      "📦 *Docket / AWB No:* {{2}}\n" +
-      "🎫 *Internal Ticket Ref:* {{3}}\n" +
-      "🏢 *Consignee:* {{4}}\n" +
-      "📍 *Destination:* {{5}}\n" +
-      "📅 *Dispatch Date:* {{6}}\n\n" +
-      "Kindly confirm if this parcel has reached the destination or provide the expected delivery timestamp.\n\n" +
-      "Thank you,\n" +
-      "*Zorba Infotech Logistics Desk*\n" +
-      "📞 Support: +91 93021 99730 / +91 99935 99730",
-    variables: [
-      { index: 1, label: "Courier Partner Name", fallbackValue: "Courier", erpKey: "courierName" },
-      { index: 2, label: "Docket / AWB No", fallbackValue: "Pending Docket", erpKey: "rmaNumber" },
-      { index: 3, label: "Ticket Number", fallbackValue: "SC-XXXX", erpKey: "ticketNo" },
-      { index: 4, label: "Consignee", fallbackValue: "OEM Service Center", erpKey: "serviceCenterName" },
-      { index: 5, label: "Destination", fallbackValue: "Destination City", erpKey: "destinationAddress" },
-      { index: 6, label: "Dispatch Date", fallbackValue: "Today", erpKey: "dateTime" },
-    ],
-    buttons: [
-      { type: "phone_number", text: "Call Logistics Desk", urlOrPhone: "+919302199730" },
-    ],
-    active: true,
-    metaStatus: "draft",
-  },
-];
-
-export async function getWhatsAppTemplates(moduleFilter?: string): Promise<WhatsAppTemplateDoc[]> {
-  try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "whatsapp_templates")));
-    const templates = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WhatsAppTemplateDoc);
-
-    if (moduleFilter && moduleFilter !== "all") {
-      return templates.filter((t) => t.targetModule === moduleFilter);
-    }
-    return templates;
-  } catch (err: unknown) {
-    console.error("getWhatsAppTemplates error:", err);
-    return [];
-  }
-}
-
-export async function createWhatsAppTemplate(
-  data: Omit<WhatsAppTemplateDoc, "id" | "createdAt" | "updatedAt">
-): Promise<WhatsAppTemplateDoc> {
-  const docId = data.name.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_") || `tpl_${Date.now()}`;
-  const docRef = doc(db, "whatsapp_templates", docId);
-  const newTemplate: WhatsAppTemplateDoc = {
-    id: docId,
-    ...data,
-    name: docId,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  };
-  await setDoc(docRef, cleanFirestoreData(newTemplate), { merge: true });
-  return newTemplate;
-}
-
-export async function updateWhatsAppTemplate(
-  id: string,
-  data: Partial<WhatsAppTemplateDoc>
-): Promise<void> {
-  const docRef = doc(db, "whatsapp_templates", id);
-  await setDoc(docRef, cleanFirestoreData({ ...data, updatedAt: Date.now() }), { merge: true });
-}
-
-export async function deleteWhatsAppTemplate(id: string): Promise<void> {
-  await deleteDoc(doc(db, "whatsapp_templates", id));
-}
-
-export async function seedDefaultWhatsAppTemplates(force: boolean = false): Promise<void> {
-  try {
-    const existing = await getDocs(collection(db, "whatsapp_templates"));
-    if (!force && !existing.empty) {
-      return;
-    }
-
-    for (const tpl of DEFAULT_WHATSAPP_TEMPLATES) {
-      const docRef = doc(db, "whatsapp_templates", tpl.id);
-      await setDoc(
-        docRef,
-        cleanFirestoreData({
-          ...tpl,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        }),
-        { merge: true }
-      );
-    }
-  } catch (err) {
-    console.warn("Could not seed default WhatsApp templates:", err);
-  }
-}
-
-// ==========================================
-// Quotations & Quotation Templates
-// ==========================================
-
-export function getQuotationMonthKey(dateOrStr?: string | Date): { year: string; month: string; monthKey: string } {
-  let d: Date;
-  if (!dateOrStr) {
-    d = new Date();
-  } else if (dateOrStr instanceof Date) {
-    d = dateOrStr;
-  } else {
-    d = new Date(dateOrStr);
-    if (isNaN(d.getTime())) d = new Date();
-  }
-  const year = String(d.getFullYear());
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return { year, month, monthKey: `${year}-${month}` };
-}
-
-export async function peekNextQuotationNumber(dateOrStr?: string | Date): Promise<string> {
-  const { year, month, monthKey } = getQuotationMonthKey(dateOrStr);
-  const prefix = `QT-${year}-${month}-`;
-  const counterRef = doc(db, "counters", `quotations_${monthKey}`);
-
-  try {
-    const counterDoc = await fetchWithTimeout(getDoc(counterRef));
-    let current = 0;
-    if (counterDoc.exists()) {
-      current = counterDoc.data().current || 0;
-    } else {
-      try {
-        const q = query(
-          collection(db, "quotations"),
-          orderBy("createdAt", "desc"),
-          limit(50)
-        );
-        const snap = await fetchWithTimeout(getDocs(q));
-        const existingNums = snap.docs
-          .map((docSnap) => {
-            const data = docSnap.data();
-            const qNo = data.quotationNo || "";
-            const match = qNo.match(new RegExp(`^QT-${year}-${month}-(\\d+)`)) || qNo.match(new RegExp(`^QT-${year}${month}-(\\d+)`));
-            return match ? parseInt(match[1], 10) : 0;
-          })
-          .filter((n) => !isNaN(n) && n > 0);
-        if (existingNums.length > 0) {
-          current = Math.max(...existingNums);
-        }
-      } catch {
-        // Ignore fallback scan error
-      }
-    }
-    const next = current + 1;
-    return `${prefix}${String(next).padStart(4, "0")}`;
-  } catch (err) {
-    return `${prefix}0001`;
-  }
-}
-
-export async function getNextQuotationNumber(dateOrStr?: string | Date): Promise<string> {
-  const { year, month, monthKey } = getQuotationMonthKey(dateOrStr);
-  const prefix = `QT-${year}-${month}-`;
-  const counterRef = doc(db, "counters", `quotations_${monthKey}`);
-
-  try {
-    const nextCount = await runTransaction(db, async (transaction) => {
-      const counterDoc = await transaction.get(counterRef);
-      let current = 0;
-      if (counterDoc.exists()) {
-        current = counterDoc.data().current || 0;
-      } else {
-        try {
-          const q = query(
-            collection(db, "quotations"),
-            orderBy("createdAt", "desc"),
-            limit(50)
-          );
-          const snap = await getDocs(q);
-          const existingNums = snap.docs
-            .map((docSnap) => {
-              const data = docSnap.data();
-              const qNo = data.quotationNo || "";
-              const match = qNo.match(new RegExp(`^QT-${year}-${month}-(\\d+)`)) || qNo.match(new RegExp(`^QT-${year}${month}-(\\d+)`));
-              return match ? parseInt(match[1], 10) : 0;
-            })
-            .filter((n) => !isNaN(n) && n > 0);
-          if (existingNums.length > 0) {
-            current = Math.max(...existingNums);
-          }
-        } catch {
-          // Ignore fallback query failure
-        }
-      }
-      const next = current + 1;
-      transaction.set(counterRef, { current: next, updatedAt: serverTimestamp() }, { merge: true });
-      return next;
-    });
-    return `${prefix}${String(nextCount).padStart(4, "0")}`;
-  } catch (err) {
-    console.warn("Atomic quotation counter transaction failed, using fallback:", err);
-    return `${prefix}${String(Date.now()).slice(-4)}`;
-  }
-}
+export * from "./firestore/whatsapp";
 
 
+export * from "./firestore/quotations";
 
-export async function getQuotations(filters?: {
-  customerId?: string;
-  startDate?: string;
-  endDate?: string;
-  dateFilter?: "today" | "month" | "all";
-}): Promise<Quotation[]> {
-  try {
-    const q = query(
-      collection(db, "quotations"),
-      orderBy("createdAt", "desc"),
-      limit(100)
-    );
-    const snap = await fetchWithTimeout(getDocs(q));
-    let items = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Quotation);
-
-    if (filters?.customerId) {
-      items = items.filter((q) => q.customerId === filters.customerId);
-    }
-
-    if (filters?.dateFilter === "today") {
-      const todayStr = new Date().toISOString().split("T")[0];
-      items = items.filter((q) => (q.date || "").startsWith(todayStr));
-    } else if (filters?.dateFilter === "month") {
-      const currentYearMonth = new Date().toISOString().slice(0, 7);
-      items = items.filter((q) => (q.date || "").startsWith(currentYearMonth));
-    } else if (filters?.startDate && filters?.endDate) {
-      items = items.filter((q) => {
-        const d = q.date || "";
-        return d >= (filters.startDate || "") && d <= (filters.endDate || "");
-      });
-    }
-
-    return items;
-  } catch (err) {
-    console.error("getQuotations error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function getQuotationsForCustomer(
-  customerId: string,
-  customerPhone?: string,
-  customerName?: string
-): Promise<Quotation[]> {
-  try {
-    const results: Quotation[] = [];
-    const seenIds = new Set<string>();
-
-    if (customerId) {
-      try {
-        const q = query(
-          collection(db, "quotations"),
-          where("customerId", "==", customerId),
-          limit(100)
-        );
-        const snap = await fetchWithTimeout(getDocs(q));
-        snap.docs.forEach((d) => {
-          if (!seenIds.has(d.id)) {
-            seenIds.add(d.id);
-            results.push({ id: d.id, ...d.data() } as Quotation);
-          }
-        });
-      } catch (err) {
-        console.warn("getQuotationsForCustomer by customerId query error:", err);
-      }
-    }
-
-    if (customerPhone && results.length < 50) {
-      const cleanPhone = (customerPhone || "").replace(/\D/g, "");
-      const formatted = formatIndianPhoneNumber(customerPhone);
-      for (const p of [customerPhone, formatted, cleanPhone]) {
-        if (!p) continue;
-        try {
-          const qPhone = query(
-            collection(db, "quotations"),
-            where("customerPhone", "==", p),
-            limit(25)
-          );
-          const snap = await fetchWithTimeout(getDocs(qPhone));
-          snap.docs.forEach((d) => {
-            if (!seenIds.has(d.id)) {
-              seenIds.add(d.id);
-              results.push({ id: d.id, ...d.data() } as Quotation);
-            }
-          });
-        } catch {}
-      }
-    }
-
-    return results.sort((a, b) => (Number((b as any).createdAt) || 0) - (Number((a as any).createdAt) || 0));
-  } catch (err: any) {
-    console.error("getQuotationsForCustomer error:", err);
-    return [];
-  }
-}
-
-
-export async function getQuotation(id: string): Promise<Quotation | null> {
-  try {
-    const docRef = doc(db, "quotations", id);
-    const snap = await fetchWithTimeout(getDoc(docRef));
-    if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() } as Quotation;
-  } catch (err) {
-    console.error("getQuotation error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function createQuotation(
-  data: Omit<Quotation, "id" | "createdAt" | "quotationNo"> & { quotationNo?: string }
-): Promise<Quotation> {
-  try {
-    let quotationNo = (data.quotationNo || "").trim();
-    if (!quotationNo || quotationNo.startsWith("QUOT-DRAFT") || quotationNo.startsWith("QT-DRAFT")) {
-      quotationNo = await getNextQuotationNumber(data.date || new Date());
-    }
-
-    const sanitizedItems = (data.items || []).map((it) => ({
-      ...it,
-      productName: toTitleCase(it?.productName || ""),
-      category: it?.category ? toTitleCase(it.category) : "",
-      modelNumber: it?.modelNumber ? formatModelNumber(it.modelNumber) : "",
-      description: typeof it?.description === "string" ? it.description.trim() : "",
-    }));
-
-    const docRef = doc(collection(db, "quotations"));
-    const newQuotation: Quotation = {
-      id: docRef.id,
-      ...data,
-      customerName: toTitleCase(data.customerName || ""),
-      customerAddress: data.customerAddress ? toTitleCase(data.customerAddress) : "",
-      templateName: data.templateName ? toTitleCase(data.templateName) : "",
-      items: sanitizedItems,
-      quotationNo,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    await setDoc(docRef, cleanFirestoreData(newQuotation));
-    publishSyncSignal("quotations", { action: "create", resourceId: newQuotation.id });
-    return newQuotation;
-  } catch (err) {
-    console.error("createQuotation error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function updateQuotation(
-  id: string,
-  data: Partial<Quotation>
-): Promise<void> {
-  try {
-    const sanitized: any = { ...data };
-    if (sanitized.customerName) sanitized.customerName = toTitleCase(sanitized.customerName);
-    if (sanitized.customerAddress) sanitized.customerAddress = toTitleCase(sanitized.customerAddress);
-    if (sanitized.templateName) sanitized.templateName = toTitleCase(sanitized.templateName);
-    if (sanitized.items && Array.isArray(sanitized.items)) {
-      sanitized.items = sanitized.items.map((it: any) => ({
-        ...it,
-        productName: toTitleCase(it?.productName || ""),
-        category: it?.category ? toTitleCase(it.category) : "",
-        modelNumber: it?.modelNumber ? formatModelNumber(it.modelNumber) : "",
-        description: typeof it?.description === "string" ? it.description.trim() : "",
-      }));
-    }
-
-    const docRef = doc(db, "quotations", id);
-    await setDoc(docRef, cleanFirestoreData({ ...sanitized, updatedAt: Date.now() }), { merge: true });
-    publishSyncSignal("quotations", { action: "update", resourceId: id });
-  } catch (err) {
-    console.error("updateQuotation error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function deleteQuotation(id: string): Promise<void> {
-  try {
-    await deleteDoc(doc(db, "quotations", id));
-    publishSyncSignal("quotations", { action: "delete", resourceId: id });
-  } catch (err) {
-    console.error("deleteQuotation error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function getQuotationTemplates(): Promise<QuotationTemplate[]> {
-  try {
-    const q = query(collection(db, "quotation_templates"), orderBy("createdAt", "desc"));
-    const snap = await fetchWithTimeout(getDocs(q));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as QuotationTemplate);
-  } catch (err) {
-    console.error("getQuotationTemplates error:", err);
-    return [];
-  }
-}
-
-export async function createQuotationTemplate(
-  data: Omit<QuotationTemplate, "id" | "createdAt">
-): Promise<QuotationTemplate> {
-  try {
-    const docRef = doc(collection(db, "quotation_templates"));
-    const newTemplate: QuotationTemplate = {
-      id: docRef.id,
-      ...data,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    await setDoc(docRef, cleanFirestoreData(newTemplate));
-    return newTemplate;
-  } catch (err) {
-    console.error("createQuotationTemplate error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function deleteQuotationTemplate(id: string): Promise<void> {
-  try {
-    await deleteDoc(doc(db, "quotation_templates", id));
-  } catch (err) {
-    console.error("deleteQuotationTemplate error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
 
 // ==========================================
 // Technician Payouts & Commission Payroll
@@ -3421,184 +2897,9 @@ export async function updateServiceCallPaymentStatus(
   }
 }
 
-// ==========================================
-// Inquiries (Website Contact & Leads)
-// ==========================================
+export * from "./firestore/inquiriesAndJobs";
+export * from "./firestore/tasks";
 
-export async function getInquiries(): Promise<Inquiry[]> {
-  try {
-    const q = query(collection(db, "inquiries"), orderBy("createdAt", "desc"));
-    const snap = await fetchWithTimeout(getDocs(q));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Inquiry));
-  } catch (err) {
-    console.error("getInquiries error:", err);
-    try {
-      const snap = await fetchWithTimeout(getDocs(collection(db, "inquiries")));
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Inquiry));
-      return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    } catch {
-      return [];
-    }
-  }
-}
 
-export async function createInquiry(
-  data: Omit<Inquiry, "id" | "createdAt" | "updatedAt" | "status"> & { status?: InquiryStatus }
-): Promise<Inquiry> {
-  const rawPhone = (data.phone || "").trim();
-  const cleanDigits = rawPhone.replace(/\D/g, "");
-  if (!rawPhone || cleanDigits.length < 10) {
-    throw new Error("A valid 10-digit mobile phone number is mandatory to submit an inquiry.");
-  }
-
-  try {
-    const docRef = doc(collection(db, "inquiries"));
-    const formattedPhone = formatIndianPhoneNumber(rawPhone) || rawPhone;
-    const newInq: Inquiry = {
-      id: docRef.id,
-      name: toTitleCase(data.name || ""),
-      phone: formattedPhone,
-      email: (data.email || "").trim().toLowerCase() || undefined,
-      subject: data.subject ? toTitleCase(data.subject) : undefined,
-      message: (data.message || "").trim(),
-      source: data.source || "contact_page",
-      status: data.status || "pending",
-      notes: data.notes?.trim() || undefined,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    await setDoc(docRef, cleanFirestoreData(newInq));
-    publishSyncSignal("inquiries", { action: "create", resourceId: newInq.id });
-    return newInq;
-  } catch (err: any) {
-    console.error("createInquiry error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function updateInquiryStatus(
-  id: string,
-  status: InquiryStatus,
-  notes?: string,
-  staffId?: string,
-  staffName?: string
-): Promise<void> {
-  try {
-    const docRef = doc(db, "inquiries", id);
-    const updateData: any = {
-      status,
-      updatedAt: Date.now(),
-    };
-    if (notes !== undefined) updateData.notes = notes.trim();
-    if (staffId) updateData.resolvedByStaffId = staffId;
-    if (staffName) updateData.resolvedByStaffName = staffName;
-    if (status === "completed" || status === "dismissed") updateData.resolvedAt = Date.now();
-    await setDoc(docRef, cleanFirestoreData(updateData), { merge: true });
-    publishSyncSignal("inquiries", { action: "update", resourceId: id });
-  } catch (err: any) {
-    console.error("updateInquiryStatus error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function deleteInquiry(id: string): Promise<void> {
-  try {
-    await deleteDoc(doc(db, "inquiries", id));
-    publishSyncSignal("inquiries", { action: "delete", resourceId: id });
-  } catch (err: any) {
-    console.error("deleteInquiry error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-// ==========================================
-// Job Applications (Careers Page)
-// ==========================================
-
-export async function getJobApplications(): Promise<JobApplication[]> {
-  try {
-    const q = query(collection(db, "job_applications"), orderBy("createdAt", "desc"));
-    const snap = await fetchWithTimeout(getDocs(q));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as JobApplication));
-  } catch (err) {
-    console.error("getJobApplications error:", err);
-    try {
-      const snap = await fetchWithTimeout(getDocs(collection(db, "job_applications")));
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as JobApplication));
-      return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    } catch {
-      return [];
-    }
-  }
-}
-
-export async function createJobApplication(
-  data: Omit<JobApplication, "id" | "createdAt" | "updatedAt" | "status"> & { status?: JobApplicationStatus }
-): Promise<JobApplication> {
-  const rawPhone = (data.phone || "").trim();
-  const cleanDigits = rawPhone.replace(/\D/g, "");
-  if (!rawPhone || cleanDigits.length < 10) {
-    throw new Error("A valid 10-digit mobile phone number is mandatory to apply.");
-  }
-
-  try {
-    const docRef = doc(collection(db, "job_applications"));
-    const formattedPhone = formatIndianPhoneNumber(rawPhone) || rawPhone;
-    const newApp: JobApplication = {
-      id: docRef.id,
-      fullName: toTitleCase(data.fullName || ""),
-      phone: formattedPhone,
-      email: (data.email || "").trim().toLowerCase() || undefined,
-      positionApplied: toTitleCase(data.positionApplied || "General Technician"),
-      experience: data.experience?.trim() || undefined,
-      resumeLink: data.resumeLink?.trim() || undefined,
-      message: data.message?.trim() || undefined,
-      status: data.status || "pending",
-      notes: data.notes?.trim() || undefined,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    await setDoc(docRef, cleanFirestoreData(newApp));
-    publishSyncSignal("job_applications", { action: "create", resourceId: newApp.id });
-    return newApp;
-  } catch (err: any) {
-    console.error("createJobApplication error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function updateJobApplicationStatus(
-  id: string,
-  status: JobApplicationStatus,
-  notes?: string,
-  staffId?: string,
-  staffName?: string
-): Promise<void> {
-  try {
-    const docRef = doc(db, "job_applications", id);
-    const updateData: any = {
-      status,
-      updatedAt: Date.now(),
-    };
-    if (notes !== undefined) updateData.notes = notes.trim();
-    if (staffId) updateData.reviewedByStaffId = staffId;
-    if (staffName) updateData.reviewedByStaffName = staffName;
-    await setDoc(docRef, cleanFirestoreData(updateData), { merge: true });
-    publishSyncSignal("job_applications", { action: "update", resourceId: id });
-  } catch (err) {
-    console.error("updateJobApplicationStatus error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function deleteJobApplication(id: string): Promise<void> {
-  try {
-    await deleteDoc(doc(db, "job_applications", id));
-    publishSyncSignal("job_applications", { action: "delete", resourceId: id });
-  } catch (err) {
-    console.error("deleteJobApplication error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
 
 

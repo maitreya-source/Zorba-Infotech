@@ -30,6 +30,7 @@ import {
   Tag,
   Lock,
   KeyRound,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -513,7 +514,18 @@ export default function AdminTeamMemberDetail() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/admin/tasks?employee=${member.id}`)}
+            className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer shadow-2xs text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+          >
+            <ClipboardCheck className="h-3.5 w-3.5" />
+            <span>Assign / View Tasks</span>
+          </Button>
+
           {isOwner && (
             <>
               <Button

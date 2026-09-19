@@ -12,6 +12,8 @@ import {
   Truck,
   Building2,
   Send,
+  ClipboardList,
+  Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -51,19 +53,23 @@ import type {
   WhatsAppCategory,
   WhatsAppTemplateVariable,
 } from "@/lib/types";
-import { isWhatsAppApiConfigured, sendWhatsAppMessage, fetchMetaTemplates } from "@/lib/whatsappApi";
+import { isWhatsAppApiConfigured, sendWhatsAppMessage } from "@/lib/whatsappApi";
 
 const MODULE_TABS: { key: string; label: string; icon: any }[] = [
-  { key: "all", label: "All Service Templates", icon: Layers },
+  { key: "all", label: "Active ERP Templates", icon: Layers },
   { key: "service_calls", label: "Customer Service Calls", icon: FileText },
+  { key: "quotations", label: "Purchase Inquiries", icon: MessageSquare },
   { key: "service_centers", label: "OEM Service Centers", icon: Building2 },
   { key: "couriers", label: "Courier Logistics", icon: Truck },
+  { key: "staff_tasks", label: "Employee Tasks", icon: ClipboardList },
+  { key: "archived", label: "Archived / Other Apps", icon: Archive },
 ];
 
 export default function AdminWhatsAppTemplates() {
   const [templates, setTemplates] = useState<WhatsAppTemplateDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending">("all");
   const [search, setSearch] = useState("");
   const [syncing, setSyncing] = useState(false);
 
@@ -75,7 +81,7 @@ export default function AdminWhatsAppTemplates() {
   // Test Modal State
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [testTemplate, setTestTemplate] = useState<WhatsAppTemplateDoc | null>(null);
-  const [testPhone, setTestPhone] = useState("+91 95891 99730");
+  const [testPhone, setTestPhone] = useState("+91 93021 99730");
   const [testSending, setTestSending] = useState(false);
 
   // Form State
@@ -88,10 +94,10 @@ export default function AdminWhatsAppTemplates() {
   const [formActive, setFormActive] = useState(true);
   const [formSaving, setFormSaving] = useState(false);
 
-  const loadData = async () => {
+  const loadData = async (force = false) => {
     setLoading(true);
     try {
-      const data = await getWhatsAppTemplates();
+      const data = await getWhatsAppTemplates(undefined, force);
       setTemplates(data);
     } catch (err: any) {
       console.error("Failed to load templates:", err);
@@ -156,7 +162,7 @@ export default function AdminWhatsAppTemplates() {
         bodyText: formBodyText.trim(),
         variables: formVariables,
         active: formActive,
-        metaStatus: "approved",
+        metaStatus: editingTemplate?.metaStatus || "pending",
       };
 
       if (editingTemplate) {
@@ -192,63 +198,16 @@ export default function AdminWhatsAppTemplates() {
     setSyncing(true);
     try {
       await seedDefaultWhatsAppTemplates(true);
-
-      const metaRes = await fetchMetaTemplates();
-      if (metaRes.success && metaRes.templates) {
-        let updatedCount = 0;
-        let importedCount = 0;
-        for (const metaTpl of metaRes.templates) {
-          const localMatch = templates.find(
-            (t) => t.name.toLowerCase() === metaTpl.name.toLowerCase()
-          );
-          if (localMatch) {
-            const newStatus = metaTpl.status?.toLowerCase() || "approved";
-            await updateWhatsAppTemplate(localMatch.id, {
-              metaStatus: newStatus as any,
-            });
-            updatedCount++;
-          } else {
-            const bodyComp = metaTpl.components?.find((c: any) => c.type === "BODY");
-            const bodyText = bodyComp?.text || "";
-            const category: WhatsAppCategory = metaTpl.category?.toLowerCase() === "marketing" ? "marketing" : "utility";
-
-            const matches = bodyText.match(/\{\{(\d+)\}\}/g) || [];
-            const vars = Array.from<number>(new Set(matches.map((m: string) => parseInt(m.replace(/\D/g, ""), 10))))
-              .sort((a: number, b: number) => a - b)
-              .map((idx: number) => ({
-                index: idx,
-                label: `Variable {{${idx}}}`,
-                fallbackValue: `Val-${idx}`,
-              }));
-
-            await createWhatsAppTemplate({
-              name: metaTpl.name.toLowerCase(),
-              displayName: metaTpl.name.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
-              category,
-              targetModule: "service_calls",
-              language: metaTpl.language || "en",
-              headerType: "none",
-              bodyText,
-              variables: vars,
-              active: true,
-              metaStatus: (metaTpl.status?.toLowerCase() || "approved") as any,
-            });
-            importedCount++;
-          }
-        }
-        if (importedCount > 0) {
-          toast.success(`Synced with Meta! Imported ${importedCount} live templates from your account.`);
-        } else {
-          toast.success(`Synced with Meta WABA! ${updatedCount} templates updated.`);
-        }
-      } else {
-        if (metaRes.error?.includes("VITE_META_WABA_ID")) {
-          toast.info("Service templates verified locally. Configure VITE_META_WABA_ID in .env for live Meta status sync.");
-        } else {
-          toast.info("Service call templates verified.");
-        }
-      }
-      await loadData();
+      const refreshed = await getWhatsAppTemplates(undefined, true);
+      const reclassifiedCount = refreshed.filter(
+        (t) => t.previousCategory && t.previousCategory !== t.category
+      ).length;
+      toast.success(
+        `Synced with Meta WABA! ${refreshed.length} templates refreshed${
+          reclassifiedCount > 0 ? ` (${reclassifiedCount} reclassified by Meta)` : ""
+        }.`
+      );
+      setTemplates(refreshed);
     } catch (err: any) {
       toast.error(err?.message || "Failed to sync templates with Meta");
     } finally {
@@ -278,9 +237,25 @@ export default function AdminWhatsAppTemplates() {
     return text;
   };
 
+  const scopedTemplatesForStatus = templates.filter((t) =>
+    activeTab === "archived"
+      ? t.targetModule === "archived"
+      : activeTab === "all"
+      ? t.targetModule !== "archived"
+      : t.targetModule === activeTab
+  );
+  const approvedCount = scopedTemplatesForStatus.filter((t) => t.metaStatus === "approved").length;
+  const pendingCount = scopedTemplatesForStatus.filter((t) => t.metaStatus !== "approved").length;
+
   const filtered = templates
     .filter((t) => {
-      if (activeTab !== "all" && t.targetModule !== activeTab) return false;
+      if (activeTab === "all") {
+        if (t.targetModule === "archived") return false;
+      } else if (t.targetModule !== activeTab) {
+        return false;
+      }
+      if (statusFilter === "approved" && t.metaStatus !== "approved") return false;
+      if (statusFilter === "pending" && t.metaStatus === "approved") return false;
       const q = search.toLowerCase().trim();
       if (!q) return true;
       return (
@@ -309,12 +284,17 @@ export default function AdminWhatsAppTemplates() {
         <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
-              Service Calls WhatsApp Templates
-            </h1>
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tight text-white leading-tight">
+                WhatsApp Cloud API Templates
+              </h1>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                Multi-Line Format • Live Meta Category & Approval Sync
+              </span>
+            </div>
             <p className="text-xs text-slate-300 max-w-2xl">
-              Pre-approved Meta templates for Customer Service Call Job Cards, OEM Service Center Inquiries & Courier Dispatches
+              Multi-line Meta WABA templates for Service Calls, Purchase Inquiries, OEM Service Centers, Courier Logistics & Staff Tasks, plus Archived templates for shared WABA apps
             </p>
           </div>
 
@@ -327,7 +307,7 @@ export default function AdminWhatsAppTemplates() {
               className="gap-1.5 font-bold h-9 text-xs rounded-xl bg-white/10 hover:bg-white/20 border-white/20 text-white cursor-pointer shadow-xs"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : "text-emerald-400"}`} />
-              <span>{syncing ? "Syncing..." : "Sync with Meta"}</span>
+              <span>{syncing ? "Syncing..." : "Sync Meta Status"}</span>
             </Button>
 
             <Button
@@ -341,48 +321,97 @@ export default function AdminWhatsAppTemplates() {
         </div>
       </div>
 
-      {/* 2. Module Filter Tabs & Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="overflow-x-auto no-scrollbar max-w-full pb-0.5">
-          <div className="inline-flex items-center gap-1 p-1 bg-slate-200/60 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-800 shrink-0">
-            {MODULE_TABS.map((tab) => {
-              const Icon = tab.icon;
-              const count =
-                tab.key === "all"
-                  ? templates.length
-                  : templates.filter((t) => t.targetModule === tab.key).length;
+      {/* 2. Clean 2-Row Toolbar: Row 1 = Full-Width Module Tabs (No Scrollbar), Row 2 = Search + Approval Status Chips */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 shadow-xs space-y-3">
+        {/* Row 1: Full-Width Module Filter Tabs */}
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-800">
+          {MODULE_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const count =
+              tab.key === "all"
+                ? templates.filter((t) => t.targetModule !== "archived").length
+                : templates.filter((t) => t.targetModule === tab.key).length;
 
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    activeTab === tab.key
-                      ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            const isSelected = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  isSelected
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs ring-1 ring-slate-200/80 dark:ring-slate-700"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800"
+                }`}
+              >
+                <Icon className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-emerald-600 dark:text-emerald-400" : ""}`} />
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full leading-none ${
+                    isSelected
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold"
+                      : "bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{tab.label}</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Search */}
-        <div className="relative min-w-[220px] w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
-            ref={searchRef}
-            placeholder="Search service templates… (Press / to search)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs w-full"
-          />
+        {/* Row 2: Search Input on Left + Meta Approval Status Filter Chips on Right */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              ref={searchRef}
+              placeholder="Search templates by name, slug, or message body… (Press /)"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9 text-xs rounded-xl bg-slate-50/70 dark:bg-slate-950 border-slate-200 dark:border-slate-800 w-full"
+            />
+          </div>
+
+          {/* Status Filter Chips */}
+          <div className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-800 self-start sm:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => setStatusFilter("all")}
+              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === "all"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              All ({scopedTemplatesForStatus.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("approved")}
+              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                statusFilter === "approved"
+                  ? "bg-emerald-600 text-white shadow-2xs"
+                  : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              }`}
+            >
+              <span>Approved</span>
+              <span className="font-mono text-[10px] opacity-85">({approvedCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("pending")}
+              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                statusFilter === "pending"
+                  ? "bg-amber-500 text-white shadow-2xs"
+                  : "text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+              }`}
+            >
+              <span>Pending Review</span>
+              <span className="font-mono text-[10px] opacity-85">({pendingCount})</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -394,13 +423,13 @@ export default function AdminWhatsAppTemplates() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={MessageSquare}
-          title="No Service Templates Found"
+          title="No Templates Found"
           description={
             templates.length === 0
               ? "No WhatsApp templates exist yet. Click the sync button to populate all standard master templates."
-              : "No templates match your search query."
+              : "No templates match your selected filter or search query."
           }
-          actionLabel={templates.length === 0 ? "Sync Service Call Templates" : undefined}
+          actionLabel={templates.length === 0 ? "Sync Templates" : undefined}
           actionIcon={templates.length === 0 ? RefreshCw : undefined}
           onAction={templates.length === 0 ? handleSyncToMeta : undefined}
         />
@@ -408,6 +437,13 @@ export default function AdminWhatsAppTemplates() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           {filtered.map((tpl, idx) => {
             const rowProps = getRowProps(idx);
+            const isApproved = tpl.metaStatus === "approved";
+            const isRejected = tpl.metaStatus === "rejected";
+            const liveCategory = (tpl.category || "utility").toUpperCase();
+            const isReclassified =
+              Boolean(tpl.previousCategory) &&
+              tpl.previousCategory?.toLowerCase() !== (tpl.category || "utility").toLowerCase();
+
             return (
               <div
                 key={tpl.id}
@@ -423,7 +459,56 @@ export default function AdminWhatsAppTemplates() {
                 }`}
               >
                 <div className="space-y-2.5">
-                  {/* Top Badges & Meta ID */}
+                  {/* Top Chip Bar: Live Meta Approval Chip + Live Meta Category Chip + Module Chip */}
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {isApproved ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Approved by Meta
+                        </span>
+                      ) : isRejected ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                          Rejected by Meta
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Pending Meta Review
+                        </span>
+                      )}
+
+                      {/* Live Meta Category Chip (UTILITY vs MARKETING vs AUTHENTICATION) */}
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                          liveCategory === "MARKETING"
+                            ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
+                            : liveCategory === "AUTHENTICATION"
+                            ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
+                            : "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800"
+                        }`}
+                      >
+                        Meta Category: {liveCategory}
+                      </span>
+
+                      {isReclassified && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800">
+                          Reclassified: {tpl.previousCategory?.toUpperCase()} → {liveCategory}
+                        </span>
+                      )}
+                    </div>
+
+                    <Badge variant="outline" className="text-[9px] uppercase font-bold shrink-0 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                      {tpl.targetModule === "quotations"
+                        ? "Purchase Inquiries"
+                        : tpl.targetModule === "archived"
+                        ? "Archived / Other Apps"
+                        : tpl.targetModule.replace(/_/g, " ")}
+                    </Badge>
+                  </div>
+
+                  {/* Title & Meta Template Slug */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-1.5 min-w-0">
                       {idx === selectedIndex && (
@@ -434,14 +519,10 @@ export default function AdminWhatsAppTemplates() {
                           {tpl.displayName}
                         </h3>
                         <p className="font-mono text-[10px] text-slate-400 mt-0.5">
-                          ID: <code className="text-slate-600 dark:text-slate-300 font-bold">{tpl.name}</code>
+                          Meta Slug: <code className="text-slate-600 dark:text-slate-300 font-bold">{tpl.name}</code>
                         </p>
                       </div>
                     </div>
-
-                    <Badge variant="outline" className="text-[9px] uppercase font-bold shrink-0 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800">
-                      {tpl.targetModule.replace(/_/g, " ")}
-                    </Badge>
                   </div>
 
                 {/* Template Message Preview Area */}
@@ -474,7 +555,7 @@ export default function AdminWhatsAppTemplates() {
                   variant="outline"
                   onClick={() => {
                     setTestTemplate(tpl);
-                    setTestPhone("+91 ");
+                    setTestPhone("+91 93021 99730");
                     setTestModalOpen(true);
                   }}
                   className="text-xs h-8 gap-1.5 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold cursor-pointer"
@@ -556,8 +637,10 @@ export default function AdminWhatsAppTemplates() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="service_calls">Customer Service Calls</SelectItem>
+                    <SelectItem value="quotations">Purchase Inquiries</SelectItem>
                     <SelectItem value="service_centers">OEM Service Centers</SelectItem>
                     <SelectItem value="couriers">Courier Logistics</SelectItem>
+                    <SelectItem value="staff_tasks">Employee Tasks</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -687,6 +770,7 @@ export default function AdminWhatsAppTemplates() {
                     to: testPhone,
                     message: testTemplate?.bodyText || "",
                     templateName: testTemplate?.name,
+                    templateLanguage: testTemplate?.language || "en",
                     templateParams: params.length > 0 ? params : undefined,
                   });
                   if (res.success) {

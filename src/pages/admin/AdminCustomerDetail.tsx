@@ -270,7 +270,7 @@ export default function AdminCustomerDetail() {
       recipientRole: "Customer",
       defaultPhone: cleanPhone,
       ticketId: call.ticketNo,
-      defaultMessage: `Dear ${customer?.name || call.customerName || "Customer"},\n\nUpdate for your ticket *${call.ticketNo}* (${call.deviceCategory}${call.modelNumber ? ` - ${call.modelNumber}` : ""}):\nStatus: *${call.status.replace(/_/g, " ").toUpperCase()}*\n\nThank you for choosing Zorba Infotech!`,
+      defaultMessage: `Hi ${customer?.name || call.customerName || "Customer"},\n\nUpdate for your ticket *${call.ticketNo}* (${call.deviceCategory}${call.modelNumber ? ` - ${call.modelNumber}` : ""}):\nStatus: *${call.status.replace(/_/g, " ").toUpperCase()}*\n\nThank you for choosing Zorba Infotech!`,
     });
   };
 
@@ -1103,17 +1103,18 @@ export default function AdminCustomerDetail() {
                               <Printer className="h-4 w-4" />
                             </Button>
 
-                            {item.type === "company_service_center" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDispatchPrintCall(item)}
-                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer"
-                                title="Print Dispatch Slip / Shipping Label"
-                              >
-                                <Truck className="h-4 w-4" />
-                              </Button>
-                            )}
+                            {item.status === "received" &&
+                              Boolean((item.serviceCenterId || item.serviceCenterName || "").trim()) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDispatchPrintCall(item)}
+                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer"
+                                  title="Print Dispatch Slip / Shipping Label"
+                                >
+                                  <Truck className="h-4 w-4" />
+                                </Button>
+                              )}
 
                             <Link
                               to={`/admin/service-calls/${item.id}/edit`}

@@ -110,54 +110,46 @@ export const sendWhatsAppMessage = onCall(
       );
     }
 
-    // 3. Construct Meta Cloud API Payload
-    let payload: any;
-    if (templateName) {
-      const templateComponents: any[] = [];
+    // 3. Construct Meta Cloud API Payload helper
+    const sanitizeParam = (raw: string): string =>
+      String(raw ?? "")
+        .replace(/[\r\n\t]+/g, " | ")
+        .replace(/\s{2,}/g, " ")
+        .trim() || "-";
 
-      // Include header image if specified or for templates that require image header like '11'
-      if (headerImageUrl || templateName === "11") {
-        templateComponents.push({
-          type: "header",
-          parameters: [
-            {
-              type: "image",
-              image: {
-                link: headerImageUrl || "https://zorbainfotech.in/zorba-logo.png",
-              },
-            },
-          ],
-        });
+    const buildMetaPayload = (tplName?: string, tplParams?: string[], tplLang?: string) => {
+      if (tplName) {
+        const templateComponents: any[] = [];
+
+        if (tplParams && tplParams.length > 0) {
+          templateComponents.push({
+            type: "body",
+            parameters: tplParams.map((param) => ({
+              type: "text",
+              text: sanitizeParam(param),
+            })),
+          });
+        }
+
+        const templateObj: any = {
+          name: tplName,
+          language: { code: tplLang || "en" },
+        };
+
+        if (templateComponents.length > 0) {
+          templateObj.components = templateComponents;
+        }
+
+        return {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: formattedPhone,
+          type: "template",
+          template: templateObj,
+        };
       }
 
-      if (templateParams && templateParams.length > 0) {
-        templateComponents.push({
-          type: "body",
-          parameters: templateParams.map((param) => ({
-            type: "text",
-            text: param,
-          })),
-        });
-      }
-
-      const templateObj: any = {
-        name: templateName,
-        language: { code: templateLanguage || "en" },
-      };
-
-      if (templateComponents.length > 0) {
-        templateObj.components = templateComponents;
-      }
-
-      payload = {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: formattedPhone,
-        type: "template",
-        template: templateObj,
-      };
-    } else {
-      payload = {
+      return {
         messaging_product: "whatsapp",
         recipient_type: "individual",
         to: formattedPhone,
@@ -167,18 +159,19 @@ export const sendWhatsAppMessage = onCall(
           body: (message || "").trim(),
         },
       };
-    }
+    };
 
     // 4. Dispatch server-to-server request
     try {
       const url = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+      const primaryPayload = buildMetaPayload(templateName, templateParams, templateLanguage);
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(primaryPayload),
       });
 
       const responseData = await response.json();

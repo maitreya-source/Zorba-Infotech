@@ -318,6 +318,31 @@ export default function AdminServiceCalls() {
   const serviceCenterCount = nonDeletedCalls.filter((c) => c.type === "company_service_center" || c.status === "sent_to_service_center").length;
   const onsiteCount = nonDeletedCalls.filter((c) => c.type === "onsite_visit").length;
 
+  const [serviceCenterFilter, setServiceCenterFilter] = useState<string>("all");
+
+  const getServiceCenterKey = (c: ServiceCall): string => {
+    return (c.serviceCenterId || c.serviceCenterName || "").trim().toLowerCase();
+  };
+
+  const getServiceCenterLabel = (c: ServiceCall): string => {
+    return (c.serviceCenterName || "").trim();
+  };
+
+  const isServiceCenterTicket = (c: ServiceCall): boolean => {
+    return Boolean(getServiceCenterKey(c) || c.type === "company_service_center");
+  };
+
+  const isPendingServiceCenterSend = (c: ServiceCall): boolean => {
+    const scKey = getServiceCenterKey(c);
+    if (!scKey) return false;
+    return (
+      c.status !== "sent_to_service_center" &&
+      c.status !== "completed" &&
+      c.status !== "delivered" &&
+      c.status !== "cancelled"
+    );
+  };
+
   const currentList = activeTab === "active" ? activeCalls : activeTab === "inactive" ? inactiveCalls : trashCalls;
 
   // Filter list
@@ -325,6 +350,9 @@ export default function AdminServiceCalls() {
     const matchesType = typeFilter === "all" || c.type === typeFilter;
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     const matchesFY = fyFilter === "all" || c.fyId === fyFilter || (!c.fyId && fyFilter === "all");
+    const matchesPendingSc =
+      serviceCenterFilter === "all" ||
+      (getServiceCenterKey(c) === serviceCenterFilter && isPendingServiceCenterSend(c));
     const q = search.toLowerCase().trim();
     const prods = getServiceCallProducts(c);
     const matchesProductList = prods.some(
@@ -348,7 +376,7 @@ export default function AdminServiceCalls() {
       (c.monthKey && c.monthKey.toLowerCase().includes(q)) ||
       matchesProductList;
 
-    return matchesType && matchesStatus && matchesFY && matchesSearch;
+    return matchesType && matchesStatus && matchesFY && matchesPendingSc && matchesSearch;
   });
 
   // Handle clickable header sort toggle
@@ -424,7 +452,7 @@ export default function AdminServiceCalls() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, typeFilter, statusFilter, fyFilter, activeTab, pageSize]);
+  }, [search, typeFilter, statusFilter, fyFilter, serviceCenterFilter, activeTab, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const paginatedCalls = useMemo(() => {
@@ -435,6 +463,107 @@ export default function AdminServiceCalls() {
   // Multi-Call Selection for Batch Service Center Dispatch & Consolidated Print
   const [dispatchPrintCalls, setDispatchPrintCalls] = useState<ServiceCall[] | null>(null);
   const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
+  const [batchCourierName, setBatchCourierName] = useState("");
+  const [batchTrackingNo, setBatchTrackingNo] = useState("");
+
+  const selectedCallsList = useMemo(() => {
+    return calls.filter((c) => selectedCallIds.has(c.id));
+  }, [calls, selectedCallIds]);
+
+  const lockedServiceCenterKey = useMemo(() => {
+    if (selectedCallsList.length === 0) return "";
+    return getServiceCenterKey(selectedCallsList[0]);
+  }, [selectedCallsList]);
+
+  const lockedServiceCenterName = useMemo(() => {
+    if (selectedCallsList.length === 0) return "";
+    return getServiceCenterLabel(selectedCallsList[0]);
+  }, [selectedCallsList]);
+
+  // Group pending-send service calls by Service Center (strictly excluding calls already sent_to_service_center)
+  const pendingServiceCenterGroups = useMemo(() => {
+    const map = new Map<
+      string,
+      { key: string; name: string; calls: ServiceCall[]; unitCount: number }
+    >();
+    activeCalls.forEach((c) => {
+      if (!isPendingServiceCenterSend(c)) return;
+      const scKey = getServiceCenterKey(c);
+      if (!scKey) return;
+      const existing = map.get(scKey) || {
+        key: scKey,
+        name: getServiceCenterLabel(c),
+        calls: [],
+        unitCount: 0,
+      };
+      const units = getServiceCallProducts(c).reduce(
+        (sum, p) => sum + (Number(p.quantity) || 1),
+        0
+      );
+      existing.calls.push(c);
+      existing.unitCount += units;
+      map.set(scKey, existing);
+    });
+    return Array.from(map.values());
+  }, [activeCalls]);
+
+  const selectAllForServiceCenter = (scKey: string, autoPrint = false) => {
+    const matching = activeCalls.filter(
+      (c) => getServiceCenterKey(c) === scKey && isPendingServiceCenterSend(c)
+    );
+    if (matching.length === 0) return;
+    setSelectedCallIds(new Set(matching.map((c) => c.id)));
+    if (autoPrint) {
+      setDispatchPrintCalls(matching);
+    } else {
+      toast.success(
+        `Selected ${matching.length} pending ticket(s) for ${getServiceCenterLabel(matching[0])}`
+      );
+    }
+  };
+
+  const handleServiceCenterFilterChange = (val: string) => {
+    setServiceCenterFilter(val);
+    if (val === "all") {
+      setSelectedCallIds(new Set());
+      setBatchCourierName("");
+      setBatchTrackingNo("");
+    } else {
+      selectAllForServiceCenter(val, false);
+    }
+  };
+
+  // Check whether all selected tickets belong to a single Service Center (for Batch Dispatch)
+  const batchDispatchEligibility = useMemo(() => {
+    if (selectedCallsList.length === 0) {
+      return { eligible: false, reason: "No tickets selected", serviceCenterName: "" };
+    }
+    const missingSc = selectedCallsList.some(
+      (c) => !getServiceCenterKey(c) && c.type !== "company_service_center"
+    );
+    if (missingSc) {
+      return {
+        eligible: false,
+        reason: "Some selected tickets are not assigned to a Service Center",
+        serviceCenterName: "",
+      };
+    }
+    const distinctKeys = new Set(
+      selectedCallsList.map((c) => getServiceCenterKey(c)).filter(Boolean)
+    );
+    if (distinctKeys.size > 1) {
+      return {
+        eligible: false,
+        reason: "Batch Dispatch Slip requires all selected tickets to be for the same Service Center",
+        serviceCenterName: "",
+      };
+    }
+    return {
+      eligible: true,
+      reason: "",
+      serviceCenterName: getServiceCenterLabel(selectedCallsList[0]) || "Service Center",
+    };
+  }, [selectedCallsList]);
 
   const toggleSelectCall = (id: string) => {
     setSelectedCallIds((prev) => {
@@ -449,32 +578,49 @@ export default function AdminServiceCalls() {
   };
 
   const selectAllCurrentPage = () => {
-    const allSelected = paginatedCalls.length > 0 && paginatedCalls.every((c) => selectedCallIds.has(c.id));
-    if (allSelected) {
-      setSelectedCallIds((prev) => {
-        const next = new Set(prev);
+    if (paginatedCalls.length === 0) return;
+    const allSelected = paginatedCalls.every((c) => selectedCallIds.has(c.id));
+
+    setSelectedCallIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
         paginatedCalls.forEach((c) => next.delete(c.id));
-        return next;
-      });
-    } else {
-      setSelectedCallIds((prev) => {
-        const next = new Set(prev);
+      } else {
         paginatedCalls.forEach((c) => next.add(c.id));
-        return next;
-      });
-    }
+      }
+      return next;
+    });
   };
 
   const clearSelection = () => {
     setSelectedCallIds(new Set());
+    setBatchCourierName("");
+    setBatchTrackingNo("");
   };
 
-  const selectedCallsList = useMemo(() => {
-    return calls.filter((c) => selectedCallIds.has(c.id));
-  }, [calls, selectedCallIds]);
+  const handleBulkStatusChange = async (newStatus: ServiceCallStatus) => {
+    if (selectedCallsList.length === 0) return;
+    try {
+      await Promise.all(
+        selectedCallsList.map((c) =>
+          updateServiceCall(c.id, { status: newStatus, updatedAt: Date.now() })
+        )
+      );
+      const statusLabel = STATUS_OPTIONS.find((o) => o.value === newStatus)?.label || newStatus;
+      toast.success(`Updated status to "${statusLabel}" for ${selectedCallsList.length} ticket(s)`);
+      clearSelection();
+      loadData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update status");
+    }
+  };
 
   const handleBulkDispatchPrint = () => {
     if (selectedCallsList.length === 0) return;
+    if (!batchDispatchEligibility.eligible) {
+      toast.error(batchDispatchEligibility.reason);
+      return;
+    }
     setDispatchPrintCalls(selectedCallsList);
   };
 
@@ -483,18 +629,39 @@ export default function AdminServiceCalls() {
     try {
       const count = selectedCallsList.length;
       await Promise.all(
-        selectedCallsList.map((c) =>
-          updateServiceCall(c.id, {
+        selectedCallsList.map((c) => {
+          const existingTimeline = Array.isArray(c.timeline) ? c.timeline : [];
+          const newEvent = {
+            id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            timestamp: Date.now(),
+            stage: "replacement_sent_service_center" as const,
+            title: `Dispatched to ${getServiceCenterLabel(c)}${
+              batchCourierName.trim() ? ` via ${batchCourierName.trim()}` : ""
+            }`,
+            staffId: "admin",
+            staffName: "Dispatch Desk",
+            status: "sent_to_service_center" as const,
+            courierName: batchCourierName.trim() || c.courierName,
+            trackingNumber: batchTrackingNo.trim() || c.rmaNumber,
+            serviceCenterName: c.serviceCenterName,
+            remarks: `Batch dispatched (${count} tickets in parcel). Individual ticket tracking active.`,
+          };
+          return updateServiceCall(c.id, {
             status: "sent_to_service_center",
+            ...(batchCourierName.trim() ? { courierName: batchCourierName.trim() } : {}),
+            ...(batchTrackingNo.trim() ? { rmaNumber: batchTrackingNo.trim() } : {}),
+            timeline: [...existingTimeline, newEvent],
             updatedAt: Date.now(),
-          })
-        )
+          });
+        })
       );
-      toast.success(`Marked ${count} tickets as "Sent to Service Center"`);
-      setSelectedCallIds(new Set());
+      toast.success(
+        `Marked ${count} tickets for ${lockedServiceCenterName} as "Sent to Service Center" (tracked individually)`
+      );
+      clearSelection();
       loadData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to update tickets");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update tickets");
     }
   };
 
@@ -521,12 +688,13 @@ export default function AdminServiceCalls() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Tally List Navigation (ArrowUp/Down to highlight row, Enter to open, '/' to focus search, Alt+P/W/D on selected row)
-  const { selectedIndex, getRowProps } = useTallyListNavigation<ServiceCall>({
+  // Tally List Navigation (ArrowUp/Down to highlight row, Space to select ticket, Enter to open, '/' to focus search, Alt+P/W/D on selected row)
+  const { selectedIndex, setSelectedIndex, getRowProps } = useTallyListNavigation<ServiceCall>({
     items: paginatedCalls,
     searchRef: searchInputRef,
     onOpenItem: (item) => navigate(`/admin/service-calls/${item.id}/edit`),
     onNewItem: () => navigate("/admin/service-calls/new"),
+    onToggleSelect: (item) => toggleSelectCall(item.id),
     onPrintItem: (item) => setPrintCall(item),
     onWhatsAppItem: (item) => setWhatsAppCall(item),
     onDeleteItem: (item) => setDeleteId(item.id),
@@ -658,17 +826,25 @@ export default function AdminServiceCalls() {
           </div>
         </div>
 
-        {/* Right Filters (Search + 3 Select Dropdowns) */}
+        {/* Right Filters (Pending Service Center Dispatch Dropdown + 3 Select Dropdowns) */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 w-full xl:w-auto">
-          <div className="relative min-w-[180px] md:flex-1 md:w-64">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              ref={searchInputRef}
-              placeholder="Search ticket, customer, phone... (Press '/' to focus)"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 h-11 sm:h-10 text-base sm:text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs w-full placeholder:text-slate-400"
-            />
+          <div className="min-w-[210px] md:w-56">
+            <Select
+              value={serviceCenterFilter}
+              onValueChange={handleServiceCenterFilterChange}
+            >
+              <SelectTrigger className="w-full h-10 sm:h-9 px-2 sm:px-3 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs font-semibold">
+                <SelectValue placeholder="Pending Dispatch (Service Center)" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="all">All Service Centers (Pending Send)</SelectItem>
+                {pendingServiceCenterGroups.map((group) => (
+                  <SelectItem key={group.key} value={group.key}>
+                    {group.name} ({group.calls.length} pending)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-3 gap-2 md:flex md:items-center">
@@ -780,47 +956,120 @@ export default function AdminServiceCalls() {
         />
       ) : (
         <div className="space-y-4">
-          {/* Bulk Selection Bar */}
+          {/* General-Purpose Bulk Selection Action Bar */}
           {selectedCallIds.size > 0 && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800/80 p-3.5 sm:px-4 sm:py-3 rounded-2xl shadow-xs animate-in fade-in duration-150">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white font-extrabold text-xs">
-                  {selectedCallIds.size}
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-blue-900 dark:text-blue-100">
-                  {selectedCallIds.size} Ticket{selectedCallIds.size > 1 ? "s" : ""} selected
-                </span>
+            <div className="flex flex-col gap-3 bg-blue-50 dark:bg-blue-950/80 border-2 border-blue-300 dark:border-blue-800 p-4 rounded-2xl shadow-sm animate-in fade-in duration-150">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white font-extrabold text-xs">
+                    {selectedCallIds.size}
+                  </span>
+                  <div className="text-xs sm:text-sm font-bold text-blue-950 dark:text-blue-100">
+                    {selectedCallIds.size} Ticket{selectedCallIds.size > 1 ? "s" : ""} Selected
+                    {batchDispatchEligibility.eligible && batchDispatchEligibility.serviceCenterName && (
+                      <>
+                        {" "}for{" "}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-600 text-white text-xs font-extrabold">
+                          🏢 {batchDispatchEligibility.serviceCenterName}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {!batchDispatchEligibility.eligible && (
+                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                      ({batchDispatchEligibility.reason})
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* General Bulk Status Update */}
+                  <Select
+                    value=""
+                    onValueChange={(val: ServiceCallStatus) => handleBulkStatusChange(val)}
+                  >
+                    <SelectTrigger className="h-9 w-[175px] bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-700 text-xs font-bold rounded-xl">
+                      <SelectValue placeholder="Bulk Change Status..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs cursor-pointer">
+                          {opt.label} ({opt.hindiLabel})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Batch Dispatch Print (active when eligible, or shows helpful reason toast on click) */}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleBulkDispatchPrint}
+                    variant={batchDispatchEligibility.eligible ? "default" : "outline"}
+                    title={
+                      batchDispatchEligibility.eligible
+                        ? `Print Dispatch Slip for ${selectedCallIds.size} ticket(s)`
+                        : batchDispatchEligibility.reason
+                    }
+                    className={`h-9 px-3.5 text-xs font-bold gap-1.5 rounded-xl cursor-pointer ${
+                      batchDispatchEligibility.eligible
+                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                        : "bg-white/70 dark:bg-slate-900/70 text-slate-500 border-slate-300 dark:border-slate-700"
+                    }`}
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>
+                      {selectedCallIds.size === 1
+                        ? "Print Dispatch Slip"
+                        : `Print Combined Dispatch Slip (${selectedCallIds.size})`}
+                    </span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      clearSelection();
+                      setServiceCenterFilter("all");
+                    }}
+                    className="h-9 px-3 text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white cursor-pointer"
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleBulkDispatchPrint}
-                  className="h-8 text-xs font-bold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs rounded-xl cursor-pointer"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  <span>Print Consolidated Dispatch Slip</span>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleBulkMarkSentToServiceCenter}
-                  className="h-8 text-xs font-bold gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-xl cursor-pointer"
-                >
-                  <Building2 className="h-3.5 w-3.5" />
-                  <span>Mark as Sent to Service Center</span>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={clearSelection}
-                  className="h-8 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer ml-auto sm:ml-0"
-                >
-                  Clear
-                </Button>
-              </div>
+
+              {/* Shared Batch Courier & Tracking Row for Marking Sent to Service Center (shown when eligible for Service Center dispatch) */}
+              {batchDispatchEligibility.eligible && (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-blue-200/80 dark:border-blue-800/70">
+                  <span className="text-xs font-bold text-blue-900 dark:text-blue-200 shrink-0">
+                    Optional Shared Parcel Details:
+                  </span>
+                  <Input
+                    value={batchCourierName}
+                    onChange={(e) => setBatchCourierName(e.target.value)}
+                    placeholder="Courier Name (e.g. DTDC / BlueDart / Hand Delivery)"
+                    className="h-9 text-xs bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 rounded-xl sm:max-w-[240px]"
+                  />
+                  <Input
+                    value={batchTrackingNo}
+                    onChange={(e) => setBatchTrackingNo(e.target.value)}
+                    placeholder="Docket / Tracking No. (optional)"
+                    className="h-9 text-xs bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 rounded-xl sm:max-w-[200px]"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkMarkSentToServiceCenter}
+                    className="h-9 px-3.5 text-xs font-bold gap-1.5 bg-white dark:bg-slate-900 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-xl cursor-pointer shrink-0"
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                    <span>Mark All {selectedCallIds.size} as Sent to Service Center</span>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -834,6 +1083,12 @@ export default function AdminServiceCalls() {
                     year: "numeric",
                   })
                 : "—";
+              const itemScKey = getServiceCenterKey(item);
+              const isDifferentServiceCenter =
+                !selectedCallIds.has(item.id) &&
+                Boolean(lockedServiceCenterKey) &&
+                Boolean(itemScKey) &&
+                itemScKey !== lockedServiceCenterKey;
 
               return (
                 <div
@@ -862,6 +1117,13 @@ export default function AdminServiceCalls() {
                           e.stopPropagation();
                           toggleSelectCall(item.id);
                         }}
+                        title={
+                          !itemScKey && item.type !== "company_service_center"
+                            ? "Assign a Service Center first to include in batch dispatch"
+                            : isDifferentServiceCenter
+                            ? `Locked to ${lockedServiceCenterName} — cannot mix different service centers`
+                            : `Select ticket ${item.ticketNo}${getServiceCenterLabel(item) ? ` (${getServiceCenterLabel(item)})` : ""}`
+                        }
                         className="h-4 w-4 mt-1 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 shrink-0"
                         aria-label={`Select ticket ${item.ticketNo}`}
                       />
@@ -1014,6 +1276,12 @@ export default function AdminServiceCalls() {
                       })
                     : "—";
                   const rowProps = getRowProps(idx);
+                  const itemScKey = getServiceCenterKey(item);
+                  const isDifferentServiceCenter =
+                    !selectedCallIds.has(item.id) &&
+                    Boolean(lockedServiceCenterKey) &&
+                    Boolean(itemScKey) &&
+                    itemScKey !== lockedServiceCenterKey;
 
                   return (
                     <tr
@@ -1044,6 +1312,13 @@ export default function AdminServiceCalls() {
                           type="checkbox"
                           checked={selectedCallIds.has(item.id)}
                           onChange={() => toggleSelectCall(item.id)}
+                          title={
+                            !itemScKey && item.type !== "company_service_center"
+                              ? "Assign a Service Center first to include in batch dispatch"
+                              : isDifferentServiceCenter
+                              ? `Locked to ${lockedServiceCenterName} — cannot mix different service centers`
+                              : `Select ticket ${item.ticketNo}${getServiceCenterLabel(item) ? ` (${getServiceCenterLabel(item)})` : ""}`
+                          }
                           className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 align-middle"
                           aria-label={`Select ticket ${item.ticketNo}`}
                         />
@@ -1060,6 +1335,12 @@ export default function AdminServiceCalls() {
                           </div>
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">{displayDate}</div>
+                        {item.serviceCenterName && (
+                          <div className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate max-w-[160px]" title={`Service Center: ${item.serviceCenterName}`}>
+                            <span>🏢</span>
+                            <span className="truncate">{item.serviceCenterName}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Customer */}
@@ -1159,7 +1440,7 @@ export default function AdminServiceCalls() {
                             </Button>
                           ) : (
                             <>
-                              {/* Direct 1-Click Print Button */}
+                              {/* Direct 1-Click Print Job Card Button */}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1171,6 +1452,21 @@ export default function AdminServiceCalls() {
                               >
                                 <Printer className="h-4 w-4" />
                               </button>
+
+                              {/* Direct 1-Click Print Dispatch Slip Button (for Service Center tickets at any stage) */}
+                              {isServiceCenterTicket(item) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDispatchPrintCall(item);
+                                  }}
+                                  className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100 hover:text-indigo-700 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs"
+                                  title={`Print Dispatch Slip (${item.serviceCenterName || item.ticketNo})`}
+                                >
+                                  <Truck className="h-4 w-4" />
+                                </button>
+                              )}
 
                               {/* Direct 1-Click WhatsApp API Button */}
                               <button
@@ -1210,7 +1506,7 @@ export default function AdminServiceCalls() {
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 text-xs font-medium" onClick={(e) => e.stopPropagation()}>
-                                  {item.type === "company_service_center" && (
+                                  {isServiceCenterTicket(item) && (
                                     <DropdownMenuItem
                                       onSelect={(e) => {
                                         e.preventDefault();
