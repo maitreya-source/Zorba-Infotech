@@ -18,7 +18,6 @@ import {
   runTransaction,
   writeBatch,
   deleteField,
-  getCountFromServer,
   onSnapshot,
   type QueryDocumentSnapshot,
   type DocumentSnapshot,
@@ -33,7 +32,6 @@ import type {
   Product,
   DeviceCategory,
   DeviceModel,
-  StaffMember,
   TimelineEvent,
   Customer,
   ServiceCall,
@@ -41,7 +39,6 @@ import type {
   Courier,
   Technician,
   TeamMember,
-  FinancialYearDoc,
   WhatsAppTemplateDoc,
   Quotation,
   QuotationTemplate,
@@ -52,7 +49,6 @@ import type {
   InquiryStatus,
   JobApplication,
   JobApplicationStatus,
-  MonthlyReportSummary,
   PaginatedResult,
 } from "./types";
 
@@ -1059,10 +1055,6 @@ export async function createDeviceCategory(
   return newCat;
 }
 
-export async function deleteDeviceCategory(id: string): Promise<void> {
-  await deleteDoc(doc(db, "device_categories", id));
-}
-
 // ─── Customers (Fast Slim Index & Non-Blocking Delta-Sync) ─────────────────────
 
 export interface CustomerIndexItem {
@@ -1724,89 +1716,7 @@ export async function updateCustomer(id: string, data: Partial<Customer>): Promi
   publishSyncSignal("customers", { action: "update", resourceId: id });
 }
 
-export async function getCustomersTotalCount(): Promise<number> {
-  try {
-    const snap = await fetchWithTimeout(getCountFromServer(collection(db, "customers")));
-    return snap.data().count;
-  } catch (err) {
-    console.warn("getCustomersTotalCount warning:", err);
-    return _customerIndex.length || 0;
-  }
-}
 
-export async function getCustomersPaginated(options?: {
-  pageSize?: number;
-  lastDoc?: DocumentSnapshot | QueryDocumentSnapshot | any;
-  search?: string;
-}): Promise<PaginatedResult<Customer>> {
-  const pageSize = options?.pageSize || 25;
-  const search = (options?.search || "").trim().toLowerCase();
-
-  try {
-    const constraints: any[] = [
-      orderBy("createdAt", "desc"),
-      limit(pageSize + 1),
-    ];
-
-    if (options?.lastDoc) {
-      if (typeof options.lastDoc.data === "function") {
-        constraints.push(startAfter(options.lastDoc));
-      } else if (typeof options.lastDoc === "string") {
-        const docSnap = await fetchWithTimeout(getDoc(doc(db, "customers", options.lastDoc)));
-        if (docSnap.exists()) {
-          constraints.push(startAfter(docSnap));
-        }
-      } else if (options.lastDoc.id) {
-        const docSnap = await fetchWithTimeout(getDoc(doc(db, "customers", options.lastDoc.id)));
-        if (docSnap.exists()) {
-          constraints.push(startAfter(docSnap));
-        }
-      }
-    }
-
-    const q = query(collection(db, "customers"), ...constraints);
-    const snap = await fetchWithTimeout(getDocs(q));
-
-    const docs = snap.docs;
-    const hasMore = docs.length > pageSize;
-    const resultDocs = hasMore ? docs.slice(0, pageSize) : docs;
-    const newLastDoc = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1] : undefined;
-
-    let items = resultDocs.map((d: any) => ({ id: d.id, ...(d.data() as object) }) as Customer);
-
-    if (search) {
-      items = items.filter((c) => {
-        const qDigits = search.replace(/\D/g, "");
-        const nameMatch = c.name && c.name.toLowerCase().includes(search);
-        const phoneMatch = (c.phone && c.phone.includes(search)) || (qDigits && (c.phone || "").replace(/\D/g, "").includes(qDigits));
-        const companyMatch = c.companyName && c.companyName.toLowerCase().includes(search);
-        const groupMatch = c.group && c.group.toLowerCase().includes(search);
-        return nameMatch || phoneMatch || companyMatch || groupMatch;
-      });
-    }
-
-    return {
-      items,
-      lastDoc: newLastDoc,
-      hasMore,
-    };
-  } catch (err: any) {
-    console.warn("getCustomersPaginated error, fallback to memory index:", err);
-    try {
-      const all = await getCustomers();
-      const clean = search;
-      const filtered = clean
-        ? all.filter((c) => (c.name || "").toLowerCase().includes(clean) || (c.phone || "").includes(clean) || (c.group || "").toLowerCase().includes(clean))
-        : all;
-      return {
-        items: filtered.slice(0, pageSize),
-        hasMore: filtered.length > pageSize,
-      };
-    } catch {
-      return { items: [], hasMore: false };
-    }
-  }
-}
 
 /**
  * Instant in-memory search for 5,000+ customers (< 1ms).
@@ -2094,30 +2004,6 @@ export async function deleteTeamMember(id: string): Promise<void> {
 
 // ─── Backward-Compatibility Aliases ──────────────────────────────────────────
 
-export async function getStaff(): Promise<StaffMember[]> {
-  const team = await getTeamMembers();
-  return team
-    .filter((m) => m.role !== "technician")
-    .map((m) => ({
-      id: m.id,
-      name: m.name,
-      role:
-        m.role === "proprietor"
-          ? "Proprietor"
-          : m.role === "developer"
-          ? "Lead Developer"
-          : m.role === "manager"
-          ? "Service Operations Manager"
-          : "Frontdesk / Backoffice Coordinator",
-      phone: m.phone,
-      avatar: m.avatar || "penguin",
-      active: m.active,
-      createdAt: m.createdAt,
-    }));
-}
-
-export const getStaffMembers = getStaff;
-
 export async function getTechnicians(): Promise<Technician[]> {
   const team = await getTeamMembers();
   return team
@@ -2132,7 +2018,6 @@ export async function getTechnicians(): Promise<Technician[]> {
       createdAt: m.createdAt,
     }));
 }
-
 
 // ─── Financial Years & Months (Hierarchy) ────────────────────────────────────
 
@@ -2193,7 +2078,7 @@ export function getFinancialYear(dateInput: Date | string | number = new Date())
   };
 }
 
-export async function ensureFinancialYearDoc(fyId: string, monthKey: string): Promise<void> {
+async function ensureFinancialYearDoc(fyId: string, monthKey: string): Promise<void> {
   try {
     const fyDocRef = doc(db, "financial_years", fyId);
     const startYY = parseInt(fyId.slice(2, 4), 10);
@@ -2233,91 +2118,6 @@ export async function ensureFinancialYearDoc(fyId: string, monthKey: string): Pr
     );
   } catch (err) {
     console.warn("ensureFinancialYearDoc warning:", err);
-  }
-}
-
-export async function seedFinancialYears(): Promise<void> {
-  // 2 backdated FYs: FY2324 (2023-24), FY2425 (2024-25)
-  // Current: FY2526 (2025-26), FY2627 (2026-27)
-  // 5 upcoming FYs: FY2728, FY2829, FY2930, FY3031, FY3132
-  const fyList = [
-    { startYear: 2023, endYear: 2024, fyId: "FY2324" },
-    { startYear: 2024, endYear: 2025, fyId: "FY2425" },
-    { startYear: 2025, endYear: 2026, fyId: "FY2526" },
-    { startYear: 2026, endYear: 2027, fyId: "FY2627" },
-    { startYear: 2027, endYear: 2028, fyId: "FY2728" },
-    { startYear: 2028, endYear: 2029, fyId: "FY2829" },
-    { startYear: 2029, endYear: 2030, fyId: "FY2930" },
-    { startYear: 2030, endYear: 2031, fyId: "FY3031" },
-    { startYear: 2031, endYear: 2032, fyId: "FY3132" },
-  ];
-
-  for (const fy of fyList) {
-    const fyDocRef = doc(db, "financial_years", fy.fyId);
-    await setDoc(
-      fyDocRef,
-      {
-        id: fy.fyId,
-        label: `FY ${fy.startYear}-${String(fy.endYear).slice(-2)}`,
-        startYear: fy.startYear,
-        endYear: fy.endYear,
-        startDate: `${fy.startYear}-04-01`,
-        endDate: `${fy.endYear}-03-31`,
-        createdAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    // 12 months for Indian FY (April of startYear to March of endYear)
-    for (let m = 4; m <= 12; m++) {
-      const monthKey = `${fy.startYear}-${String(m).padStart(2, "0")}`;
-      const monthDocRef = doc(db, "financial_years", fy.fyId, "months", monthKey);
-      await setDoc(
-        monthDocRef,
-        {
-          id: monthKey,
-          monthKey,
-          monthName: `${MONTH_NAMES[m - 1]} ${fy.startYear}`,
-          monthNumber: m,
-          fyId: fy.fyId,
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-    for (let m = 1; m <= 3; m++) {
-      const monthKey = `${fy.endYear}-${String(m).padStart(2, "0")}`;
-      const monthDocRef = doc(db, "financial_years", fy.fyId, "months", monthKey);
-      await setDoc(
-        monthDocRef,
-        {
-          id: monthKey,
-          monthKey,
-          monthName: `${MONTH_NAMES[m - 1]} ${fy.endYear}`,
-          monthNumber: m,
-          fyId: fy.fyId,
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-  }
-}
-
-export async function getFinancialYears(): Promise<FinancialYearDoc[]> {
-  try {
-    const snap = await fetchWithTimeout(getDocs(collection(db, "financial_years")));
-    if (snap.empty) {
-      await seedFinancialYears();
-      const res = await getDocs(collection(db, "financial_years"));
-      return res.docs.map((d) => ({ id: d.id, ...d.data() }) as FinancialYearDoc);
-    }
-    return snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }) as FinancialYearDoc)
-      .sort((a, b) => (b.startYear || 0) - (a.startYear || 0));
-  } catch (err: any) {
-    console.error("getFinancialYears error:", err);
-    return [];
   }
 }
 
@@ -2398,82 +2198,7 @@ export async function getServiceCallsForMonth(
   }
 }
 
-export async function getServiceCallsPaginated(options?: {
-  pageSize?: number;
-  lastDoc?: DocumentSnapshot | QueryDocumentSnapshot;
-  fyId?: string;
-  monthKey?: string;
-  statusFilter?: string;
-  typeFilter?: string;
-  search?: string;
-}): Promise<PaginatedResult<ServiceCall>> {
-  const pageSize = options?.pageSize || 25;
-  const fyId = options?.fyId && options.fyId !== "all" ? options.fyId : undefined;
-  const monthKey = options?.monthKey && options.monthKey !== "all" ? options.monthKey : undefined;
-  const search = (options?.search || "").trim().toLowerCase();
 
-  try {
-    let q: any;
-    if (fyId && monthKey) {
-      // Scoped direct subcollection query
-      const constraints: any[] = [limit(pageSize + 1)];
-      if (options?.lastDoc) {
-        constraints.push(startAfter(options.lastDoc));
-      }
-      q = query(
-        collection(db, "financial_years", fyId, "months", monthKey, "service_calls"),
-        ...constraints
-      );
-    } else {
-      // Global query
-      const constraints: any[] = [limit(pageSize + 1)];
-      if (options?.lastDoc) {
-        constraints.push(startAfter(options.lastDoc));
-      }
-      try {
-        q = query(collectionGroup(db, "service_calls"), ...constraints);
-      } catch {
-        q = query(collection(db, "service_calls"), ...constraints);
-      }
-    }
-
-    const snap = await fetchWithTimeout(getDocs(q));
-    const docs = snap.docs;
-    const hasMore = docs.length > pageSize;
-    const resultDocs = hasMore ? docs.slice(0, pageSize) : docs;
-    const newLastDoc = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1] : undefined;
-
-    let items = resultDocs.map((d: any) => ({ id: d.id, ...(d.data() as object) }) as ServiceCall);
-
-    if (search) {
-      items = items.filter((c) => {
-        const qDigits = search.replace(/\D/g, "");
-        const tMatch = (c.ticketNo || "").toLowerCase().includes(search);
-        const nameMatch = (c.customerName || "").toLowerCase().includes(search);
-        const phoneMatch = (c.customerPhone || "").includes(search) || (qDigits && (c.customerPhone || "").replace(/\D/g, "").includes(qDigits));
-        const devMatch = (c.deviceCategory || "").toLowerCase().includes(search) || (c.modelNumber || "").toLowerCase().includes(search);
-        return tMatch || nameMatch || phoneMatch || devMatch;
-      });
-    }
-
-    return {
-      items,
-      lastDoc: newLastDoc,
-      hasMore,
-    };
-  } catch (err) {
-    console.warn("getServiceCallsPaginated error, returning fallback:", err);
-    try {
-      const all = await getServiceCalls();
-      return {
-        items: all.slice(0, pageSize),
-        hasMore: all.length > pageSize,
-      };
-    } catch {
-      return { items: [], hasMore: false };
-    }
-  }
-}
 
 export async function getServiceCall(id: string): Promise<ServiceCall | null> {
   try {
@@ -3382,72 +3107,7 @@ export async function getNextQuotationNumber(dateOrStr?: string | Date): Promise
   }
 }
 
-export async function getMonthlyReportSummary(
-  monthKey: string,
-  fyIdInput?: string
-): Promise<MonthlyReportSummary> {
-  const fyId = fyIdInput || getFinancialYear(monthKey + "-01").fyId;
-  const docRef = doc(db, "reports_summary", monthKey);
 
-  try {
-    const snap = await fetchWithTimeout(getDoc(docRef)).catch(() => null);
-    if (snap && snap.exists()) {
-      return { id: snap.id, ...snap.data() } as MonthlyReportSummary;
-    }
-  } catch (err) {
-    console.warn("getMonthlyReportSummary read warning:", err);
-  }
-
-  // Calculate summary directly from month's subcollection (~150 docs)
-  const calls = await getServiceCallsForMonth(fyId, monthKey);
-  const totalCalls = calls.length;
-  const totalRevenue = calls.reduce((acc, c) => acc + (c.grandTotal || 0), 0);
-  const partsTotal = calls.reduce((acc, c) => acc + (c.partsTotal || 0), 0);
-  const serviceCharges = calls.reduce((acc, c) => acc + (c.serviceCharges || 0), 0);
-  const completedCalls = calls.filter((c) => c.status === "completed" || c.status === "delivered").length;
-  const activeCalls = calls.filter((c) =>
-    ["received", "in_progress", "sent_to_service_center", "waiting_for_parts"].includes(c.status)
-  ).length;
-
-  const inHouseCount = calls.filter((c) => c.type === "in_house_repair").length;
-  const serviceCenterCount = calls.filter((c) => c.type === "company_service_center").length;
-  const onsiteCount = calls.filter((c) => c.type === "onsite_visit").length;
-
-  const dailyGroups = calls.reduce((acc, call) => {
-    const dateStr = call.dateTime ? call.dateTime.slice(0, 10) : "Unknown";
-    if (!acc[dateStr]) {
-      acc[dateStr] = { count: 0, revenue: 0 };
-    }
-    acc[dateStr].count += 1;
-    acc[dateStr].revenue += call.grandTotal || 0;
-    return acc;
-  }, {} as Record<string, { count: number; revenue: number }>);
-
-  const summaryData: MonthlyReportSummary = {
-    id: monthKey,
-    monthKey,
-    fyId,
-    totalCalls,
-    totalRevenue,
-    partsTotal,
-    serviceCharges,
-    completedCalls,
-    activeCalls,
-    inHouseCount,
-    serviceCenterCount,
-    onsiteCount,
-    dailyBreakdown: dailyGroups,
-    updatedAt: Date.now(),
-  };
-
-  try {
-    await setDoc(docRef, cleanFirestoreData(summaryData), { merge: true });
-  } catch (saveErr) {
-    console.warn("Could not persist reports_summary doc:", saveErr);
-  }
-
-  return summaryData;
-}
 
 export async function getQuotations(filters?: {
   customerId?: string;
@@ -3485,71 +3145,6 @@ export async function getQuotations(filters?: {
   } catch (err) {
     console.error("getQuotations error:", err);
     throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function getQuotationsPaginated(options?: {
-  pageSize?: number;
-  lastDoc?: DocumentSnapshot | QueryDocumentSnapshot;
-  customerId?: string;
-  dateFilter?: "today" | "month" | "all" | "custom";
-  startDate?: string;
-  endDate?: string;
-  search?: string;
-}): Promise<PaginatedResult<Quotation>> {
-  const pageSize = options?.pageSize || 25;
-  const search = (options?.search || "").trim().toLowerCase();
-
-  try {
-    const constraints: any[] = [
-      orderBy("createdAt", "desc"),
-      limit(pageSize + 1),
-    ];
-
-    if (options?.customerId) {
-      constraints.unshift(where("customerId", "==", options.customerId));
-    }
-
-    if (options?.lastDoc) {
-      constraints.push(startAfter(options.lastDoc));
-    }
-
-    const q = query(collection(db, "quotations"), ...constraints);
-    const snap = await fetchWithTimeout(getDocs(q));
-
-    const docs = snap.docs;
-    const hasMore = docs.length > pageSize;
-    const resultDocs = hasMore ? docs.slice(0, pageSize) : docs;
-    const newLastDoc = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1] : undefined;
-
-    let items = resultDocs.map((d: any) => ({ id: d.id, ...(d.data() as object) }) as Quotation);
-
-    if (search) {
-      const qDigits = search.replace(/\D/g, "");
-      items = items.filter((q) => {
-        const noMatch = (q.quotationNo || "").toLowerCase().includes(search);
-        const nameMatch = (q.customerName || "").toLowerCase().includes(search);
-        const phoneMatch = (q.customerPhone || "").includes(search) || (qDigits && (q.customerPhone || "").replace(/\D/g, "").includes(qDigits));
-        return noMatch || nameMatch || phoneMatch;
-      });
-    }
-
-    return {
-      items,
-      lastDoc: newLastDoc,
-      hasMore,
-    };
-  } catch (err) {
-    console.warn("getQuotationsPaginated error, fallback:", err);
-    try {
-      const all = await getQuotations();
-      return {
-        items: all.slice(0, pageSize),
-        hasMore: all.length > pageSize,
-      };
-    } catch {
-      return { items: [], hasMore: false };
-    }
   }
 }
 
@@ -3725,19 +3320,6 @@ export async function createQuotationTemplate(
     return newTemplate;
   } catch (err) {
     console.error("createQuotationTemplate error:", err);
-    throw new Error(formatFirebaseError(err));
-  }
-}
-
-export async function updateQuotationTemplate(
-  id: string,
-  data: Partial<QuotationTemplate>
-): Promise<void> {
-  try {
-    const docRef = doc(db, "quotation_templates", id);
-    await setDoc(docRef, cleanFirestoreData({ ...data, updatedAt: Date.now() }), { merge: true });
-  } catch (err) {
-    console.error("updateQuotationTemplate error:", err);
     throw new Error(formatFirebaseError(err));
   }
 }
