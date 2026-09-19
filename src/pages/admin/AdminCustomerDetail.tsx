@@ -555,6 +555,19 @@ export default function AdminCustomerDetail() {
             </Button>
 
             <Link
+              to={`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`}
+              state={{ from: location.pathname + location.search }}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-3.5 text-xs font-semibold rounded-xl bg-white/10 border-white/20 text-white hover:bg-white/20 gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              >
+                <FileText className="h-3.5 w-3.5 text-purple-300" /> New Quotation
+              </Button>
+            </Link>
+
+            <Link
               to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}
               state={{ from: location.pathname + location.search }}
             >
@@ -694,27 +707,6 @@ export default function AdminCustomerDetail() {
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="pt-2 border-t flex flex-col sm:flex-row gap-2">
-            <Link
-              to={`/admin/service-calls/new?customerId=${encodeURIComponent(customer.id)}`}
-              state={{ from: location.pathname + location.search }}
-              className="flex-1 block"
-            >
-              <Button className="w-full h-10 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 cursor-pointer shadow-xs gap-1.5">
-                <Plus className="h-4 w-4" /> New Service Call
-              </Button>
-            </Link>
-            <Link
-              to={`/admin/quotations/new?customerId=${encodeURIComponent(customer.id)}`}
-              state={{ from: location.pathname + location.search }}
-              className="flex-1 block"
-            >
-              <Button variant="outline" className="w-full h-10 text-xs font-bold rounded-xl border-purple-200 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 cursor-pointer shadow-xs gap-1.5">
-                <FileText className="h-4 w-4" /> New Quotation
-              </Button>
-            </Link>
           </div>
         </div>
       </div>

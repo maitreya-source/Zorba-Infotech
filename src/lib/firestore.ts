@@ -738,6 +738,7 @@ export async function createProduct(
   const now = Date.now();
   const productData: Product = {
     ...normalized,
+    tallyGuid: normalized.tallyGuid ?? undefined,
     id: cleanDocId,
     createdAt: now,
     updatedAt: now,
@@ -758,7 +759,7 @@ export async function createProduct(
     stockCount: productData.stockCount,
     uom: productData.uom,
     inStock: productData.inStock,
-    showOnWebsite: productData.showOnWebsite,
+    showOnWebsite: productData.showOnWebsite ?? true,
     showPriceOnWebsite: productData.showPriceOnWebsite,
     featured: productData.featured,
     photoUrl: productData.photoUrl,
@@ -2353,8 +2354,8 @@ export async function getServiceCalls(): Promise<ServiceCall[]> {
     return uniqueDocs.map((d) => {
       const callData = d.data() as ServiceCall;
       return {
-        id: d.id,
         ...callData,
+        id: d.id,
         customerName: callData.customerName || callData.customer?.name || "",
         customerPhone: callData.customerPhone || callData.customer?.phone || "",
         customerEmail: callData.customerEmail || callData.customer?.email || "",
@@ -2500,8 +2501,8 @@ export async function getServiceCall(id: string): Promise<ServiceCall | null> {
     }
 
     return {
-      id: callData.ticketNo || id,
       ...callData,
+      id: callData.ticketNo || id,
       customer: cust,
       customerName: callData.customerName || cust?.name || "",
       customerPhone: callData.customerPhone || cust?.phone || "",
@@ -3825,15 +3826,25 @@ export async function updateServiceCallPaymentStatus(
   }
 ): Promise<void> {
   try {
-    const docRef = doc(db, "service_calls", id);
-    await setDoc(
-      docRef,
-      cleanFirestoreData({
-        ...payment,
-        updatedAt: Date.now(),
-      }),
+    const existing = await getServiceCall(id);
+    const fyMeta = getFinancialYear(existing?.dateTime || new Date());
+    const fyId = existing?.fyId || fyMeta.fyId;
+    const monthKey = existing?.monthKey || fyMeta.monthKey;
+
+    const cleanPayload = cleanFirestoreData({
+      ...payment,
+      updatedAt: Date.now(),
+    });
+
+    const batch = writeBatch(db);
+    batch.set(doc(db, "service_calls", id), cleanPayload, { merge: true });
+    batch.set(
+      doc(db, "financial_years", fyId, "months", monthKey, "service_calls", id),
+      cleanPayload,
       { merge: true }
     );
+    await batch.commit();
+    publishSyncSignal("service_calls");
   } catch (err) {
     console.error("updateServiceCallPaymentStatus error:", err);
     throw new Error(formatFirebaseError(err));

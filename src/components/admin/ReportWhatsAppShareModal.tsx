@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Copy, Check, MessageSquare, ExternalLink, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -30,6 +30,12 @@ export default function ReportWhatsAppShareModal({
   const [copied, setCopied] = useState(false);
   const [recipientPhone, setRecipientPhone] = useState("");
   const [customMessage, setCustomMessage] = useState(summaryText);
+
+  useEffect(() => {
+    if (open) {
+      setCustomMessage(summaryText);
+    }
+  }, [summaryText, open]);
 
   // Keep custom message in sync when summaryText changes
   const messageToUse = customMessage || summaryText;

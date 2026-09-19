@@ -192,7 +192,7 @@ export default function AdminReports() {
 
       const requiredMonths: string[] = [startMonth];
       if (startMonth !== endMonth) {
-        let current = new Date(`${startMonth}-01`);
+        const current = new Date(`${startMonth}-01`);
         const end = new Date(`${endMonth}-01`);
         while (current <= end) {
           const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}`;

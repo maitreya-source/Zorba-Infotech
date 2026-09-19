@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
   FileText,
@@ -39,6 +39,7 @@ import {
   peekNextQuotationNumber,
   getCategories,
   getCustomer,
+  getQuotationTemplates,
 } from "@/lib/firestore";
 import { toTitleCase, formatModelNumber, formatIndianPhoneNumber } from "@/lib/utils";
 import type {
@@ -72,11 +73,14 @@ const DEFAULT_TERMS = `1. All prices mentioned above are estimated approximate p
 
 export default function AdminQuotationForm() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const templateIdParam = searchParams.get("templateId");
+  const customerIdParam = searchParams.get("customerId");
   const navigate = useNavigate();
   const location = useLocation();
-  const exitTarget = (location.state as any)?.from || "/admin/quotations";
+  const exitTarget = (location.state as { from?: string } | null)?.from || "/admin/quotations";
   const { activeProfile } = useStaffProfile();
-  const [createdQuotationId, setCreatedQuotationId] = useState<string | null>(null);
+  const [createdQuotationId, setCreatedQuotationId] = useState<string | undefined>(undefined);
   const effectiveId = id || createdQuotationId;
   const isEditing = Boolean(effectiveId);
   const { activeEditors } = useResourcePresence("quotation", effectiveId, activeProfile);
@@ -199,15 +203,47 @@ export default function AdminQuotationForm() {
         } else {
           const nextNo = await peekNextQuotationNumber(date);
           setQuotationNo(nextNo);
+
+          let loadedItems = items;
+          if (templateIdParam) {
+            const templates = await getQuotationTemplates().catch(() => []);
+            const foundTpl = templates.find((t) => t.id === templateIdParam);
+            if (foundTpl && foundTpl.items && foundTpl.items.length > 0) {
+              setTemplateId(foundTpl.id);
+              setTemplateName(foundTpl.name);
+              loadedItems = foundTpl.items.map((it, idx) => ({
+                ...it,
+                id: `item-${Date.now()}-${idx}`,
+              }));
+              setItems(loadedItems);
+            }
+          }
+
+          let loadedCustId = "";
+          let loadedCustName = "";
+          if (customerIdParam) {
+            const custObj = await getCustomer(customerIdParam).catch(() => null);
+            if (custObj) {
+              loadedCustId = custObj.id;
+              loadedCustName = custObj.name || "";
+              setSelectedCustomerId(custObj.id);
+              setCustomerName(custObj.name || "");
+              setCustomerPhone(custObj.phone || "");
+              setCustomerEmail(custObj.email || "");
+              setCustomerAddress(custObj.address || "");
+              setSelectedCustomerObj(custObj);
+            }
+          }
+
           initialSnapshotRef.current = JSON.stringify({
-            customerId: "",
-            customerName: "",
-            items,
+            customerId: loadedCustId,
+            customerName: loadedCustName,
+            items: loadedItems,
             discount: 0,
             terms: DEFAULT_TERMS,
           });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error loading quotation form data:", err);
         toast.error("Failed to load quotation details");
       } finally {
@@ -215,7 +251,7 @@ export default function AdminQuotationForm() {
       }
     };
     init();
-  }, [id]);
+  }, [id, templateIdParam, customerIdParam]);
 
   // Calculations
   const subtotal = items.reduce((sum, it) => {
@@ -589,12 +625,14 @@ export default function AdminQuotationForm() {
     toast.success(`Created & selected customer: ${newCust.name}`);
   };
 
-  const handleCustomerUpdated = (updatedCust: Customer) => {
-    setSelectedCustomerObj(updatedCust);
-    setCustomerName(updatedCust.name);
-    setCustomerPhone(updatedCust.phone || "");
-    setCustomerEmail(updatedCust.email || "");
-    setCustomerAddress(updatedCust.address || "");
+  const handleCustomerUpdated = (updatedCust?: Partial<Customer>) => {
+    if (updatedCust) {
+      setSelectedCustomerObj((prev) => (prev ? { ...prev, ...updatedCust } : (updatedCust as Customer)));
+      if (updatedCust.name) setCustomerName(updatedCust.name);
+      if (updatedCust.phone !== undefined) setCustomerPhone(updatedCust.phone || "");
+      if (updatedCust.email !== undefined) setCustomerEmail(updatedCust.email || "");
+      if (updatedCust.address !== undefined) setCustomerAddress(updatedCust.address || "");
+    }
     toast.success("Customer details updated!");
   };
 
@@ -661,7 +699,19 @@ export default function AdminQuotationForm() {
 
   const handleRemoveItem = (index: number) => {
     if (items.length === 1) {
-      toast.error("Quotation must have at least one product row");
+      setItems([
+        {
+          id: `item-${Date.now()}`,
+          productId: undefined,
+          productName: "",
+          category: "",
+          modelNumber: "",
+          description: "",
+          quantity: 1,
+          estimatedPrice: 0,
+          totalPrice: 0,
+        },
+      ]);
       return;
     }
     setItems((prev) => prev.filter((_, i) => i !== index));
@@ -671,21 +721,24 @@ export default function AdminQuotationForm() {
     const matchedCat = categories.find((c) => c.id === newProd.categoryId);
     const catName = matchedCat ? matchedCat.name : newProd.categoryId || "General";
     const price = newProd.price || 0;
+    const newRow: QuotationItem = {
+      id: `item-${Date.now()}`,
+      productId: newProd.id,
+      productName: newProd.name,
+      category: catName,
+      modelNumber: newProd.model || "",
+      description: newProd.description || "",
+      quantity: 1,
+      estimatedPrice: price,
+      totalPrice: price,
+    };
 
-    setItems((prev) => [
-      ...prev,
-      {
-        id: `item-${Date.now()}`,
-        productId: newProd.id,
-        productName: newProd.name,
-        category: catName,
-        modelNumber: newProd.model || "",
-        description: newProd.description || "",
-        quantity: 1,
-        estimatedPrice: price,
-        totalPrice: price,
-      },
-    ]);
+    setItems((prev) => {
+      if (prev.length === 1 && !prev[0].productName.trim()) {
+        return [newRow];
+      }
+      return [...prev, newRow];
+    });
     toast.success(`Created & added "${newProd.name}" to quotation!`);
   };
 
@@ -1091,6 +1144,26 @@ export default function AdminQuotationForm() {
                                 {it.productName}
                               </span>
                               <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setItems((prev) => {
+                                      const copy = [...prev];
+                                      copy[idx] = {
+                                        ...copy[idx],
+                                        productId: undefined,
+                                      };
+                                      return copy;
+                                    });
+                                  }}
+                                  className="h-6 px-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                  title="Change or re-select product"
+                                >
+                                  <RefreshCw className="h-3 w-3 mr-0.5" />
+                                  <span>Change</span>
+                                </Button>
                                 {it.productId && (
                                   <Button
                                     type="button"
@@ -1134,6 +1207,7 @@ export default function AdminQuotationForm() {
                         ) : (
                           <ProductTypeahead
                             value={it.productName}
+                            onChange={(val) => handleUpdateItem(idx, "productName", val)}
                             onSelectProduct={(prod) => handleSelectProductForRow(idx, prod)}
                             onAddNewProduct={() => setShowProductModal(true)}
                             placeholder="Type to search 4000+ products by name, model, brand..."

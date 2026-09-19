@@ -11,6 +11,7 @@ import {
   Layers,
   Globe,
   EyeOff,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -370,9 +371,10 @@ export default function AdminProductForm() {
                 <button
                   type="button"
                   onClick={() => setShowCategoryModal(true)}
-                  className="text-[11px] font-semibold text-[#2563EB] hover:underline"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold text-[#2563EB] bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 cursor-pointer transition-colors"
                 >
-                  + Add
+                  <Plus className="h-3 w-3" />
+                  <span>New</span>
                 </button>
               </div>
               <Select value={form.categoryId} onValueChange={(v) => set("categoryId", v)}>
@@ -615,9 +617,10 @@ export default function AdminProductForm() {
             <button
               type="button"
               onClick={addCustomField}
-              className="text-xs font-semibold text-[#2563EB] hover:underline"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[#2563EB] bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 cursor-pointer transition-colors"
             >
-              + Add Specification
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Specification</span>
             </button>
           </div>
 
@@ -682,7 +685,7 @@ export default function AdminProductForm() {
                   onClick={addCustomField}
                   className="text-[#2563EB] font-bold underline"
                 >
-                  + Add Specification
+                  Add Specification
                 </button>{" "}
                 to list hardware specs.
               </div>

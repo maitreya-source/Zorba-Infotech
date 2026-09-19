@@ -217,7 +217,7 @@ export default function SearchBar() {
 
                 <div className="space-y-0.5">
                   {filteredCategories.slice(0, 5).map((cat, idx) => {
-                    const Icon = getIcon(cat.iconName);
+                    const Icon = getIcon(cat.iconName || "Folder");
                     const isSelected = selectedIndex === idx;
 
                     return (

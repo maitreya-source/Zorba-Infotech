@@ -147,7 +147,7 @@ export default function EmailPreviewModal({
     if (call) {
       const newSubject = buildEmailSubject({
         templateType: selectedTemplate,
-        customerName: recipientName || call.customerName,
+        customerName: recipientName || call.customerName || "Customer",
         ticketNo: call.ticketNo,
         deviceCategory: call.deviceCategory,
       });

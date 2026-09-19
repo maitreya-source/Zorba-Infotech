@@ -148,7 +148,7 @@ export default function ServiceCallDeviceDetailsCard({
               className="h-8 text-xs font-bold rounded-xl gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer active:scale-95 transition-all shadow-2xs"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>+ Add Another Product</span>
+              <span>Add Another Product</span>
             </Button>
           )}
         </div>
@@ -205,9 +205,10 @@ export default function ServiceCallDeviceDetailsCard({
                           tabIndex={-1}
                           data-tally-skip="true"
                           onClick={onOpenAddCategoryModal}
-                          className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold text-[#2563EB] bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 cursor-pointer transition-colors"
                         >
-                          + Add
+                          <Plus className="h-3 w-3" />
+                          <span>New</span>
                         </button>
                       </div>
                       <Select
@@ -359,6 +360,7 @@ export default function ServiceCallDeviceDetailsCard({
                       <span className="text-rose-600 font-bold">*</span>
                     </Label>
                     <Textarea
+                      id={pIdx === 0 ? "issue-description-input" : undefined}
                       placeholder={
                         isMulti
                           ? `Specific fault or service task for Product #${pIdx + 1}...`
@@ -370,7 +372,7 @@ export default function ServiceCallDeviceDetailsCard({
                         if (pIdx === 0) onIssueDescriptionChange(e.target.value);
                       }}
                       rows={2}
-                      required
+                      required={pIdx === 0}
                       className={`text-base sm:text-sm rounded-xl bg-slate-50/60 dark:bg-slate-950 font-medium placeholder:text-slate-400/50 dark:placeholder:text-slate-500/40 placeholder:font-normal focus:bg-white transition-colors ${
                         issueError && pIdx === 0
                           ? "border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30 text-rose-900 dark:text-rose-100"
@@ -457,9 +459,10 @@ export default function ServiceCallDeviceDetailsCard({
                     tabIndex={-1}
                     data-tally-skip="true"
                     onClick={onOpenAddCategoryModal}
-                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold text-[#2563EB] bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 cursor-pointer transition-colors"
                   >
-                    + Add
+                    <Plus className="h-3 w-3" />
+                    <span>New</span>
                   </button>
                 </div>
                 <Select value={deviceCategory} onValueChange={onDeviceCategoryChange}>
@@ -691,7 +694,7 @@ export default function ServiceCallDeviceDetailsCard({
                       tabIndex={-1}
                       data-tally-skip="true"
                       onClick={onOpenEditCenterModal}
-                      className="text-[10px] font-semibold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 cursor-pointer transition-colors"
                       title="Edit Service Center details & locations"
                     >
                       Edit Center
@@ -702,9 +705,10 @@ export default function ServiceCallDeviceDetailsCard({
                     tabIndex={-1}
                     data-tally-skip="true"
                     onClick={onOpenAddCenterModal}
-                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold text-[#2563EB] bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 cursor-pointer transition-colors"
                   >
-                    + Add
+                    <Plus className="h-3 w-3" />
+                    <span>New</span>
                   </button>
                 </div>
               </div>
@@ -741,9 +745,10 @@ export default function ServiceCallDeviceDetailsCard({
                     tabIndex={-1}
                     data-tally-skip="true"
                     onClick={onOpenAddAddressModal}
-                    className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold text-[#2563EB] bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 cursor-pointer transition-colors"
                   >
-                    + Add
+                    <Plus className="h-3 w-3" />
+                    <span>New</span>
                   </button>
                 )}
               </div>
@@ -781,9 +786,10 @@ export default function ServiceCallDeviceDetailsCard({
                   tabIndex={-1}
                   data-tally-skip="true"
                   onClick={onOpenAddCourierModal}
-                  className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold text-[#2563EB] bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 cursor-pointer transition-colors"
                 >
-                  + Add
+                  <Plus className="h-3 w-3" />
+                  <span>New</span>
                 </button>
               </div>
               <Select

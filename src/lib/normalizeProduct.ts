@@ -280,7 +280,7 @@ export function normalizeBrand(rawBrand?: string, itemName?: string): string {
   }
   if (rawBrand) {
     let clean = rawBrand.replace(/@\d+%/g, "");
-    clean = clean.replace(/1800\s*[\d\s\-]+|1860\s*[\d\s\-]+|022-[\d\s\-]+|\b\d{6,}\b/g, "");
+    clean = clean.replace(/1800\s*[\d\s-]+|1860\s*[\d\s-]+|022-[\d\s-]+|\b\d{6,}\b/g, "");
     clean = clean.replace(/-\s*[A-Z0-9]{5,}.*$/, "");
     clean = clean.replace(/\s+/g, " ").trim();
     if (clean.length > 1 && clean.length < 35 && !JUNK_BRAND_NAMES.has(clean.toLowerCase())) {
@@ -408,7 +408,7 @@ export function toTechTitleCase(title: string): string {
 
   for (let i = 0; i < words.length; i++) {
     const w = words[i];
-    const stripped = w.replace(/[^A-Za-z0-9\-]/g, "").toUpperCase();
+    const stripped = w.replace(/[^A-Za-z0-9-]/g, "").toUpperCase();
 
     if (TECH_ACRONYMS.has(stripped)) {
       result.push(w.toUpperCase());
@@ -424,7 +424,7 @@ export function toTechTitleCase(title: string): string {
       } else {
         result.push(w.charAt(0).toUpperCase() + w.slice(1));
       }
-    } else if (/^[A-Za-z0-9]+-[A-Za-z0-9\-]+$/i.test(w)) {
+    } else if (/^[A-Za-z0-9]+-[A-Za-z0-9-]+$/i.test(w)) {
       // Preserve hardware SKU strings like 15-FC0500AU, DS-7116HGHI-M1
       result.push(w.toUpperCase());
     } else if (i > 0 && i < words.length - 1 && LOWERCASE_WORDS.has(w.toLowerCase())) {
@@ -457,19 +457,19 @@ export function extractProductModelNumber(name: string, rawModel?: string): stri
   }
 
   // CCTV & DVR (e.g. DS-2CD1023G2-LIU, CP-UVR-0801F1-IC2)
-  const cctvMatch = name.match(/\b((?:DS|CP|DH|IPC|EZVIZ)[\-\s][A-Za-z0-9\-\/]{4,20})\b/i);
+  const cctvMatch = name.match(/\b((?:DS|CP|DH|IPC|EZVIZ)[-\s][A-Za-z0-9-/]{4,20})\b/i);
   if (cctvMatch) return cctvMatch[1].replace(/dvr\s+/i, "").trim();
 
   // Laptop series (e.g. 15-FC0155AU, 15-FD0751TU, ThinkPad E14, V15)
-  const laptopSeries = name.match(/\b(\d{2}\-[A-Za-z0-9]{4,10}|ThinkPad\s+[A-Za-z0-9]+|IdeaPad\s+[A-Za-z0-9]+|Vostro\s+\d{4}|Inspiron\s+\d{4}|Latitude\s+\d{4})\b/i);
+  const laptopSeries = name.match(/\b(\d{2}-[A-Za-z0-9]{4,10}|ThinkPad\s+[A-Za-z0-9]+|IdeaPad\s+[A-Za-z0-9]+|Vostro\s+\d{4}|Inspiron\s+\d{4}|Latitude\s+\d{4})\b/i);
   if (laptopSeries) return laptopSeries[1].trim();
 
   // CPU / Processor Model (e.g. Ryzen 5 7520U, Core i3-1215U)
-  const procMatch = name.match(/\b(Ryzen\s+[3579][\-\s]\d{4}[A-Za-z0-9]*|Core\s+i[3579][\-\s]\d{4,5}[A-Za-z0-9]*|\bi[3579][\-\s]\d{4,5}[A-Za-z0-9]*|\b\d{4}[UHFK]\b)\b/i);
+  const procMatch = name.match(/\b(Ryzen\s+[3579][-\s]\d{4}[A-Za-z0-9]*|Core\s+i[3579][-\s]\d{4,5}[A-Za-z0-9]*|\bi[3579][-\s]\d{4,5}[A-Za-z0-9]*|\b\d{4}[UHFK]\b)\b/i);
   if (procMatch) return procMatch[1].trim();
 
   // Motherboard (e.g. H610G, H610M, B550M, H81M)
-  const mbMatch = name.match(/\b([HBAZ]\d{2,3}[A-Z0-9\-]*)\b/i);
+  const mbMatch = name.match(/\b([HBAZ]\d{2,3}[A-Z0-9-]*)\b/i);
   if (mbMatch && !/\b(ML|GM|MM|RPM|GB|TB|MB|GEN)\b/i.test(mbMatch[1])) return mbMatch[1].trim();
 
   // SSD (e.g. SN570, SN580, 870 EVO)
@@ -477,7 +477,7 @@ export function extractProductModelNumber(name: string, rawModel?: string): stri
   if (ssdMatch) return ssdMatch[1].trim();
 
   // Printer / MFP Model (e.g. 1008A, 1188A, 1020 Plus, 1008, 1005, L3210, L8180, LBP2900B)
-  const printerMatch = name.match(/\b(L\d{3,4}|M\d{3,4}|G\d{3,4}|LBP\s*\d{3,4}[A-Za-z]*|DCP[\-\s][A-Za-z0-9]+|1008[A-Za-z]?|1188[A-Za-z]?|1020\s*(?:Plus)?|1005|1010|1018|1022|1108|1200|126a|128fn|2900[A-Za-z]?)\b/i);
+  const printerMatch = name.match(/\b(L\d{3,4}|M\d{3,4}|G\d{3,4}|LBP\s*\d{3,4}[A-Za-z]*|DCP[-\s][A-Za-z0-9]+|1008[A-Za-z]?|1188[A-Za-z]?|1020\s*(?:Plus)?|1005|1010|1018|1022|1108|1200|126a|128fn|2900[A-Za-z]?)\b/i);
   if (printerMatch) return printerMatch[1].trim();
 
   return "";

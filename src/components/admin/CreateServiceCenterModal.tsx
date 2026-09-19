@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { toast } from "sonner";
-import { Building2, Trash2, MapPin, User, MessageCircle } from "lucide-react";
+import { Building2, Trash2, MapPin, User, MessageCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -353,9 +353,10 @@ export default function CreateServiceCenterModal({
                 variant="outline"
                 size="sm"
                 onClick={handleAddAddress}
-                className="h-7 px-2.5 text-[11px] font-bold text-[#2563EB] hover:text-blue-700 border-blue-200 dark:border-blue-900 cursor-pointer"
+                className="h-7 px-2.5 text-[11px] font-bold text-[#2563EB] hover:text-blue-700 border-blue-200 dark:border-blue-900 cursor-pointer gap-1"
               >
-                + Add Another Hub / City
+                <Plus className="h-3 w-3" />
+                <span>Add Another Hub / City</span>
               </Button>
             </div>
 
@@ -467,7 +468,8 @@ export default function CreateServiceCenterModal({
                       onClick={() => handleAddAddressLine(idx)}
                       className="text-[11px] font-semibold text-[#2563EB] hover:text-blue-700 inline-flex items-center gap-1 cursor-pointer"
                     >
-                      + Add Another Line
+                      <Plus className="h-3 w-3" />
+                      <span>Add Another Line</span>
                     </button>
                   </div>
 

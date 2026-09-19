@@ -73,6 +73,7 @@ import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { AVATAR_CATALOG } from "@/lib/avatars";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
 import { formatIndianPhoneNumber } from "@/lib/utils";
+import { useTechnicianCommissionLedger, isCallPaymentReceived } from "@/hooks/useTechnicianCommissionLedger";
 
 export default function AdminTeamMemberDetail() {
   const { id } = useParams<{ id: string }>();
@@ -80,8 +81,8 @@ export default function AdminTeamMemberDetail() {
   const location = useLocation();
   const { activeProfile } = useStaffProfile();
 
-  const originFrom = (location.state as any)?.from;
-  const originSelectedIndex = (location.state as any)?.selectedIndex;
+  const originFrom = (location.state as { from?: string } | null)?.from;
+  const originSelectedIndex = (location.state as { selectedIndex?: number } | null)?.selectedIndex;
 
   const handleBack = useCallback(() => {
     const target = originFrom || "/admin/team";
@@ -98,9 +99,10 @@ export default function AdminTeamMemberDetail() {
   const [calls, setCalls] = useState<ServiceCall[]>([]);
   const [payouts, setPayouts] = useState<TechnicianPayout[]>([]);
 
-  // Current Month Key (e.g. "2026-08")
+  // Current Month Key (e.g. "2026-08") in local timezone
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    return new Date().toISOString().slice(0, 7);
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
   const [tab, setTab] = useState<"completed" | "payment_due" | "pending" | "all" | "payouts">("completed");
@@ -144,7 +146,7 @@ export default function AdminTeamMemberDetail() {
       ]);
       setCalls(allCalls);
       setPayouts(allPayouts);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading team member details:", err);
       toast.error("Failed to load profile details");
     } finally {
@@ -158,93 +160,29 @@ export default function AdminTeamMemberDetail() {
 
   const commissionRate = member?.commissionPercentage ?? 50;
 
-  // Month navigation
-  const handlePrevMonth = () => {
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const prev = new Date(y, m - 2, 1);
-    const newMonth = prev.toISOString().slice(0, 7);
-    setSelectedMonth(newMonth);
-  };
-
-  const handleNextMonth = () => {
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const next = new Date(y, m, 1);
-    const newMonth = next.toISOString().slice(0, 7);
-    setSelectedMonth(newMonth);
-  };
-
-  const monthLabel = useMemo(() => {
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const d = new Date(y, m - 1, 1);
-    return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-  }, [selectedMonth]);
-
-  // Filter calls for this month
-  const monthCalls = useMemo(() => {
-    return calls.filter((c) => {
-      const callDate = c.dateTime || "";
-      return callDate.startsWith(selectedMonth);
-    });
-  }, [calls, selectedMonth]);
-
-  // Helper: check if payment was received from customer
-  const isCallPaymentReceived = (c: ServiceCall): boolean => {
-    if (!c.grandTotal || c.grandTotal === 0) return true;
-    return c.paymentStatus === "paid";
-  };
-
-  // Completed / Delivered calls in month
-  const allCompletedCalls = useMemo(() => {
-    return monthCalls.filter(
-      (c) => c.status === "completed" || c.status === "delivered"
-    );
-  }, [monthCalls]);
-
-  // Completed & customer payment RECEIVED (Commission payable now)
-  const completedPaidCalls = useMemo(() => {
-    return allCompletedCalls.filter((c) => isCallPaymentReceived(c));
-  }, [allCompletedCalls]);
-
-  // Completed but customer payment DUE (Commission withheld until collected)
-  const completedPaymentDueCalls = useMemo(() => {
-    return allCompletedCalls.filter((c) => !isCallPaymentReceived(c));
-  }, [allCompletedCalls]);
-
-  // Pending / Active calls
-  const pendingCalls = useMemo(() => {
-    return calls.filter(
-      (c) => c.status !== "completed" && c.status !== "delivered" && c.status !== "cancelled"
-    );
-  }, [calls]);
-
-  // Financial Calculations
-  const paidServiceCharges = useMemo(() => {
-    return completedPaidCalls.reduce((sum, c) => sum + (Number(c.serviceCharges) || 0), 0);
-  }, [completedPaidCalls]);
-
-  const withheldServiceCharges = useMemo(() => {
-    return completedPaymentDueCalls.reduce((sum, c) => sum + (Number(c.serviceCharges) || 0), 0);
-  }, [completedPaymentDueCalls]);
-
-  const totalServiceCharges = paidServiceCharges + withheldServiceCharges;
-
-  // Payable Commission (Calculated strictly on received customer payments)
-  const commissionEarned = useMemo(() => {
-    return Math.round((paidServiceCharges * commissionRate) / 100);
-  }, [paidServiceCharges, commissionRate]);
-
-  // Withheld Commission (Pending customer payment)
-  const commissionWithheld = useMemo(() => {
-    return Math.round((withheldServiceCharges * commissionRate) / 100);
-  }, [withheldServiceCharges, commissionRate]);
-
-  const totalPaid = useMemo(() => {
-    return payouts.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  }, [payouts]);
-
-  const balanceDue = useMemo(() => {
-    return commissionEarned - totalPaid;
-  }, [commissionEarned, totalPaid]);
+  const {
+    monthLabel,
+    monthCalls,
+    allCompletedCalls,
+    completedPaidCalls,
+    completedPaymentDueCalls,
+    pendingCalls,
+    paidServiceCharges,
+    withheldServiceCharges,
+    totalServiceCharges,
+    commissionEarned,
+    commissionWithheld,
+    totalPaid,
+    balanceDue,
+    handlePrevMonth,
+    handleNextMonth,
+  } = useTechnicianCommissionLedger({
+    calls,
+    payouts,
+    selectedMonth,
+    setSelectedMonth,
+    commissionRate,
+  });
 
   const displayCalls = useMemo(() => {
     return tab === "completed"
@@ -265,9 +203,15 @@ export default function AdminTeamMemberDetail() {
       }),
   });
 
-  // Open Edit Modal
+  const isOwner = activeProfile?.role === "proprietor" || activeProfile?.role === "developer";
+
+  // Open Edit Modal (Proprietor / Developer only)
   const handleOpenEditModal = useCallback(() => {
     if (!member) return;
+    if (!isOwner) {
+      toast.error("Only Proprietor / Owner profiles can edit staff roles and commission rates");
+      return;
+    }
     setEditName(member.name);
     setEditRole(member.role);
     setEditPhone(member.phone || "");
@@ -277,7 +221,7 @@ export default function AdminTeamMemberDetail() {
     setEditAvatar(member.avatar || "penguin");
     setEditActive(member.active !== false);
     setShowEditModal(true);
-  }, [member]);
+  }, [member, isOwner]);
 
   const isTechRole = member?.role === "technician";
   const tabsList = useMemo<("completed" | "payment_due" | "pending" | "all" | "payouts")[]>(() => {
@@ -452,12 +396,10 @@ export default function AdminTeamMemberDetail() {
       await deleteTechnicianPayout(payoutId);
       toast.success("Payout record deleted");
       loadData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to delete payout");
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || "Failed to delete payout");
     }
   };
-
-  const isOwner = activeProfile?.role === "proprietor";
 
   // Reset PIN State
   const [showResetPinModal, setShowResetPinModal] = useState(false);
@@ -484,8 +426,8 @@ export default function AdminTeamMemberDetail() {
       toast.success(`PIN updated for ${member.name}`);
       setMember((prev) => (prev ? { ...prev, pin: newPinInput.trim() } : null));
       setShowResetPinModal(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to update PIN");
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || "Failed to update PIN");
     } finally {
       setSavingResetPin(false);
     }
@@ -499,8 +441,8 @@ export default function AdminTeamMemberDetail() {
       toast.success(`PIN cleared for ${member.name}. User will be prompted to setup on next login.`);
       setMember((prev) => (prev ? { ...prev, pin: undefined } : null));
       setShowResetPinModal(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to clear PIN");
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || "Failed to clear PIN");
     } finally {
       setSavingResetPin(false);
     }
@@ -573,33 +515,35 @@ export default function AdminTeamMemberDetail() {
 
         <div className="flex items-center gap-2">
           {isOwner && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setNewPinInput("");
-                setConfirmNewPinInput("");
-                setShowResetPinModal(true);
-              }}
-              className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer shadow-2xs text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-            >
-              <KeyRound className="h-3.5 w-3.5" />
-              <span>Reset 5-Digit PIN</span>
-            </Button>
-          )}
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setNewPinInput("");
+                  setConfirmNewPinInput("");
+                  setShowResetPinModal(true);
+                }}
+                className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer shadow-2xs text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                <span>Reset 5-Digit PIN</span>
+              </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleOpenEditModal}
-            className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer shadow-2xs"
-            title="Edit Profile (Alt+A)"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span>Edit Profile (Alt+A)</span>
-          </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleOpenEditModal}
+                className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer shadow-2xs"
+                title="Edit Profile (Alt+A)"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                <span>Edit Profile (Alt+A)</span>
+              </Button>
+            </>
+          )}
 
           {isTechnician && (
             <Button
@@ -1036,7 +980,19 @@ export default function AdminTeamMemberDetail() {
                 </Select>
               </div>
 
-              {editRole === "technician" ? (
+              <div>
+                <Label className="text-xs font-semibold">Specialization</Label>
+                <Input
+                  value={editSpecialization}
+                  onChange={(e) => setEditSpecialization(e.target.value)}
+                  placeholder="e.g. Laptop & Chip-Level"
+                  className="h-9 text-xs rounded-xl mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {editRole === "technician" && (
                 <div>
                   <Label className="text-xs font-semibold">Commission %</Label>
                   <Input
@@ -1048,17 +1004,23 @@ export default function AdminTeamMemberDetail() {
                     className="h-9 text-xs font-mono rounded-xl mt-1 font-bold"
                   />
                 </div>
-              ) : (
-                <div>
-                  <Label className="text-xs font-semibold">Specialization</Label>
-                  <Input
-                    value={editSpecialization}
-                    onChange={(e) => setEditSpecialization(e.target.value)}
-                    placeholder="e.g. Intake"
-                    className="h-9 text-xs rounded-xl mt-1"
-                  />
-                </div>
               )}
+
+              <div>
+                <Label className="text-xs font-semibold">Status</Label>
+                <Select
+                  value={editActive ? "active" : "inactive"}
+                  onValueChange={(v) => setEditActive(v === "active")}
+                >
+                  <SelectTrigger className="h-9 text-xs rounded-xl mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active Staff</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">

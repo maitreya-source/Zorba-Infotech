@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -45,6 +45,7 @@ import {
 import type { TeamMember, ServiceCall, TechnicianPayout, PaymentMode } from "@/lib/types";
 import AvatarGraphic from "@/components/admin/AvatarGraphic";
 import { useStaffProfile } from "@/contexts/StaffProfileContext";
+import { useTechnicianCommissionLedger, isCallPaymentReceived } from "@/hooks/useTechnicianCommissionLedger";
 
 interface TechnicianCommissionModalProps {
   open: boolean;
@@ -59,9 +60,10 @@ export default function TechnicianCommissionModal({
 }: TechnicianCommissionModalProps) {
   const { activeProfile } = useStaffProfile();
 
-  // Current Month Key (e.g. "2026-08")
+  // Current Month Key (e.g. "2026-08") in local timezone
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    return new Date().toISOString().slice(0, 7);
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
   const [calls, setCalls] = useState<ServiceCall[]>([]);
@@ -90,7 +92,7 @@ export default function TechnicianCommissionModal({
       ]);
       setCalls(allCalls);
       setPayouts(allPayouts);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading technician commission data:", err);
       toast.error("Failed to load technician task and payout history");
     } finally {
@@ -104,92 +106,29 @@ export default function TechnicianCommissionModal({
     }
   }, [open, technician, selectedMonth]);
 
-  // Month navigation
-  const handlePrevMonth = () => {
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const d = new Date(y, m - 2, 1);
-    setSelectedMonth(d.toISOString().slice(0, 7));
-  };
-
-  const handleNextMonth = () => {
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const d = new Date(y, m, 1);
-    setSelectedMonth(d.toISOString().slice(0, 7));
-  };
-
-  const monthLabel = useMemo(() => {
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const d = new Date(y, m - 1, 1);
-    return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-  }, [selectedMonth]);
-
-  // Filter calls for this month
-  const monthCalls = useMemo(() => {
-    return calls.filter((c) => {
-      const callDate = c.dateTime || "";
-      return callDate.startsWith(selectedMonth);
-    });
-  }, [calls, selectedMonth]);
-
-  // Helper: check if payment was received from customer
-  const isCallPaymentReceived = (c: ServiceCall): boolean => {
-    // If grandTotal is 0 or undefined, no payment was owed by customer (warranty/free checkup)
-    if (!c.grandTotal || c.grandTotal === 0) return true;
-    return c.paymentStatus === "paid";
-  };
-
-  // Completed / Delivered calls in month
-  const allCompletedCalls = useMemo(() => {
-    return monthCalls.filter(
-      (c) => c.status === "completed" || c.status === "delivered"
-    );
-  }, [monthCalls]);
-
-  // Completed & customer payment RECEIVED (Commission payable now)
-  const completedPaidCalls = useMemo(() => {
-    return allCompletedCalls.filter((c) => isCallPaymentReceived(c));
-  }, [allCompletedCalls]);
-
-  // Completed but customer payment DUE (Commission withheld until collected)
-  const completedPaymentDueCalls = useMemo(() => {
-    return allCompletedCalls.filter((c) => !isCallPaymentReceived(c));
-  }, [allCompletedCalls]);
-
-  // Pending / Active calls
-  const pendingCalls = useMemo(() => {
-    return calls.filter(
-      (c) => c.status !== "completed" && c.status !== "delivered" && c.status !== "cancelled"
-    );
-  }, [calls]);
-
-  // Financial Calculations
-  const paidServiceCharges = useMemo(() => {
-    return completedPaidCalls.reduce((sum, c) => sum + (Number(c.serviceCharges) || 0), 0);
-  }, [completedPaidCalls]);
-
-  const withheldServiceCharges = useMemo(() => {
-    return completedPaymentDueCalls.reduce((sum, c) => sum + (Number(c.serviceCharges) || 0), 0);
-  }, [completedPaymentDueCalls]);
-
-  const totalServiceCharges = paidServiceCharges + withheldServiceCharges;
-
-  // Payable Commission (Calculated strictly on received customer payments)
-  const commissionEarned = useMemo(() => {
-    return Math.round((paidServiceCharges * commissionRate) / 100);
-  }, [paidServiceCharges, commissionRate]);
-
-  // Withheld Commission (Pending customer payment)
-  const commissionWithheld = useMemo(() => {
-    return Math.round((withheldServiceCharges * commissionRate) / 100);
-  }, [withheldServiceCharges, commissionRate]);
-
-  const totalPaid = useMemo(() => {
-    return payouts.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  }, [payouts]);
-
-  const balanceDue = useMemo(() => {
-    return commissionEarned - totalPaid;
-  }, [commissionEarned, totalPaid]);
+  const {
+    monthLabel,
+    monthCalls,
+    allCompletedCalls,
+    completedPaidCalls,
+    completedPaymentDueCalls,
+    pendingCalls,
+    paidServiceCharges,
+    withheldServiceCharges,
+    totalServiceCharges,
+    commissionEarned,
+    commissionWithheld,
+    totalPaid,
+    balanceDue,
+    handlePrevMonth,
+    handleNextMonth,
+  } = useTechnicianCommissionLedger({
+    calls,
+    payouts,
+    selectedMonth,
+    setSelectedMonth,
+    commissionRate,
+  });
 
   // Open Record Payout Modal
   const handleOpenPayoutDialog = () => {
@@ -229,8 +168,8 @@ export default function TechnicianCommissionModal({
       toast.success(`Recorded payment of ₹${amountNum.toLocaleString("en-IN")} to ${technician.name}`);
       setShowRecordPayoutModal(false);
       loadData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to record payment");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to record payment");
     } finally {
       setSavingPayout(false);
     }
@@ -243,8 +182,8 @@ export default function TechnicianCommissionModal({
       await deleteTechnicianPayout(payoutId);
       toast.success("Payout record deleted");
       loadData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to delete payout");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete payout");
     }
   };
 

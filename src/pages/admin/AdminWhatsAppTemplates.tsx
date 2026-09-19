@@ -213,7 +213,7 @@ export default function AdminWhatsAppTemplates() {
             const category: WhatsAppCategory = metaTpl.category?.toLowerCase() === "marketing" ? "marketing" : "utility";
 
             const matches = bodyText.match(/\{\{(\d+)\}\}/g) || [];
-            const vars = Array.from(new Set(matches.map((m: string) => parseInt(m.replace(/\D/g, ""), 10))))
+            const vars = Array.from<number>(new Set(matches.map((m: string) => parseInt(m.replace(/\D/g, ""), 10))))
               .sort((a: number, b: number) => a - b)
               .map((idx: number) => ({
                 index: idx,

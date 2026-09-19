@@ -190,8 +190,8 @@ describe("ServiceCallDeviceDetailsCard Multi-Product Support", () => {
     expect(screen.getByText("Product #1")).toBeInTheDocument();
     expect(screen.getByText("Product #2")).toBeInTheDocument();
 
-    // Click "+ Add Another Product" button
-    const addBtn = screen.getByText("+ Add Another Product");
+    // Click "Add Another Product" button
+    const addBtn = screen.getByText("Add Another Product");
     fireEvent.click(addBtn);
     expect(onAdd).toHaveBeenCalledTimes(1);
 

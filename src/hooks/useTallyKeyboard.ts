@@ -535,7 +535,7 @@ export function advanceToNextFormField(
   });
 
   const focusableEl = currentEl.closest<HTMLElement>(focusableSelector) || currentEl;
-  let currentIndex = elements.indexOf(focusableEl);
+  const currentIndex = elements.indexOf(focusableEl);
   if (currentIndex === -1) {
     const allEls = Array.from(root.querySelectorAll<HTMLElement>("*"));
     const myPos = allEls.indexOf(currentEl);
@@ -594,8 +594,19 @@ export function useTallyFormNavigation({
     if (!enabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 1. Tally Accept / Save: Ctrl + A (or Cmd + A) from ANY field
+      // 1. Tally Accept / Save: Ctrl + A (or Cmd + A)
+      // Preserve native Select-All when focused inside a text input/textarea with unselected text
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "a" || e.code === "KeyA")) {
+        const target = e.target as HTMLInputElement | HTMLTextAreaElement | null;
+        if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+          const val = target.value || "";
+          const hasUnselectedText =
+            val.length > 0 &&
+            (target.selectionStart !== 0 || target.selectionEnd !== val.length);
+          if (hasUnselectedText) {
+            return;
+          }
+        }
         e.preventDefault();
         e.stopPropagation();
         onSave();
@@ -635,10 +646,11 @@ export function useTallyFormNavigation({
         if (modalOpen) return;
 
         e.preventDefault();
-        if (isDirtyRef.current) {
-          setShowQuitPrompt(true);
-        } else if (onEsc) {
+        e.stopPropagation();
+        if (onEsc) {
           onEsc();
+        } else if (isDirtyRef.current) {
+          setShowQuitPrompt(true);
         } else if (onConfirmExit) {
           onConfirmExit();
         }

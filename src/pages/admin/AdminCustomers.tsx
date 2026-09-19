@@ -434,10 +434,10 @@ export default function AdminCustomers() {
             setLoading(true);
             getCustomers(true)
               .then((list) => {
-                setAllCustomers(list);
+                setAllCustomers(deduplicateCustomers(list));
                 setError(null);
               })
-              .catch((err: any) => setError(err?.message || "Failed to load customers"))
+              .catch((err: unknown) => setError((err as Error)?.message || "Failed to load customers"))
               .finally(() => setLoading(false));
           }}
           title="Customer Sync Error"
@@ -623,7 +623,7 @@ export default function AdminCustomers() {
         onOpenChange={setShowCreateModal}
         onCreated={() => {
           setPageNumber(1);
-          getCustomers(true).then((list) => setAllCustomers(list)).catch(() => {});
+          getCustomers(true).then((list) => setAllCustomers(deduplicateCustomers(list))).catch(() => {});
         }}
       />
       <EditCustomerModal
@@ -631,7 +631,7 @@ export default function AdminCustomers() {
         open={!!editCustomer}
         onOpenChange={(open) => !open && setEditCustomer(null)}
         onUpdated={() => {
-          getCustomers(true).then((list) => setAllCustomers(list)).catch(() => {});
+          getCustomers(true).then((list) => setAllCustomers(deduplicateCustomers(list))).catch(() => {});
         }}
       />
       <ImportCustomersModal
@@ -639,7 +639,7 @@ export default function AdminCustomers() {
         onOpenChange={setShowImportModal}
         onImportComplete={() => {
           setPageNumber(1);
-          getCustomers(true).then((list) => setAllCustomers(list)).catch(() => {});
+          getCustomers(true).then((list) => setAllCustomers(deduplicateCustomers(list))).catch(() => {});
         }}
       />
 

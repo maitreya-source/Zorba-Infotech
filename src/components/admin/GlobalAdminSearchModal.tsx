@@ -420,7 +420,7 @@ export default function GlobalAdminSearchModal({
                               </span>
                               <span className="font-mono text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1">
                                 <Phone className="h-3 w-3 text-slate-400" />
-                                {formatIndianPhoneNumber(sc.customerPhone)}
+                                {formatIndianPhoneNumber(sc.customerPhone || "")}
                               </span>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 truncate">

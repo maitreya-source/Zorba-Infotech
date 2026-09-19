@@ -80,6 +80,14 @@ export interface BackupMetadata {
     financial_years: number;
     counters: number;
     admins: number;
+    quotations?: number;
+    quotation_templates?: number;
+    technician_payouts?: number;
+    whatsapp_templates?: number;
+    inquiries?: number;
+    job_applications?: number;
+    device_categories?: number;
+    settings?: number;
     totalDocuments: number;
   };
 }
@@ -100,6 +108,14 @@ export interface FullDatabaseBackup {
     financial_years: Array<{ id: string; [key: string]: any }>;
     counters: Array<{ id: string; [key: string]: any }>;
     admins: Array<{ id: string; [key: string]: any }>;
+    quotations?: Array<{ id: string; [key: string]: any }>;
+    quotation_templates?: Array<{ id: string; [key: string]: any }>;
+    technician_payouts?: Array<{ id: string; [key: string]: any }>;
+    whatsapp_templates?: Array<{ id: string; [key: string]: any }>;
+    inquiries?: Array<{ id: string; [key: string]: any }>;
+    job_applications?: Array<{ id: string; [key: string]: any }>;
+    device_categories?: Array<{ id: string; [key: string]: any }>;
+    settings?: Array<{ id: string; [key: string]: any }>;
   };
 }
 
@@ -117,6 +133,8 @@ export interface CloudSnapshot {
     categories: number;
     teamMembers: number;
   };
+  isChunked?: boolean;
+  chunkCount?: number;
   backupData?: FullDatabaseBackup;
 }
 
@@ -208,13 +226,35 @@ export async function createScopedDatabaseBackup(
   let financial_years: Array<{ id: string; [key: string]: any }> = [];
   let counters: Array<{ id: string; [key: string]: any }> = [];
   let admins: Array<{ id: string; [key: string]: any }> = [];
+  let quotations: Array<{ id: string; [key: string]: any }> = [];
+  let quotation_templates: Array<{ id: string; [key: string]: any }> = [];
+  let technician_payouts: Array<{ id: string; [key: string]: any }> = [];
+  let whatsapp_templates: Array<{ id: string; [key: string]: any }> = [];
+  let inquiries: Array<{ id: string; [key: string]: any }> = [];
+  let job_applications: Array<{ id: string; [key: string]: any }> = [];
+  let device_categories: Array<{ id: string; [key: string]: any }> = [];
+  let settings: Array<{ id: string; [key: string]: any }> = [];
 
   const tasks: Promise<void>[] = [];
 
-  if (modules.categories) tasks.push(fetchCollectionPaginated("categories").then((r) => { categories = r; }));
-  if (modules.products) tasks.push(fetchCollectionPaginated("products").then((r) => { products = r; }));
-  if (modules.customers) tasks.push(fetchCollectionPaginated("customers").then((r) => { customers = r; }));
-  if (modules.teamMembers) tasks.push(fetchCollectionPaginated("team_members").then((r) => { team_members = r; }));
+  if (modules.categories) {
+    tasks.push(fetchCollectionPaginated("categories").then((r) => { categories = r; }));
+    tasks.push(fetchCollectionPaginated("device_categories").then((r) => { device_categories = r; }));
+  }
+  if (modules.products) {
+    tasks.push(fetchCollectionPaginated("products").then((r) => { products = r; }));
+    tasks.push(fetchCollectionPaginated("quotations").then((r) => { quotations = r; }));
+    tasks.push(fetchCollectionPaginated("quotation_templates").then((r) => { quotation_templates = r; }));
+  }
+  if (modules.customers) {
+    tasks.push(fetchCollectionPaginated("customers").then((r) => { customers = r; }));
+    tasks.push(fetchCollectionPaginated("inquiries").then((r) => { inquiries = r; }));
+  }
+  if (modules.teamMembers) {
+    tasks.push(fetchCollectionPaginated("team_members").then((r) => { team_members = r; }));
+    tasks.push(fetchCollectionPaginated("technician_payouts").then((r) => { technician_payouts = r; }));
+    tasks.push(fetchCollectionPaginated("job_applications").then((r) => { job_applications = r; }));
+  }
   if (modules.serviceCenters) tasks.push(fetchCollectionPaginated("service_centers").then((r) => { service_centers = r; }));
   if (modules.couriers) tasks.push(fetchCollectionPaginated("couriers").then((r) => { couriers = r; }));
   if (modules.masterCatalogs) {
@@ -224,6 +264,8 @@ export async function createScopedDatabaseBackup(
   if (modules.systemSettings) {
     tasks.push(fetchCollectionPaginated("counters").then((r) => { counters = r; }));
     tasks.push(fetchCollectionPaginated("admins").then((r) => { admins = r; }));
+    tasks.push(fetchCollectionPaginated("whatsapp_templates").then((r) => { whatsapp_templates = r; }));
+    tasks.push(fetchCollectionPaginated("settings").then((r) => { settings = r; }));
   }
 
   // Handle Service Calls & Financial Years
@@ -252,7 +294,9 @@ export async function createScopedDatabaseBackup(
           try {
             const fyDoc = await getDocs(query(collection(db, "financial_years"), where("id", "==", fyId)));
             financial_years = fyDoc.docs.map((d) => ({ id: d.id, ...d.data() }));
-          } catch {}
+          } catch {
+            // ignore
+          }
 
           if (monthKey !== "all") {
             const path = `financial_years/${fyId}/months/${monthKey}/service_calls`;
@@ -304,6 +348,14 @@ export async function createScopedDatabaseBackup(
     financial_years: financial_years.length,
     counters: counters.length,
     admins: admins.length,
+    quotations: quotations.length,
+    quotation_templates: quotation_templates.length,
+    technician_payouts: technician_payouts.length,
+    whatsapp_templates: whatsapp_templates.length,
+    inquiries: inquiries.length,
+    job_applications: job_applications.length,
+    device_categories: device_categories.length,
+    settings: settings.length,
     totalDocuments:
       categories.length +
       products.length +
@@ -316,12 +368,20 @@ export async function createScopedDatabaseBackup(
       service_calls.length +
       financial_years.length +
       counters.length +
-      admins.length,
+      admins.length +
+      quotations.length +
+      quotation_templates.length +
+      technician_payouts.length +
+      whatsapp_templates.length +
+      inquiries.length +
+      job_applications.length +
+      device_categories.length +
+      settings.length,
   };
 
   return {
     metadata: {
-      version: "2.1.0",
+      version: "2.2.0",
       scope: scopeDescription,
       createdAt: now,
       createdAtISO: new Date(now).toISOString(),
@@ -343,6 +403,14 @@ export async function createScopedDatabaseBackup(
       financial_years,
       counters,
       admins,
+      quotations,
+      quotation_templates,
+      technician_payouts,
+      whatsapp_templates,
+      inquiries,
+      job_applications,
+      device_categories,
+      settings,
     },
   };
 }
@@ -372,11 +440,45 @@ export function downloadBackupAsJson(backup: FullDatabaseBackup, filename?: stri
   URL.revokeObjectURL(url);
 }
 
-// ─── Cloud Snapshot Storage ───────────────────────────────────────────────────
+// ─── Cloud Snapshot Storage (With Automatic Chunking >700KB for Firestore 1MB Limit) ───
+
+const MAX_INLINE_SNAPSHOT_CHARS = 700_000;
+const SNAPSHOT_CHUNK_CHARS = 650_000;
+
+async function persistSnapshotWithChunking(snapshotId: string, snapshotDoc: CloudSnapshot, backup: FullDatabaseBackup): Promise<void> {
+  const docRef = doc(db, "backups", snapshotId);
+  const cleanBackup = cleanFirestoreData(backup);
+  const serialized = JSON.stringify(cleanBackup);
+
+  if (serialized.length <= MAX_INLINE_SNAPSHOT_CHARS) {
+    await setDoc(docRef, cleanFirestoreData({ ...snapshotDoc, isChunked: false, backupData: cleanBackup }));
+    return;
+  }
+
+  // Chunk payload into subcollection `backups/{snapshotId}/chunks/{i}` so Firestore 1 MiB limit is never exceeded
+  const chunks: string[] = [];
+  for (let i = 0; i < serialized.length; i += SNAPSHOT_CHUNK_CHARS) {
+    chunks.push(serialized.slice(i, i + SNAPSHOT_CHUNK_CHARS));
+  }
+
+  const { backupData: _omitted, ...headerOnly } = snapshotDoc;
+  await setDoc(
+    docRef,
+    cleanFirestoreData({
+      ...headerOnly,
+      isChunked: true,
+      chunkCount: chunks.length,
+    })
+  );
+
+  for (let idx = 0; idx < chunks.length; idx++) {
+    const chunkRef = doc(db, "backups", snapshotId, "chunks", String(idx));
+    await setDoc(chunkRef, { index: idx, payload: chunks[idx] });
+  }
+}
 
 export async function saveSnapshotToCloud(backup: FullDatabaseBackup): Promise<string> {
   const snapshotId = `snapshot-${backup.metadata.createdAt}`;
-  const docRef = doc(db, "backups", snapshotId);
 
   const snapshotDoc: CloudSnapshot = {
     id: snapshotId,
@@ -395,7 +497,7 @@ export async function saveSnapshotToCloud(backup: FullDatabaseBackup): Promise<s
     backupData: backup,
   };
 
-  await setDoc(docRef, cleanFirestoreData(snapshotDoc));
+  await persistSnapshotWithChunking(snapshotId, snapshotDoc, backup);
   return snapshotId;
 }
 
@@ -403,7 +505,26 @@ export async function getCloudSnapshots(): Promise<CloudSnapshot[]> {
   try {
     const q = query(collection(db, "backups"), orderBy("createdAt", "desc"), limit(25));
     const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as CloudSnapshot);
+    const results: CloudSnapshot[] = [];
+
+    for (const d of snap.docs) {
+      const item = { id: d.id, ...d.data() } as CloudSnapshot;
+      if (item.isChunked && !item.backupData) {
+        try {
+          const chunkSnap = await getDocs(collection(db, "backups", d.id, "chunks"));
+          const sorted = chunkSnap.docs
+            .map((cd) => cd.data() as { index: number; payload: string })
+            .sort((a, b) => a.index - b.index);
+          if (sorted.length > 0) {
+            item.backupData = JSON.parse(sorted.map((s) => s.payload).join(""));
+          }
+        } catch (chunkErr) {
+          console.warn(`Failed to reassemble chunks for backup ${d.id}:`, chunkErr);
+        }
+      }
+      results.push(item);
+    }
+    return results;
   } catch (err: any) {
     console.error("getCloudSnapshots error:", err);
     return [];
@@ -411,6 +532,14 @@ export async function getCloudSnapshots(): Promise<CloudSnapshot[]> {
 }
 
 export async function deleteCloudSnapshot(id: string): Promise<void> {
+  try {
+    const chunkSnap = await getDocs(collection(db, "backups", id, "chunks"));
+    for (const cd of chunkSnap.docs) {
+      await deleteDoc(cd.ref);
+    }
+  } catch {
+    // ignore chunk cleanup errors
+  }
   await deleteDoc(doc(db, "backups", id));
 }
 
@@ -419,7 +548,6 @@ export async function deleteCloudSnapshot(id: string): Promise<void> {
 export async function createPreRestoreRollbackSnapshot(adminEmail?: string): Promise<string> {
   const currentBackup = await createFullDatabaseBackup(adminEmail || "Auto-Rollback Guard");
   const rollbackId = `rollback-pre-restore-${Date.now()}`;
-  const docRef = doc(db, "backups", rollbackId);
 
   const snapshotDoc: CloudSnapshot = {
     id: rollbackId,
@@ -438,7 +566,7 @@ export async function createPreRestoreRollbackSnapshot(adminEmail?: string): Pro
     backupData: currentBackup,
   };
 
-  await setDoc(docRef, cleanFirestoreData(snapshotDoc));
+  await persistSnapshotWithChunking(rollbackId, snapshotDoc, currentBackup);
   return rollbackId;
 }
 
@@ -514,7 +642,7 @@ export async function restoreDatabaseFromBackup(
 
     const invalidIds = new Set(colReport.errors.map((e) => e.id));
     const validItems = items.filter((item) => {
-      const id = item?.id || item?.ticketNo;
+      const id = item?.id || item?.ticketNo || item?.data?.id || item?.data?.ticketNo;
       if (id && invalidIds.has(id)) {
         skipped++;
         return false;
@@ -533,9 +661,18 @@ export async function restoreDatabaseFromBackup(
   const device_models = data.device_models || [];
   const spare_parts = data.spare_parts || [];
   const service_calls = getCleanList(data.service_calls, "service_calls");
+  const hierarchicalServiceCalls = getCleanList(data.hierarchicalServiceCalls, "hierarchical_service_calls");
   const financial_years = data.financial_years || [];
   const counters = data.counters || [];
   const admins = data.admins || [];
+  const quotations = data.quotations || [];
+  const quotation_templates = data.quotation_templates || [];
+  const technician_payouts = data.technician_payouts || [];
+  const whatsapp_templates = data.whatsapp_templates || [];
+  const inquiries = data.inquiries || [];
+  const job_applications = data.job_applications || [];
+  const device_categories = data.device_categories || [];
+  const settings = data.settings || [];
 
   const totalValidDocs =
     categories.length +
@@ -547,10 +684,18 @@ export async function restoreDatabaseFromBackup(
     device_models.length +
     spare_parts.length +
     service_calls.length +
-    (data.hierarchicalServiceCalls?.length || 0) +
+    hierarchicalServiceCalls.length +
     financial_years.length +
     counters.length +
-    admins.length;
+    admins.length +
+    quotations.length +
+    quotation_templates.length +
+    technician_payouts.length +
+    whatsapp_templates.length +
+    inquiries.length +
+    job_applications.length +
+    device_categories.length +
+    settings.length;
 
   const reportProgress = (colName: string) => {
     if (options?.onProgress) {
@@ -596,9 +741,15 @@ export async function restoreDatabaseFromBackup(
 
   try {
     await commitBatchList(categories, "categories");
+    await commitBatchList(device_categories, "device_categories");
     await commitBatchList(products, "products");
+    await commitBatchList(quotations, "quotations");
+    await commitBatchList(quotation_templates, "quotation_templates");
     await commitBatchList(customers, "customers");
+    await commitBatchList(inquiries, "inquiries");
     await commitBatchList(team_members, "team_members");
+    await commitBatchList(technician_payouts, "technician_payouts");
+    await commitBatchList(job_applications, "job_applications");
     await commitBatchList(service_centers, "service_centers");
     await commitBatchList(couriers, "couriers");
     await commitBatchList(device_models, "device_models");
@@ -607,11 +758,11 @@ export async function restoreDatabaseFromBackup(
     await commitBatchList(service_calls, "service_calls");
 
     // Hierarchical Subcollection calls
-    if (data.hierarchicalServiceCalls && data.hierarchicalServiceCalls.length > 0) {
+    if (hierarchicalServiceCalls.length > 0) {
       reportProgress("hierarchical_service_calls");
       const BATCH_SIZE = 400;
-      for (let i = 0; i < data.hierarchicalServiceCalls.length; i += BATCH_SIZE) {
-        const chunk = data.hierarchicalServiceCalls.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < hierarchicalServiceCalls.length; i += BATCH_SIZE) {
+        const chunk = hierarchicalServiceCalls.slice(i, i + BATCH_SIZE);
         const batch = writeBatch(db);
 
         for (const item of chunk) {
@@ -639,6 +790,8 @@ export async function restoreDatabaseFromBackup(
       }
     }
 
+    await commitBatchList(whatsapp_templates, "whatsapp_templates");
+    await commitBatchList(settings, "settings");
     await commitBatchList(counters, "counters");
     await commitBatchList(admins, "admins");
 

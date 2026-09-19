@@ -24,7 +24,7 @@ export function toTitleCase(str?: string | null): string {
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase()
-    .replace(/(?:^|[\s\-_/(\[,.])\S/g, (char) => char.toUpperCase());
+    .replace(/(?:^|[\s\-_/([,.])\S/g, (char) => char.toUpperCase());
 }
 
 /**
@@ -396,4 +396,53 @@ export function splitSingleLineAddressToMultiLine(raw?: string | null): string {
   const line3 = segments.slice(segments.length - 2).join(", ");
   return [line1, line2, line3].filter(Boolean).join("\n");
 }
+
+/**
+ * RFC-4180 compliant CSV line parser that preserves empty columns (`a,,c` -> `["a", "", "c"]`),
+ * multi-word unquoted fields (`a,b c,d` -> `["a", "b c", "d"]`), and escaped double quotes (`""`).
+ */
+export function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+/**
+ * Timezone-safe YYYY-MM arithmetic helper (avoids UTC Date.toISOString() drift in IST/positive offsets).
+ */
+export function shiftYearMonth(ym: string, deltaMonths: number): string {
+  const [yStr, mStr] = ym.split("-");
+  const year = Number(yStr) || new Date().getFullYear();
+  const monthIndex = (Number(mStr) || 1) - 1 + deltaMonths;
+  const targetDate = new Date(year, monthIndex, 1);
+  return `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}`;
+}
+
 

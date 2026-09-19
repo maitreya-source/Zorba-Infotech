@@ -443,17 +443,18 @@ export default function AdminServiceCallForm() {
       setServiceCenters(centers);
       setTechnicians(techs);
 
-      const fallbackCats = cats.length > 0 ? cats : [
-        { id: "cat-1", name: "CCTV & Security", description: "Cameras & Surveillance" },
-        { id: "cat-2", name: "Printer", description: "Printers" },
-        { id: "cat-3", name: "Toner / Cartridge", description: "Refill" },
-        { id: "cat-4", name: "Laptop", description: "Laptops" },
-        { id: "cat-5", name: "Desktop & PC", description: "Desktops" },
-        { id: "cat-6", name: "Router & Networking", description: "Routers" },
-        { id: "cat-7", name: "UPS & Inverter", description: "Power" },
-        { id: "cat-8", name: "Scanner & Billing", description: "Scanners" },
-        { id: "cat-9", name: "Biometric & Attendance", description: "Biometrics" },
-        { id: "cat-10", name: "Monitor & Display", description: "Monitors" },
+      const nowTs = Date.now();
+      const fallbackCats: DeviceCategory[] = cats.length > 0 ? cats : [
+        { id: "cat-1", name: "CCTV & Security", description: "Cameras & Surveillance", createdAt: nowTs },
+        { id: "cat-2", name: "Printer", description: "Printers", createdAt: nowTs },
+        { id: "cat-3", name: "Toner / Cartridge", description: "Refill", createdAt: nowTs },
+        { id: "cat-4", name: "Laptop", description: "Laptops", createdAt: nowTs },
+        { id: "cat-5", name: "Desktop & PC", description: "Desktops", createdAt: nowTs },
+        { id: "cat-6", name: "Router & Networking", description: "Routers", createdAt: nowTs },
+        { id: "cat-7", name: "UPS & Inverter", description: "Power", createdAt: nowTs },
+        { id: "cat-8", name: "Scanner & Billing", description: "Scanners", createdAt: nowTs },
+        { id: "cat-9", name: "Biometric & Attendance", description: "Biometrics", createdAt: nowTs },
+        { id: "cat-10", name: "Monitor & Display", description: "Monitors", createdAt: nowTs },
       ];
       setCategories(fallbackCats);
 
@@ -481,7 +482,24 @@ export default function AdminServiceCallForm() {
     loadMasterData();
   }, []);
 
-  // Fetch Existing Service Call if editing, or peek upcoming Ticket Number if creating
+  // Keep selectedCourierId synced whenever courierName or couriers list changes
+  useEffect(() => {
+    if (!courierName) {
+      setSelectedCourierId("");
+      return;
+    }
+    const matched = couriers.find(
+      (c) => c.name.toLowerCase() === courierName.trim().toLowerCase()
+    );
+    if (matched) {
+      setSelectedCourierId(matched.id);
+    } else if (!selectedCourierId) {
+      // Fallback id so Courier Pickup/Delivery buttons are still accessible for default/custom courier
+      setSelectedCourierId("courier-default");
+    }
+  }, [courierName, couriers]);
+
+  // Fetch Existing Service Call if editing, or initialize clean state if creating
   useEffect(() => {
     if (id) {
       setDataLoading(true);
@@ -511,23 +529,23 @@ export default function AdminServiceCallForm() {
           setBillNumber(sc.billNumber || "");
 
           const loadedProds = getServiceCallProducts(sc);
-          if (loadedProds && loadedProds.length > 0) {
-            setProducts(loadedProds);
-          } else {
-            setProducts([
-              {
-                id: `prod-${Date.now()}-0`,
-                deviceCategory: sc.deviceCategory || "CCTV & Security",
-                modelNumber: sc.modelNumber || "",
-                serialNumber: sc.serialNumber || "",
-                quantity: Number(sc.quantity) || 1,
-                warrantyStatus: sc.warrantyStatus || "not_applicable",
-                issueDescription: sc.issueDescription || "",
-                dateOfPurchase: sc.dateOfPurchase || "",
-                billNumber: sc.billNumber || "",
-              },
-            ]);
-          }
+          const effectiveProds =
+            loadedProds && loadedProds.length > 0
+              ? loadedProds
+              : [
+                  {
+                    id: `prod-${Date.now()}-0`,
+                    deviceCategory: sc.deviceCategory || "CCTV & Security",
+                    modelNumber: sc.modelNumber || "",
+                    serialNumber: sc.serialNumber || "",
+                    quantity: Number(sc.quantity) || 1,
+                    warrantyStatus: sc.warrantyStatus || "not_applicable",
+                    issueDescription: sc.issueDescription || "",
+                    dateOfPurchase: sc.dateOfPurchase || "",
+                    billNumber: sc.billNumber || "",
+                  },
+                ];
+          setProducts(effectiveProds);
 
           if (sc.handledByStaffId) {
             setHandledByStaffId(sc.handledByStaffId);
@@ -581,6 +599,8 @@ export default function AdminServiceCallForm() {
             status: sc.status,
             dateOfPurchase: (sc.dateOfPurchase || "").trim(),
             billNumber: (sc.billNumber || "").trim(),
+            products: effectiveProds,
+            rmaNumber: (sc.rmaNumber || "").trim(),
             selectedServiceCenterId: sc.serviceCenterId || "",
             selectedAddressId: sc.serviceCenterAddressId || "",
             courierName: sc.courierName || "Trackon Courier",
@@ -603,7 +623,7 @@ export default function AdminServiceCallForm() {
         });
     } else {
       setDataLoading(false);
-      // Clean reset for new ticket creation so no discarded/previous state leaks
+      // Clean reset for new ticket creation only when route id changes (NOT when dateTime changes)
       setTimeline([]);
       setSelectedCustomerId("");
       setCustomerName("");
@@ -647,17 +667,21 @@ export default function AdminServiceCallForm() {
       setPaymentStatus("due");
       setAmountPaid(0);
       setPaymentNotes("");
-
-      const fyMeta = getFinancialYear(dateTime || new Date());
-      peekNextTicketNumber(fyMeta.fyId, fyMeta.monthKey)
-        .then((nextNo) => {
-          setTicketNo(nextNo);
-        })
-        .catch(() => {
-          setTicketNo("SC-NEW");
-        });
     }
-  }, [id, dateTime, navigate]);
+  }, [id, navigate]);
+
+  // Update preview ticket number when creating a new ticket and dateTime changes
+  useEffect(() => {
+    if (id || createdTicketId) return;
+    const fyMeta = getFinancialYear(dateTime || new Date());
+    peekNextTicketNumber(fyMeta.fyId, fyMeta.monthKey)
+      .then((nextNo) => {
+        setTicketNo(nextNo);
+      })
+      .catch(() => {
+        setTicketNo("SC-NEW");
+      });
+  }, [id, createdTicketId, dateTime]);
 
   // Auto-attribute new service calls to active 10h desk profile
   useEffect(() => {
@@ -690,6 +714,8 @@ export default function AdminServiceCallForm() {
         issueDescription.trim() ||
         billNumber.trim() ||
         dateOfPurchase.trim() ||
+        rmaNumber.trim() ||
+        products.length > 1 ||
         selectedCustomerId ||
         selectedServiceCenterId ||
         selectedTechnicianId ||
@@ -717,6 +743,8 @@ export default function AdminServiceCallForm() {
       status,
       dateOfPurchase: dateOfPurchase.trim(),
       billNumber: billNumber.trim(),
+      products,
+      rmaNumber: rmaNumber.trim(),
       selectedServiceCenterId,
       selectedAddressId,
       courierName,
@@ -727,6 +755,7 @@ export default function AdminServiceCallForm() {
       serviceChargesInput,
       discountInput,
       internalComments: internalComments.trim(),
+      paymentStatus,
     });
     return currentSnapshot !== initialSnapshotRef.current;
   };
@@ -744,7 +773,7 @@ export default function AdminServiceCallForm() {
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [customerName, customerPhone, issueDescription, parts, serviceChargesInput, discountInput, saving]);
+  }, [customerName, customerPhone, issueDescription, products, rmaNumber, parts, serviceChargesInput, discountInput, saving]);
 
   // Handle Customer Selection from Typeahead
   const handleSelectCustomer = (cust: Customer) => {
@@ -851,10 +880,10 @@ export default function AdminServiceCallForm() {
       return;
     }
 
-    if (id) {
+    if (effectiveId) {
       setPaymentSaving(true);
       try {
-        await updateServiceCallPaymentStatus(id, data);
+        await updateServiceCallPaymentStatus(effectiveId, data);
         if (data.paymentStatus === "paid") {
           const paymentEvt: TimelineEvent = {
             id: `evt-${Date.now()}`,
@@ -867,15 +896,16 @@ export default function AdminServiceCallForm() {
             comments: data.paymentNotes || undefined,
           };
           setTimeline((prev) => [...prev, paymentEvt]);
-          await addTimelineEvent(id, paymentEvt).catch(() => {});
+          await addTimelineEvent(effectiveId, paymentEvt).catch(() => {});
         }
         toast.success(
           data.paymentStatus === "paid"
             ? "Payment marked as Paid & Event Logged!"
             : "Payment status set to Due (Task)"
         );
-      } catch (err: any) {
-        toast.error(err?.message || "Failed to update payment status");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to update payment status";
+        toast.error(message);
       } finally {
         setPaymentSaving(false);
       }
@@ -921,8 +951,8 @@ export default function AdminServiceCallForm() {
     setTimeline((prev) => [...prev, newEvent]);
     setStatus(eventData.status);
 
-    if (id && isEditing) {
-      await addTimelineEvent(id, newEvent).catch(() => {});
+    if (effectiveId && isEditing) {
+      await addTimelineEvent(effectiveId, newEvent).catch(() => {});
     }
   };
 
@@ -931,7 +961,7 @@ export default function AdminServiceCallForm() {
     setParts((prev) => [...prev, { id: `part-${Date.now()}`, name: "", quantity: 1, unitPrice: 0, totalPrice: 0 }]);
   };
 
-  const handleUpdatePart = (index: number, field: keyof ServicePart, value: any) => {
+  const handleUpdatePart = (index: number, field: keyof ServicePart, value: unknown) => {
     setParts((prev) => {
       const copy = [...prev];
       const row = { ...copy[index], [field]: value };
@@ -959,8 +989,12 @@ export default function AdminServiceCallForm() {
   const grandTotal = Math.max(0, subTotal - discountNum);
 
   const buildPayload = (cName: string, cPhone: string, issueDesc: string) => {
-    const effectiveStaffId = activeProfile?.id || "";
-    const effectiveStaffName = activeProfile ? toTitleCase(activeProfile.name) : "";
+    const effectiveStaffId = handledByStaffId || activeProfile?.id || "";
+    const effectiveStaffName = handledByStaffName
+      ? toTitleCase(handledByStaffName)
+      : activeProfile
+      ? toTitleCase(activeProfile.name)
+      : "";
 
     const totalQuantity = products && products.length > 0
       ? products.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0)
@@ -1729,11 +1763,12 @@ export default function AdminServiceCallForm() {
         targetModule={whatsAppModal.targetModule}
         templateName={whatsAppModal.templateName}
         serviceCall={{
-          id: id || "NEW",
+          id: effectiveId || "NEW",
           ticketNo: ticketNo || "SC-INTAKE",
           customerName,
           customerPhone,
           customerEmail,
+          products,
           deviceCategory,
           modelNumber,
           serialNumber,
@@ -1747,6 +1782,11 @@ export default function AdminServiceCallForm() {
           serviceCenterAddress,
           courierName,
           rmaNumber,
+          paymentStatus,
+          paymentMode,
+          amountPaid,
+          paymentDate,
+          handledByStaffName,
           timeline,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -1763,11 +1803,12 @@ export default function AdminServiceCallForm() {
         defaultEmail={emailModal.defaultEmail}
         ticketId={emailModal.ticketId}
         serviceCall={{
-          id: id || "NEW",
+          id: effectiveId || "NEW",
           ticketNo: ticketNo || "SC-INTAKE",
           customerName,
           customerPhone,
           customerEmail,
+          products,
           deviceCategory,
           modelNumber,
           serialNumber,
@@ -1909,7 +1950,7 @@ export default function AdminServiceCallForm() {
       )}
       <JobCardPrintModal
         serviceCall={{
-          id: id || "preview",
+          id: effectiveId || "preview",
           ticketNo: ticketNo || "SC-PREVIEW",
           type,
           dateTime,
@@ -1956,7 +1997,7 @@ export default function AdminServiceCallForm() {
       />
       <DispatchSlipPrintModal
         serviceCall={{
-          id: id || "preview",
+          id: effectiveId || "preview",
           ticketNo: ticketNo || "SC-PREVIEW",
           type,
           dateTime,

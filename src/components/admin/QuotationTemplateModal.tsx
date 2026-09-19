@@ -64,17 +64,18 @@ export default function QuotationTemplateModal({
       toast.error("Template name is required");
       return;
     }
-    if (currentItems.length === 0) {
+    const nonEmptyItems = currentItems.filter((it) => (it.productName || "").trim().length > 0);
+    if (nonEmptyItems.length === 0) {
       toast.error("Add at least 1 product item to create a template");
       return;
     }
 
     setSaving(true);
     try {
-      const cleanItems = currentItems.map((it) => ({
+      const cleanItems = nonEmptyItems.map((it) => ({
         id: it.id || `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
         productId: it.productId,
-        productName: it.productName,
+        productName: it.productName.trim(),
         category: it.category || "General",
         modelNumber: it.modelNumber || "",
         description: it.description || "",

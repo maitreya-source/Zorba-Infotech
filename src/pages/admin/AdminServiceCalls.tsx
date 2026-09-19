@@ -54,6 +54,7 @@ import {
 import { getServiceCalls, deleteServiceCall, restoreServiceCall, updateServiceCall, getFinancialYears } from "@/lib/firestore";
 import { subscribeSyncSignal } from "@/lib/realtimeSync";
 import type { ServiceCall, ServiceCallStatus, FinancialYearDoc } from "@/lib/types";
+import { getServiceCallProducts } from "@/lib/types";
 import CreateCustomerModal from "@/components/admin/CreateCustomerModal";
 import CreateDeviceCategoryModal from "@/components/admin/CreateDeviceCategoryModal";
 import JobCardPrintModal from "@/components/admin/JobCardPrintModal";
@@ -325,17 +326,27 @@ export default function AdminServiceCalls() {
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     const matchesFY = fyFilter === "all" || c.fyId === fyFilter || (!c.fyId && fyFilter === "all");
     const q = search.toLowerCase().trim();
+    const prods = getServiceCallProducts(c);
+    const matchesProductList = prods.some(
+      (p) =>
+        (p.deviceCategory || "").toLowerCase().includes(q) ||
+        (p.modelNumber || "").toLowerCase().includes(q) ||
+        (p.serialNumber || "").toLowerCase().includes(q) ||
+        (p.issueDescription || "").toLowerCase().includes(q)
+    );
     const matchesSearch =
       !q ||
-      c.ticketNo.toLowerCase().includes(q) ||
-      c.customerName.toLowerCase().includes(q) ||
-      c.customerPhone.toLowerCase().includes(q) ||
-      c.deviceCategory.toLowerCase().includes(q) ||
-      c.issueDescription.toLowerCase().includes(q) ||
+      (c.ticketNo || "").toLowerCase().includes(q) ||
+      (c.customerName || "").toLowerCase().includes(q) ||
+      (c.customerPhone || "").toLowerCase().includes(q) ||
+      (c.deviceCategory || "").toLowerCase().includes(q) ||
+      (c.issueDescription || "").toLowerCase().includes(q) ||
       (c.modelNumber && c.modelNumber.toLowerCase().includes(q)) ||
       (c.serialNumber && c.serialNumber.toLowerCase().includes(q)) ||
+      (c.rmaNumber && c.rmaNumber.toLowerCase().includes(q)) ||
       (c.fyId && c.fyId.toLowerCase().includes(q)) ||
-      (c.monthKey && c.monthKey.toLowerCase().includes(q));
+      (c.monthKey && c.monthKey.toLowerCase().includes(q)) ||
+      matchesProductList;
 
     return matchesType && matchesStatus && matchesFY && matchesSearch;
   });
@@ -493,16 +504,16 @@ export default function AdminServiceCalls() {
     if (!q || q.length < 2) return 0;
     if (activeTab === "active") {
       return inactiveCalls.filter((c) =>
-        c.ticketNo.toLowerCase().includes(q) ||
-        c.customerName.toLowerCase().includes(q) ||
-        c.customerPhone.toLowerCase().includes(q)
+        (c.ticketNo || "").toLowerCase().includes(q) ||
+        (c.customerName || "").toLowerCase().includes(q) ||
+        (c.customerPhone || "").toLowerCase().includes(q)
       ).length;
     }
     if (activeTab === "inactive") {
       return activeCalls.filter((c) =>
-        c.ticketNo.toLowerCase().includes(q) ||
-        c.customerName.toLowerCase().includes(q) ||
-        c.customerPhone.toLowerCase().includes(q)
+        (c.ticketNo || "").toLowerCase().includes(q) ||
+        (c.customerName || "").toLowerCase().includes(q) ||
+        (c.customerPhone || "").toLowerCase().includes(q)
       ).length;
     }
     return 0;
@@ -589,6 +600,7 @@ export default function AdminServiceCalls() {
             <button
               onClick={() => {
                 setActiveTab("active");
+                setStatusFilter("all");
               }}
               className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === "active"
@@ -608,6 +620,7 @@ export default function AdminServiceCalls() {
             <button
               onClick={() => {
                 setActiveTab("inactive");
+                setStatusFilter("all");
               }}
               className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === "inactive"
@@ -626,6 +639,7 @@ export default function AdminServiceCalls() {
             <button
               onClick={() => {
                 setActiveTab("trash");
+                setStatusFilter("all");
               }}
               className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === "trash"
@@ -697,8 +711,18 @@ export default function AdminServiceCalls() {
                     <SelectItem value="sent_to_service_center">Sent to Service Center</SelectItem>
                     <SelectItem value="waiting_for_parts">Waiting for Parts</SelectItem>
                   </>
+                ) : activeTab === "inactive" ? (
+                  <>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </>
                 ) : (
                   <>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="received">Received</SelectItem>
+                    <SelectItem value="sent_to_service_center">Sent to Service Center</SelectItem>
+                    <SelectItem value="waiting_for_parts">Waiting for Parts</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -1271,9 +1295,9 @@ export default function AdminServiceCalls() {
             if (!open) setWhatsAppCall(null);
           }}
           title={`WhatsApp Customer: ${whatsAppCall.ticketNo}`}
-          recipientName={whatsAppCall.customerName}
+          recipientName={whatsAppCall.customerName || "Customer"}
           recipientRole="Customer"
-          defaultPhone={whatsAppCall.customerPhone}
+          defaultPhone={whatsAppCall.customerPhone || ""}
           ticketId={whatsAppCall.ticketNo}
           serviceCall={whatsAppCall}
         />

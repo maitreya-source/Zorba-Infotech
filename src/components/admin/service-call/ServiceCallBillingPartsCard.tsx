@@ -49,17 +49,19 @@ export default function ServiceCallBillingPartsCard({
             <button
               type="button"
               onClick={onOpenProductModal}
-              className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 cursor-pointer transition-colors"
             >
-              <span>+ New Product (Alt+C)</span>
+              <Plus className="h-3.5 w-3.5" />
+              <span>New Product (Alt+C)</span>
             </button>
           )}
           <button
             type="button"
             onClick={onAddPartRow}
-            className="text-[10px] font-semibold text-[#2563EB] hover:underline cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[#2563EB] bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 cursor-pointer transition-colors"
           >
-            + Add Row (Alt+A)
+            <Plus className="h-3.5 w-3.5" />
+            <span>Add Row (Alt+A)</span>
           </button>
         </div>
       </div>
@@ -183,7 +185,7 @@ export default function ServiceCallBillingPartsCard({
             className="w-full h-12 rounded-2xl border-2 border-dashed border-blue-400 dark:border-blue-600 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" />
-            <span>+ नया स्पेयर पार्ट जोड़ें (Add Part Row)</span>
+            <span>नया स्पेयर पार्ट जोड़ें (Add Part Row)</span>
           </Button>
         </div>
 

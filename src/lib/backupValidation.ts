@@ -15,7 +15,7 @@ export const CategoryValidationSchema = z.object({
 export const ProductValidationSchema = z.object({
   id: z.string().min(1, "Product ID (Model Number) is required"),
   name: z.string().min(1, "Product name is required"),
-  model: z.string().min(1, "Model number is required"),
+  model: z.string().optional().default(""),
   brand: z.string().optional().default(""),
   categoryId: z.string().optional().default(""),
   price: z.number().nullable().optional(),
@@ -27,7 +27,7 @@ export const ProductValidationSchema = z.object({
 export const CustomerValidationSchema = z.object({
   id: z.string().min(1, "Customer ID is required"),
   name: z.string().min(1, "Customer name is required"),
-  phone: z.string().min(6, "Valid phone number is required"),
+  phone: z.string().optional().default(""),
   additionalPhones: z.array(z.string()).optional(),
   email: z.string().optional(),
   address: z.string().optional(),
@@ -38,8 +38,8 @@ export const CustomerValidationSchema = z.object({
 export const TeamMemberValidationSchema = z.object({
   id: z.string().min(1, "Team Member ID is required"),
   name: z.string().min(1, "Name is required"),
-  role: z.enum(["backoffice", "technician", "manager"]),
-  phone: z.string().min(6, "Phone number is required"),
+  role: z.enum(["backoffice", "technician", "manager", "proprietor", "developer"]),
+  phone: z.string().optional().default(""),
   email: z.string().optional(),
   active: z.boolean().optional().default(true),
 });
@@ -66,10 +66,10 @@ export const ServiceCallValidationSchema = z.object({
   ticketNo: z.string().min(1, "Ticket number is required"),
   type: z.enum(["company_service_center", "in_house_repair", "onsite_visit"]),
   dateTime: z.string().min(1, "Date/time is required"),
-  customerId: z.string().min(1, "Customer ID reference is required"),
-  deviceCategory: z.string().min(1, "Device category is required"),
+  customerId: z.string().optional().default(""),
+  deviceCategory: z.string().optional().default(""),
   modelNumber: z.string().optional(),
-  issueDescription: z.string().min(1, "Issue description is required"),
+  issueDescription: z.string().optional().default(""),
   status: z.enum([
     "received",
     "in_progress",
@@ -80,7 +80,7 @@ export const ServiceCallValidationSchema = z.object({
     "cancelled",
   ]),
   warrantyStatus: z.enum(["in_warranty", "out_of_warranty", "not_applicable"]).optional().default("out_of_warranty"),
-  products: z.array(z.any()).optional(),
+  products: z.array(z.unknown()).optional(),
   parts: z.array(z.object({ id: z.string(), name: z.string(), quantity: z.number(), unitPrice: z.number(), totalPrice: z.number() })).optional().default([]),
   timeline: z.array(z.object({ id: z.string(), timestamp: z.number(), stage: z.string(), title: z.string(), status: z.string() })).optional().default([]),
 });

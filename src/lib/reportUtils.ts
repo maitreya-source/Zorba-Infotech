@@ -103,11 +103,16 @@ export function calculateReportMetrics(calls: ServiceCall[]): ReportMetrics {
   let dueCount = 0;
 
   for (const call of calls) {
-    const grandTotal = Number(call.grandTotal) || 0;
-    const parts = Number(call.partsTotal) || 0;
-    const service = Number(call.serviceCharges) || 0;
-    const courier = Number(call.courierCharges) || 0;
-    const discount = Number(call.discount) || 0;
+    if (call.isDeleted) continue;
+
+    const st = call.status;
+    const isCancelled = st === "cancelled";
+
+    const grandTotal = isCancelled ? 0 : (Number(call.grandTotal) || 0);
+    const parts = isCancelled ? 0 : (Number(call.partsTotal) || 0);
+    const service = isCancelled ? 0 : (Number(call.serviceCharges) || 0);
+    const courier = isCancelled ? 0 : (Number(call.courierCharges) || 0);
+    const discount = isCancelled ? 0 : (Number(call.discount) || 0);
 
     totalRevenue += grandTotal;
     partsTotal += parts;
@@ -115,30 +120,31 @@ export function calculateReportMetrics(calls: ServiceCall[]): ReportMetrics {
     courierCharges += courier;
     discounts += discount;
 
-    // Payment calculations
-    const paid = Number(call.amountPaid) || 0;
-    const isPaid = call.paymentStatus === "paid";
-    const isPartial = call.paymentStatus === "partial";
+    // Payment calculations (skip cancelled tickets)
+    if (!isCancelled) {
+      const paid = Number(call.amountPaid) || 0;
+      const isPaid = call.paymentStatus === "paid";
+      const isPartial = call.paymentStatus === "partial";
 
-    if (isPaid) {
-      paidCount++;
-      const effectivePaid = paid > 0 ? paid : grandTotal;
-      amountCollected += effectivePaid;
-    } else if (isPartial) {
-      partialCount++;
-      amountCollected += paid;
-      amountDue += Math.max(0, grandTotal - paid);
-    } else {
-      dueCount++;
-      amountDue += grandTotal;
-    }
+      if (isPaid) {
+        paidCount++;
+        const effectivePaid = paid > 0 ? paid : grandTotal;
+        amountCollected += effectivePaid;
+      } else if (isPartial) {
+        partialCount++;
+        amountCollected += paid;
+        amountDue += Math.max(0, grandTotal - paid);
+      } else {
+        dueCount++;
+        amountDue += grandTotal;
+      }
 
-    if (call.paymentMode) {
-      paymentByMode[call.paymentMode] = (paymentByMode[call.paymentMode] || 0) + (paid > 0 ? paid : grandTotal);
+      if (call.paymentMode) {
+        paymentByMode[call.paymentMode] = (paymentByMode[call.paymentMode] || 0) + (paid > 0 ? paid : grandTotal);
+      }
     }
 
     // Status calculations
-    const st = call.status;
     if (st === "completed" || st === "delivered") {
       completedCalls++;
     } else if (st === "cancelled") {
@@ -182,10 +188,12 @@ export function calculateReportMetrics(calls: ServiceCall[]): ReportMetrics {
     categoryMap[cat].revenue += grandTotal;
   }
 
-  const totalCalls = calls.length;
+  const nonDeletedCount = calls.filter((c) => !c.isDeleted).length;
+  const totalCalls = nonDeletedCount;
+  const billableCalls = Math.max(0, totalCalls - cancelledCalls);
   const collectionRate = totalRevenue > 0 ? Math.min(100, Math.round((amountCollected / totalRevenue) * 100)) : 100;
   const completionRate = totalCalls > 0 ? Math.min(100, Math.round((completedCalls / totalCalls) * 100)) : 0;
-  const averageTicketValue = totalCalls > 0 ? Math.round(totalRevenue / totalCalls) : 0;
+  const averageTicketValue = billableCalls > 0 ? Math.round(totalRevenue / billableCalls) : 0;
 
   return {
     totalCalls,
@@ -225,6 +233,7 @@ export function groupServiceCallsByDay(calls: ServiceCall[]): DailyReportGroup[]
   const groups: Record<string, DailyReportGroup> = {};
 
   for (const call of calls) {
+    if (call.isDeleted) continue;
     const rawDate = call.dateTime ? call.dateTime.slice(0, 10) : "Unknown Date";
     if (!groups[rawDate]) {
       let displayDate = rawDate;
@@ -252,18 +261,21 @@ export function groupServiceCallsByDay(calls: ServiceCall[]): DailyReportGroup[]
     }
 
     const g = groups[rawDate];
-    const total = Number(call.grandTotal) || 0;
-    const paid = Number(call.amountPaid) || 0;
+    const isCancelled = call.status === "cancelled";
+    const total = isCancelled ? 0 : (Number(call.grandTotal) || 0);
+    const paid = isCancelled ? 0 : (Number(call.amountPaid) || 0);
 
     g.count += 1;
     g.revenue += total;
-    if (call.paymentStatus === "paid") {
-      g.collected += paid > 0 ? paid : total;
-    } else if (call.paymentStatus === "partial") {
-      g.collected += paid;
-      g.due += Math.max(0, total - paid);
-    } else {
-      g.due += total;
+    if (!isCancelled) {
+      if (call.paymentStatus === "paid") {
+        g.collected += paid > 0 ? paid : total;
+      } else if (call.paymentStatus === "partial") {
+        g.collected += paid;
+        g.due += Math.max(0, total - paid);
+      } else {
+        g.due += total;
+      }
     }
     g.calls.push(call);
   }
@@ -291,6 +303,8 @@ export function filterServiceCalls(calls: ServiceCall[], filters: ReportFilters)
   const endDate = filters.endDate || "";
 
   return calls.filter((call) => {
+    if (call.isDeleted) return false;
+
     // Date Range filter
     if (startDate || endDate) {
       const callDate = call.dateTime ? call.dateTime.slice(0, 10) : "";

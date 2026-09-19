@@ -291,7 +291,7 @@ export default function AdminCouriers() {
           title={`WhatsApp Follow-up: ${whatsappCourier.name}`}
           recipientName={whatsappCourier.contactPerson || whatsappCourier.name}
           recipientRole="Courier Partner"
-          defaultPhone={whatsappCourier.phone}
+          defaultPhone={whatsappCourier.phone || ""}
           defaultMessage={`*ZORBA INFOTECH - LOGISTICS INQUIRY*\n\nHello *${whatsappCourier.name}* Team${whatsappCourier.contactPerson ? ` (${whatsappCourier.contactPerson})` : ""},\nWe would like to follow up regarding recent parcel dispatches and pickup scheduling.\n\nThank you,\n*Zorba Infotech Operations*`}
           targetModule="couriers"
         />

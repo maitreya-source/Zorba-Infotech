@@ -29,6 +29,7 @@ export default function QuotationWhatsAppModal({
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (quotation) {
@@ -75,8 +76,6 @@ For any questions, feel free to contact us:
     toast.success("Quotation message copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const [sending, setSending] = useState(false);
 
   const handleSendWhatsApp = async () => {
     const cleanPhone = formatPhoneForMetaApi(phone);
